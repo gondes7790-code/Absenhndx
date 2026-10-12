@@ -11,7 +11,7 @@ import {
   LogOut,
   Save,
   CheckCircle2,
-  Sparkles,
+  Flame,
   BookOpen,
   Users,
   Database,
@@ -98,7 +98,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       <div className="bg-[#fffdf8] border-2 border-slate-900 rounded-3xl p-4 sm:p-6 shadow-[4px_4px_0px_#1e293b] relative overflow-hidden">
         {/* Decorative corner tag */}
         <div className="absolute top-0 right-0 bg-[#ede9fe] border-b-2 border-l-2 border-slate-900 px-3.5 py-1.5 rounded-bl-2xl text-[11px] font-mono font-bold text-indigo-950 flex items-center gap-1.5 shadow-sm">
-          <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+          <Flame className="w-3.5 h-3.5 text-orange-600 fill-orange-500" />
           <span>RUANG PENDIDIK</span>
           <span className="bg-slate-900 text-white px-2 py-0.2 rounded-full text-[10px]">
             {teacher.handle}

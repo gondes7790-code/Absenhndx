@@ -7,7 +7,7 @@ import {
   EyeOff,
   ArrowRight,
   ShieldCheck,
-  Sparkles,
+  Flame,
   KeyRound,
   CheckCircle2,
 } from 'lucide-react';
@@ -60,8 +60,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
         {/* Top Floating Badge */}
         <div className="text-center mb-4">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#fef9c3] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] text-xs font-bold text-slate-900">
-            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-            <span>Sistem Informasi Kurikulum Merdeka</span>
+            <Flame className="w-3.5 h-3.5 text-orange-600 fill-orange-500" />
+            <span>Hadir! • Kurikulum Merdeka</span>
             <span className="bg-slate-900 text-white text-[10px] px-2 py-0.2 rounded-full font-mono">
               @hndx07
             </span>

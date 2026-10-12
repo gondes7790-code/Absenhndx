@@ -12,7 +12,7 @@ import {
   CheckCircle2,
   X,
   CreditCard,
-  Sparkles,
+  Flame,
 } from 'lucide-react';
 import { FinanceTransaction, Student, ClassRoom, TeacherProfile } from '../types';
 
@@ -129,9 +129,9 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
     <div className="space-y-5 sm:space-y-6">
       {/* Top Header Card - Vintage Postmodern Neobrutalist */}
       <div className="bg-[#fffdf8] rounded-3xl p-4 sm:p-6 border-2 border-slate-900 shadow-[4px_4px_0px_#1e293b] relative overflow-hidden">
-        {/* Retro Corner Stamp */}
+        {/* Retro Corner Stamp with Fire */}
         <div className="absolute top-0 right-0 bg-[#ffe4e6] border-b-2 border-l-2 border-slate-900 px-3 py-1 rounded-bl-2xl text-[10px] font-mono font-bold text-rose-950 flex items-center gap-1 shadow-xs">
-          <Sparkles className="w-3 h-3 text-rose-700" />
+          <Flame className="w-3 h-3 text-orange-600 fill-orange-500" />
           <span>PEMBUKUAN KELAS</span>
         </div>
 

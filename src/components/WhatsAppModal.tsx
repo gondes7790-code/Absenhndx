@@ -8,7 +8,6 @@ import {
   User,
   X,
   Users,
-  Sparkles,
 } from 'lucide-react';
 import { Student, AttendanceSession, AttendanceRecord, ClassRoom, TeacherProfile } from '../types';
 

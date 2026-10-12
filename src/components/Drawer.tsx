@@ -15,7 +15,7 @@ import {
   GraduationCap,
   LogOut,
   User,
-  Sparkles,
+  Flame,
 } from 'lucide-react';
 import { ActiveTab, ClassRoom, TeacherProfile } from '../types';
 
@@ -152,13 +152,13 @@ export const Drawer: React.FC<DrawerProps> = ({
         {/* Header Drawer */}
         <div className="p-4 sm:p-5 bg-[#ffffff] border-b-2 border-slate-900 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#dcfce7] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] flex items-center justify-center shrink-0">
-              <GraduationCap className="w-6 h-6 text-emerald-900" />
+            <div className="w-10 h-10 rounded-2xl bg-[#ffedd5] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] flex items-center justify-center text-xl shrink-0">
+              🔥
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <h2 className="text-base font-black text-slate-900 tracking-tight leading-none">
-                  {schoolName}
+                <h2 className="text-lg font-black text-slate-900 tracking-tight leading-none">
+                  Hadir!
                 </h2>
               </div>
               <p className="text-[11px] font-bold text-slate-500 mt-1 flex items-center gap-1">

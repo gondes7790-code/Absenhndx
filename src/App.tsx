@@ -41,7 +41,8 @@ import {
 } from './data/initialData';
 
 import { downloadJsonBackup } from './services/supabaseService';
-import { CheckCircle2, Sparkles, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, Flame, ShieldCheck } from 'lucide-react';
+import { PublicPortalView, PublicPortalType } from './components/PublicPortalView';
 
 const STORAGE_KEY_PREFIX = 'hndx_merdeka_app_v2';
 
@@ -142,6 +143,52 @@ export default function App() {
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
   const [targetStudentWA, setTargetStudentWA] = useState<Student | undefined>(undefined);
   const [isParentPortalOpen, setIsParentPortalOpen] = useState(false);
+  const [isPublicPortalMode, setIsPublicPortalMode] = useState<boolean>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.has('portal');
+    } catch {
+      return false;
+    }
+  });
+  const [publicPortalParams, setPublicPortalParams] = useState<{
+    tipe: PublicPortalType;
+    kelas?: string;
+    nisn?: string;
+  }>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const tipe = (params.get('tipe') as PublicPortalType) || 'absen';
+      const kelas = params.get('kelas') || undefined;
+      const nisn = params.get('nisn') || undefined;
+      return { tipe, kelas, nisn };
+    } catch {
+      return { tipe: 'absen' };
+    }
+  });
+
+  // Listen to browser popstate for public portal navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('portal')) {
+          setIsPublicPortalMode(true);
+          setPublicPortalParams({
+            tipe: (params.get('tipe') as PublicPortalType) || 'absen',
+            kelas: params.get('kelas') || undefined,
+            nisn: params.get('nisn') || undefined,
+          });
+        } else {
+          setIsPublicPortalMode(false);
+        }
+      } catch {
+        // fallback
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Toast Notification
   const [toastMessage, setToastMessage] = useState<{ title: string; desc: string } | null>(null);
@@ -412,7 +459,33 @@ export default function App() {
     showToast('Data Telah Disinkronkan', 'Memuat data terbaru dari Supabase PostgreSQL Cloud.');
   };
 
-  // If user is not authenticated, show the clean vintage postmodernism login view
+  // 1. PUBLIC PORTAL VIEW (Strictly Read-Only without Edit Access)
+  if (isPublicPortalMode) {
+    return (
+      <PublicPortalView
+        initialType={publicPortalParams.tipe}
+        initialClassId={publicPortalParams.kelas || activeClass.id}
+        initialNisn={publicPortalParams.nisn}
+        classes={classes}
+        students={students}
+        attendanceRecords={attendanceRecords}
+        grades={grades}
+        finances={finances}
+        teacher={teacher}
+        schoolName={schoolName}
+        onExitPortal={() => {
+          try {
+            window.history.pushState({}, '', window.location.pathname);
+          } catch {
+            // fallback
+          }
+          setIsPublicPortalMode(false);
+        }}
+      />
+    );
+  }
+
+  // 2. If user is not authenticated, show the clean vintage postmodernism login view
   if (!isAuthenticated) {
     return (
       <LoginView
@@ -438,19 +511,12 @@ export default function App() {
         </div>
       )}
 
-      {/* Top Navbar */}
+      {/* Top Navbar - Only class selector bar on the right */}
       <Navbar
         onOpenDrawer={() => setIsDrawerOpen(true)}
         classes={classes}
         activeClass={activeClass}
         onSelectClass={(cls) => setActiveClass(cls)}
-        onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
-        supabaseConnected={true}
-        schoolName={schoolName}
-        teacher={teacher}
-        activeTab={activeTab}
-        onSelectTab={(tab) => setActiveTab(tab)}
-        onLogout={handleLogout}
       />
 
       {/* Navigation Drawer */}
@@ -631,12 +697,17 @@ export default function App() {
         students={students}
         attendanceRecords={attendanceRecords}
         grades={grades}
+        finances={finances}
         teacher={teacher}
         schoolName={schoolName}
+        onOpenFullPublicPortal={() => {
+          setIsParentPortalOpen(false);
+          setIsPublicPortalMode(true);
+        }}
       />
 
-      {/* Footer crediting @hndx07 and Supabase RLS */}
-      <Footer schoolName={schoolName} />
+      {/* Footer Hadir! crediting @hndx07 and Supabase RLS */}
+      <Footer />
     </div>
   );
 }

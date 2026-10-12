@@ -10,7 +10,6 @@ import {
   X,
   Code,
   Lock,
-  Sparkles,
 } from 'lucide-react';
 import { SUPABASE_SQL_SCHEMA, getStoredSupabaseConfig, saveStoredSupabaseConfig, SupabaseConfig } from '../services/supabaseService';
 

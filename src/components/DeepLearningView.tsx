@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   BrainCircuit,
-  Sparkles,
+  Flame,
   AlertTriangle,
   ShieldCheck,
   TrendingDown,
@@ -108,9 +108,9 @@ export const DeepLearningView: React.FC<DeepLearningViewProps> = ({
     <div className="space-y-5 sm:space-y-6">
       {/* Top Banner Card - Vintage Postmodern Neobrutalist */}
       <div className="bg-[#fffdf8] rounded-3xl p-4 sm:p-6 border-2 border-slate-900 shadow-[4px_4px_0px_#1e293b] relative overflow-hidden">
-        {/* Retro Corner Stamp */}
+        {/* Retro Corner Stamp with Fire */}
         <div className="absolute top-0 right-0 bg-[#f3e8ff] border-b-2 border-l-2 border-slate-900 px-3 py-1 rounded-bl-2xl text-[10px] font-mono font-bold text-purple-950 flex items-center gap-1 shadow-xs">
-          <Sparkles className="w-3 h-3 text-purple-700" />
+          <Flame className="w-3 h-3 text-orange-600 fill-orange-500" />
           <span>DEEP LEARNING MODEL</span>
         </div>
 
@@ -149,7 +149,7 @@ export const DeepLearningView: React.FC<DeepLearningViewProps> = ({
               onClick={handleApplyAllDescriptions}
               className="px-3.5 py-2 rounded-2xl bg-[#a7f3d0] hover:bg-[#6ee7b7] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-emerald-950 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b] text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all cursor-pointer"
             >
-              <Sparkles className="w-4 h-4" />
+              <Flame className="w-4 h-4 text-orange-600 fill-orange-500" />
               <span>Terapkan ke Buku Nilai</span>
             </button>
             <button

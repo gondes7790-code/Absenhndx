@@ -13,7 +13,8 @@ import {
   Search,
   CheckCircle2,
   UserCheck,
-  Sparkles,
+  Flame,
+  QrCode,
   ArrowUpDown,
   Eye,
   Send,
@@ -187,9 +188,9 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
     <div className="space-y-5 sm:space-y-6">
       {/* Top Header Card - Vintage Postmodern Neobrutalist */}
       <div className="bg-[#fffdf8] rounded-3xl p-4 sm:p-6 border-2 border-slate-900 shadow-[4px_4px_0px_#1e293b] relative overflow-hidden">
-        {/* Retro Corner Stamp */}
+        {/* Retro Corner Stamp with Fire */}
         <div className="absolute top-0 right-0 bg-[#dcfce7] border-b-2 border-l-2 border-slate-900 px-3 py-1 rounded-bl-2xl text-[10px] font-mono font-bold text-emerald-950 flex items-center gap-1 shadow-xs">
-          <Sparkles className="w-3 h-3 text-emerald-700" />
+          <Flame className="w-3 h-3 text-orange-600 fill-orange-500" />
           <span>PRESENSI HARIAN</span>
         </div>
 
@@ -210,7 +211,7 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
             </p>
           </div>
 
-          {/* Action Button Strip - Colorful Soft Pastel */}
+          {/* Action Button Strip - Streamlined without dualism */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
             <button
               onClick={onSaveToCloud}
@@ -230,15 +231,17 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
 
             <button
               onClick={onOpenParentLink}
-              className="px-3 py-2 rounded-2xl bg-[#ffedd5] hover:bg-[#fed7aa] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-orange-950 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-3.5 py-2 rounded-2xl bg-[#ffedd5] hover:bg-[#fed7aa] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-orange-950 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b] text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Buka Portal Publik & QR Code untuk Wali Murid"
             >
-              <Share2 className="w-3.5 h-3.5 text-orange-900" />
-              <span>Link Wali Murid</span>
+              <QrCode className="w-4 h-4 text-orange-900" />
+              <span>Link Publik & QR</span>
             </button>
 
             <button
               onClick={handleExportCSV}
               className="px-3 py-2 rounded-2xl bg-[#fef9c3] hover:bg-[#fde047] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-amber-950 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Ekspor Data ke File Excel"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-amber-900" />
               <span>Excel</span>
@@ -247,6 +250,7 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
             <button
               onClick={() => window.print()}
               className="px-3 py-2 rounded-2xl bg-[#fee2e2] hover:bg-[#fca5a5] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-rose-950 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Cetak atau Simpan PDF"
             >
               <FileText className="w-3.5 h-3.5 text-rose-900" />
               <span>PDF</span>
@@ -331,34 +335,20 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t-2 border-emerald-300">
+          <div className="flex items-center gap-2 mt-4 pt-3 border-t-2 border-emerald-300">
             <button
               onClick={handleTriggerConfetti}
-              className="py-2 px-2.5 rounded-2xl bg-[#6ee7b7] hover:bg-[#34d399] active:translate-x-[1px] active:translate-y-[1px] text-slate-950 text-xs font-black flex items-center justify-center gap-1.5 transition-all border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] cursor-pointer"
+              className="flex-1 py-2 px-3 rounded-2xl bg-[#6ee7b7] hover:bg-[#34d399] active:translate-x-[1px] active:translate-y-[1px] text-slate-950 text-xs font-black flex items-center justify-center gap-1.5 transition-all border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] cursor-pointer"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>Set Semua Hadir</span>
             </button>
             <button
-              onClick={onSaveToCloud}
-              className="py-2 px-2.5 rounded-2xl bg-white hover:bg-[#faf7ee] active:translate-x-[1px] active:translate-y-[1px] text-slate-900 text-xs font-bold flex items-center justify-center gap-1.5 transition-all border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] cursor-pointer"
-            >
-              <Save className="w-3.5 h-3.5 text-slate-800" />
-              <span>Simpan Cloud</span>
-            </button>
-            <button
               onClick={handleCopyReport}
-              className="py-2 px-2.5 rounded-2xl bg-white hover:bg-[#faf7ee] active:translate-x-[1px] active:translate-y-[1px] text-slate-900 text-[11px] font-bold flex items-center justify-center gap-1 transition-all border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] cursor-pointer"
+              className="flex-1 py-2 px-3 rounded-2xl bg-white hover:bg-[#faf7ee] active:translate-x-[1px] active:translate-y-[1px] text-slate-900 text-xs font-bold flex items-center justify-center gap-1.5 transition-all border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] cursor-pointer"
             >
-              <Copy className="w-3 h-3 text-slate-800" />
+              <Copy className="w-3.5 h-3.5 text-slate-800" />
               <span>{copyFeedback ? 'Tersalin!' : 'Salin Laporan WA'}</span>
-            </button>
-            <button
-              onClick={onCreateNewSession}
-              className="py-2 px-2.5 rounded-2xl bg-[#ede9fe] hover:bg-[#ddd6fe] active:translate-x-[1px] active:translate-y-[1px] text-indigo-950 text-[11px] font-black flex items-center justify-center gap-1 transition-all border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] cursor-pointer"
-            >
-              <Plus className="w-3 h-3" />
-              <span>Tambah Sesi</span>
             </button>
           </div>
         </div>
