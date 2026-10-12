@@ -1,0 +1,472 @@
+import React, { useState, useMemo } from 'react';
+import {
+  FileText,
+  FileSpreadsheet,
+  Download,
+  Eye,
+  Plus,
+  Cloud,
+  Search,
+  Filter,
+  Calendar,
+  Clock,
+  BookOpen,
+  CheckCircle2,
+  X,
+  Sparkles,
+} from 'lucide-react';
+import { JournalEntry, ClassRoom, TeacherProfile } from '../types';
+
+interface JournalViewProps {
+  journals: JournalEntry[];
+  classes: ClassRoom[];
+  teacher: TeacherProfile;
+  onAddJournal: (entry: Omit<JournalEntry, 'id'>) => void;
+  onSaveToCloud: () => void;
+  schoolName: string;
+}
+
+export const JournalView: React.FC<JournalViewProps> = ({
+  journals,
+  classes,
+  teacher,
+  onAddJournal,
+  onSaveToCloud,
+  schoolName,
+}) => {
+  const [filterClass, setFilterClass] = useState('Semua');
+  const [filterMonth, setFilterMonth] = useState('Semua');
+  const [filterSemester, setFilterSemester] = useState('Semua');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // New entry form state
+  const [newTanggal, setNewTanggal] = useState(new Date().toISOString().split('T')[0]);
+  const [newClassId, setNewClassId] = useState(classes[0]?.id || 'class-1');
+  const [newMapel, setNewMapel] = useState('Bahasa Inggris & Kejuruan');
+  const [newPertemuan, setNewPertemuan] = useState('Ke-1');
+  const [newJam, setNewJam] = useState('07:15 - 09:15 WIB');
+  const [newMateri, setNewMateri] = useState('');
+  const [newCatatanAbsen, setNewCatatanAbsen] = useState('');
+
+  // Filtered journals
+  const filteredJournals = useMemo(() => {
+    return journals.filter((j) => {
+      const matchClass = filterClass === 'Semua' || j.className === filterClass;
+      const matchSemester = filterSemester === 'Semua' || j.semester === filterSemester;
+      const matchSearch =
+        searchQuery.trim() === '' ||
+        j.materiKegiatan.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        j.className.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        j.pertemuanKe.toLowerCase().includes(searchQuery.toLowerCase());
+
+      return matchClass && matchSemester && matchSearch;
+    });
+  }, [journals, filterClass, filterSemester, searchQuery]);
+
+  const handleCreateEntry = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMateri.trim()) return;
+
+    const targetClass = classes.find((c) => c.id === newClassId);
+    const className = targetClass?.nama || 'X TO 4';
+
+    onAddJournal({
+      tanggal: newTanggal,
+      pendidik: teacher.name,
+      mapel: newMapel,
+      classId: newClassId,
+      className,
+      pertemuanKe: newPertemuan,
+      jamPelajaran: newJam,
+      materiKegiatan: newMateri,
+      absensiCatatan: newCatatanAbsen || 'Nihil / Seluruh siswa hadir tertib.',
+      semester: '2026/2027 (Ganjil)',
+    });
+
+    setIsModalOpen(false);
+    setNewMateri('');
+    setNewCatatanAbsen('');
+  };
+
+  const handleExportCSV = () => {
+    const headers = ['NO', 'TANGGAL', 'KELAS', 'MAPEL', 'PERTEMUAN', 'JAM', 'MATERI & KEGIATAN TP', 'CATATAN ABSENSI'];
+    const rows = filteredJournals.map((j, idx) => [
+      idx + 1,
+      `"${j.tanggal}"`,
+      `"${j.className}"`,
+      `"${j.mapel}"`,
+      `"${j.pertemuanKe}"`,
+      `"${j.jamPelajaran}"`,
+      `"${j.materiKegiatan.replace(/"/g, '""')}"`,
+      `"${(j.absensiCatatan || '').replace(/"/g, '""')}"`,
+    ].join(','));
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Agenda_Mengajar_${teacher.handle}_2026.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <div className="space-y-5 sm:space-y-6">
+      {/* Top Header Card - Vintage Postmodern Neobrutalist */}
+      <div className="bg-[#fffdf8] rounded-3xl p-4 sm:p-6 border-2 border-slate-900 shadow-[4px_4px_0px_#1e293b] relative overflow-hidden">
+        {/* Retro Corner Stamp */}
+        <div className="absolute top-0 right-0 bg-[#ede9fe] border-b-2 border-l-2 border-slate-900 px-3 py-1 rounded-bl-2xl text-[10px] font-mono font-bold text-indigo-950 flex items-center gap-1 shadow-xs">
+          <Sparkles className="w-3 h-3 text-indigo-700" />
+          <span>AGENDA MENGAJAR</span>
+        </div>
+
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pt-2 sm:pt-0">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-black text-slate-600 mb-1.5 flex-wrap">
+              <span className="bg-[#fef9c3] text-amber-950 px-2.5 py-0.5 rounded-full border-2 border-slate-900 font-mono text-[11px] shadow-[1.5px_1.5px_0px_#1e293b]">
+                Semua Rombel
+              </span>
+              <span>•</span>
+              <span className="font-bold text-slate-700">T.A. 2026/2027 (Ganjil)</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              Buku Jurnal / Agenda Mengajar Pendidik
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-600 font-medium mt-0.5">
+              Pencatatan tatap muka, materi TP Kurikulum Merdeka, dan dinamika kelas {schoolName}
+            </p>
+          </div>
+
+          {/* Action Button Strip */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+            <button
+              onClick={() => window.print()}
+              className="px-3.5 py-2 rounded-2xl bg-[#ede9fe] hover:bg-[#ddd6fe] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-indigo-950 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <Eye className="w-4 h-4 text-indigo-900" />
+              <span>Preview</span>
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="px-3.5 py-2 rounded-2xl bg-[#fee2e2] hover:bg-[#fca5a5] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-rose-950 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <Download className="w-4 h-4 text-rose-900" />
+              <span>Unduh PDF</span>
+            </button>
+            <button
+              onClick={handleExportCSV}
+              className="px-3.5 py-2 rounded-2xl bg-[#fef9c3] hover:bg-[#fde047] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-amber-950 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-amber-900" />
+              <span>Excel</span>
+            </button>
+            <button
+              onClick={onSaveToCloud}
+              className="px-3.5 py-2 rounded-2xl bg-[#a7f3d0] hover:bg-[#6ee7b7] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-slate-950 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b] text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <Cloud className="w-4 h-4 text-emerald-950" />
+              <span>Simpan Cloud</span>
+            </button>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="px-3.5 py-2 rounded-2xl bg-[#dcfce7] hover:bg-[#bbf7d0] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-emerald-950 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b] text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4 text-emerald-950" />
+              <span>Catat Agenda</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 4 Summary Stat Cards in Pastel Neobrutalism */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6 pt-5 border-t-2 border-slate-100">
+          <div className="bg-[#faf7ee] rounded-2xl p-3 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b]">
+            <span className="text-[10px] font-mono font-black text-slate-700 uppercase tracking-wider">
+              TOTAL AGENDA
+            </span>
+            <p className="text-2xl font-black text-slate-950 font-mono mt-0.5">
+              {filteredJournals.length}
+            </p>
+            <span className="text-[10px] font-bold text-slate-500">pertemuan KBM</span>
+          </div>
+
+          <div className="bg-[#e0f2fe] rounded-2xl p-3 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b]">
+            <span className="text-[10px] font-mono font-black text-sky-950 uppercase tracking-wider">
+              KELAS TERPANTAU
+            </span>
+            <p className="text-2xl font-black text-slate-950 font-mono mt-0.5">
+              {classes.length}
+            </p>
+            <span className="text-[10px] font-bold text-sky-800">kelas binaan</span>
+          </div>
+
+          <div className="bg-[#dcfce7] rounded-2xl p-3 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b]">
+            <span className="text-[10px] font-mono font-black text-emerald-950 uppercase tracking-wider">
+              RATA-RATA HADIR
+            </span>
+            <p className="text-2xl font-black text-emerald-950 font-mono mt-0.5">
+              93%
+            </p>
+            <span className="text-[10px] font-bold text-emerald-800">kehadiran siswa</span>
+          </div>
+
+          <div className="bg-[#ffedd5] rounded-2xl p-3 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b]">
+            <span className="text-[10px] font-mono font-black text-orange-950 uppercase tracking-wider">
+              TAHUN AJARAN
+            </span>
+            <p className="text-base font-black text-slate-950 mt-1 truncate">
+              2026/2027 (Ganjil)
+            </p>
+            <span className="text-[10px] font-bold text-orange-800">Semester Berjalan</span>
+          </div>
+        </div>
+
+        {/* Filter Controls */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mt-4 text-xs">
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">
+              FILTER KELAS
+            </label>
+            <select
+              value={filterClass}
+              onChange={(e) => setFilterClass(e.target.value)}
+              className="w-full px-3 py-1.5 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold text-slate-900 focus:outline-none"
+            >
+              <option value="Semua">Semua Kelas</option>
+              {classes.map((c) => (
+                <option key={c.id} value={c.nama}>{c.nama}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">
+              BULAN KEGIATAN
+            </label>
+            <select
+              value={filterMonth}
+              onChange={(e) => setFilterMonth(e.target.value)}
+              className="w-full px-3 py-1.5 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold text-slate-900 focus:outline-none"
+            >
+              <option value="Semua">Semua Bulan</option>
+              <option value="10">Oktober 2026</option>
+              <option value="09">September 2026</option>
+              <option value="08">Agustus 2026</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">
+              SEMESTER
+            </label>
+            <select
+              value={filterSemester}
+              onChange={(e) => setFilterSemester(e.target.value)}
+              className="w-full px-3 py-1.5 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold text-slate-900 focus:outline-none"
+            >
+              <option value="Semua">Semua Semester</option>
+              <option value="2026/2027 (Ganjil)">2026/2027 (Ganjil)</option>
+              <option value="2026/2027 (Genap)">2026/2027 (Genap)</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">
+              CARI MATERI TP
+            </label>
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Kata kunci materi..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] text-slate-900 font-bold focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Table: Jurnal Mengajar */}
+      <div className="bg-white border-2 border-slate-900 rounded-3xl shadow-[4px_4px_0px_#1e293b] overflow-hidden">
+        <div className="p-4 border-b-2 border-slate-100 flex items-center justify-between bg-[#fffdf8]">
+          <h3 className="text-sm sm:text-base font-black text-slate-900">
+            Daftar Agenda Pembelajaran Terjadwal ({filteredJournals.length} Pertemuan)
+          </h3>
+          <span className="text-xs font-mono font-bold bg-[#dcfce7] border border-slate-900 px-2.5 py-0.5 rounded-full text-emerald-950 shadow-[1px_1px_0px_#1e293b]">
+            POSTGRES SYNCED
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="bg-[#faf7ee] text-slate-900 font-black text-[11px] tracking-wider uppercase border-b-2 border-slate-900">
+                <th className="py-3 px-3 w-10 text-center">NO</th>
+                <th className="py-3 px-3 w-28">TANGGAL</th>
+                <th className="py-3 px-3 w-36">KELAS & SESI</th>
+                <th className="py-3 px-3 w-28">JAM KBM</th>
+                <th className="py-3 px-4 min-w-[280px]">MATERI & KEGIATAN TP MERDEKA</th>
+                <th className="py-3 px-4 min-w-[200px]">CATATAN PRESENSI SISWA</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y-2 divide-slate-100">
+              {filteredJournals.map((j, idx) => (
+                <tr key={j.id} className="hover:bg-[#faf7ee]/60 transition-colors">
+                  <td className="py-3 px-3 text-center text-slate-600 font-mono font-bold">
+                    {idx + 1}
+                  </td>
+                  <td className="py-3 px-3 font-mono font-bold text-slate-900">
+                    {j.tanggal}
+                  </td>
+                  <td className="py-3 px-3">
+                    <span className="font-black text-slate-900 block">{j.className}</span>
+                    <span className="text-[10px] font-bold text-emerald-800 bg-[#dcfce7] px-1.5 py-0.2 rounded border border-slate-900">
+                      {j.pertemuanKe}
+                    </span>
+                  </td>
+                  <td className="py-3 px-3 text-slate-600 font-mono font-medium">
+                    {j.jamPelajaran}
+                  </td>
+                  <td className="py-3 px-4 text-slate-900 font-medium leading-relaxed">
+                    {j.materiKegiatan}
+                  </td>
+                  <td className="py-3 px-4 text-slate-600 italic">
+                    {j.absensiCatatan}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Modal: Catat Agenda Baru */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs">
+          <div className="w-full max-w-lg bg-white border-3 border-slate-900 rounded-3xl p-6 shadow-[6px_6px_0px_#1e293b] relative animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b-2 border-slate-100 mb-4">
+              <h3 className="text-base font-black text-slate-900">
+                Tambah Catatan Agenda KBM Baru
+              </h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-1.5 rounded-xl bg-[#fee2e2] border border-slate-900 text-rose-900 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateEntry} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">
+                    Tanggal Pertemuan
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={newTanggal}
+                    onChange={(e) => setNewTanggal(e.target.value)}
+                    className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-mono font-bold focus:bg-white focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">
+                    Pilih Kelas
+                  </label>
+                  <select
+                    value={newClassId}
+                    onChange={(e) => setNewClassId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none"
+                  >
+                    {classes.map((c) => (
+                      <option key={c.id} value={c.id}>{c.nama}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">
+                    Pertemuan Ke-
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newPertemuan}
+                    onChange={(e) => setNewPertemuan(e.target.value)}
+                    className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none"
+                    placeholder="Contoh: Ke-1"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">
+                    Jam Tatap Muka
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newJam}
+                    onChange={(e) => setNewJam(e.target.value)}
+                    className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none"
+                    placeholder="Contoh: 07:15 - 09:15 WIB"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Materi & Dinamika Kegiatan KBM (Kurikulum Merdeka) *
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  value={newMateri}
+                  onChange={(e) => setNewMateri(e.target.value)}
+                  className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] focus:bg-white focus:outline-none resize-none font-medium"
+                  placeholder="Uraikan TP, asesmen formatif, atau topik praktik yang dilaksanakan..."
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Catatan Siswa Tidak Hadir / Dinamika Kelas
+                </label>
+                <input
+                  type="text"
+                  value={newCatatanAbsen}
+                  onChange={(e) => setNewCatatanAbsen(e.target.value)}
+                  className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] focus:bg-white focus:outline-none font-medium"
+                  placeholder="Contoh: 1 Siswa Izin (Rehan Ardiansyah)"
+                />
+              </div>
+
+              <div className="mt-5 pt-3 border-t-2 border-slate-100 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-[#f1f5f9] border-2 border-slate-900 font-bold text-slate-700 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-[#a7f3d0] hover:bg-[#6ee7b7] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] font-black text-slate-950 cursor-pointer"
+                >
+                  Simpan Agenda
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

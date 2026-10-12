@@ -1,0 +1,6 @@
+{
+  "name": "Sistem Presensi & Penilaian Kurikulum Merdeka",
+  "description": "Sistem Informasi Presensi, Penilaian Kurikulum Merdeka, Jurnal Pendidik, dan Analisis Siswa Berbasis Deep Learning & Supabase Cloud RLS oleh @hndx07",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
