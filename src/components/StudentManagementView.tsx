@@ -11,8 +11,10 @@ import {
   X,
   CheckCircle2,
   Flame,
+  ClipboardPaste,
 } from 'lucide-react';
 import { Student, ClassRoom } from '../types';
+import { StudentImportModal } from './StudentImportModal';
 
 interface StudentManagementViewProps {
   activeClass: ClassRoom;
@@ -22,6 +24,10 @@ interface StudentManagementViewProps {
   onDeleteStudent: (id: string) => void;
   onSaveToCloud: () => void;
   schoolName: string;
+  onAddStudentsBatch?: (
+    newStudents: Omit<Student, 'id' | 'noUrut'>[],
+    mode: 'append' | 'replace'
+  ) => void;
 }
 
 export const StudentManagementView: React.FC<StudentManagementViewProps> = ({
@@ -32,10 +38,12 @@ export const StudentManagementView: React.FC<StudentManagementViewProps> = ({
   onDeleteStudent,
   onSaveToCloud,
   schoolName,
+  onAddStudentsBatch,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<'no' | 'az' | 'za'>('no');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
 
   // Form states
@@ -175,6 +183,14 @@ export const StudentManagementView: React.FC<StudentManagementViewProps> = ({
             >
               <Cloud className="w-4 h-4 text-emerald-950" />
               <span>Simpan ke Cloud</span>
+            </button>
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="px-3.5 py-2 rounded-2xl bg-[#dcfce7] hover:bg-[#bbf7d0] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-emerald-950 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b] text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Impor dari Excel atau Copas langsung tabel murid"
+            >
+              <ClipboardPaste className="w-4 h-4 text-emerald-900" />
+              <span>Impor Excel / Copas</span>
             </button>
             <button
               onClick={handleExportCSV}
@@ -407,6 +423,19 @@ export const StudentManagementView: React.FC<StudentManagementViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Student Import Modal (Excel & Copas Langsung) */}
+      <StudentImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        activeClass={activeClass}
+        existingCount={students.length}
+        onImportStudents={(newStudents, mode) => {
+          if (onAddStudentsBatch) {
+            onAddStudentsBatch(newStudents, mode);
+          }
+        }}
+      />
     </div>
   );
 };

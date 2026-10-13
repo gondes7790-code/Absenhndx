@@ -9,6 +9,8 @@ import {
   Search,
   CheckCircle2,
   AlertTriangle,
+  X,
+  Check,
 } from 'lucide-react';
 import { Student, GradeRecord, ClassRoom, TeacherProfile } from '../types';
 import { PrintableDocument } from './PrintableDocument';
@@ -23,6 +25,7 @@ interface GradebookViewProps {
   onOpenParentLink: () => void;
   schoolName: string;
   teacher?: TeacherProfile;
+  onUpdateClass?: (updatedClass: ClassRoom) => void;
 }
 
 export const GradebookView: React.FC<GradebookViewProps> = ({
@@ -41,12 +44,22 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     school: 'Hadir!',
     handle: '@hndx07',
   },
+  onUpdateClass,
 }) => {
   const [formatifColumns, setFormatifColumns] = useState<number>(activeClass.formatifCount || 5);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<'no' | 'az' | 'za'>('az');
   const [editingTpTitle, setEditingTpTitle] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
+  const [currentKkm, setCurrentKkm] = useState<number>(activeClass.kkm || 75);
+  const [tpTitles, setTpTitles] = useState<Record<number, string>>(() => {
+    try {
+      const saved = localStorage.getItem(`hndx_tp_titles_${activeClass.id}`);
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
 
   // Map studentId -> GradeRecord
   const gradesMap = useMemo(() => {
@@ -360,12 +373,18 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               <tr className="bg-[#faf7ee] text-slate-900 font-black text-[11px] tracking-wider uppercase border-b-2 border-slate-900">
                 <th className="py-3 px-3 w-10 text-center sticky left-0 bg-[#faf7ee] z-10 border-r-2 border-slate-900">NO</th>
                 <th className="py-3 px-4 min-w-[190px] sticky left-10 bg-[#faf7ee] z-10 border-r-2 border-slate-900">NAMA MURID</th>
-                {Array.from({ length: formatifColumns }, (_, i) => (
-                  <th key={i} className="py-2.5 px-2 w-16 text-center border-l-2 border-slate-200">
-                    <div>F-{i + 1}</div>
-                    <div className="text-[9px] text-slate-500 font-mono">TP {i + 1}</div>
-                  </th>
-                ))}
+                {Array.from({ length: formatifColumns }, (_, i) => {
+                  const tpNum = i + 1;
+                  const label = tpTitles[tpNum] || `TP ${tpNum}`;
+                  return (
+                    <th key={i} className="py-2.5 px-2 w-16 text-center border-l-2 border-slate-200" title={label}>
+                      <div>F-{tpNum}</div>
+                      <div className="text-[9px] text-slate-500 font-mono truncate max-w-[60px] mx-auto">
+                        {label}
+                      </div>
+                    </th>
+                  );
+                })}
                 <th className="py-2.5 px-2 w-16 text-center border-l-2 border-slate-900 bg-[#fef9c3]">
                   STS
                 </th>
@@ -508,6 +527,146 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Modal Pengaturan Kolom TP & KKM */}
+      {editingTpTitle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-[#fffdf8] w-full max-w-xl rounded-3xl border-3 border-slate-900 shadow-[8px_8px_0px_#1e293b] flex flex-col max-h-[90vh] overflow-hidden">
+            {/* Header */}
+            <div className="p-4 sm:p-5 bg-white border-b-2 border-slate-900 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#e0f2fe] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] flex items-center justify-center text-sky-950 font-black shrink-0">
+                  <Sliders className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+                    Atur Kolom TP & Bobot Penilaian
+                  </h2>
+                  <p className="text-xs text-slate-600 font-medium">
+                    Sesuaikan jumlah kolom formatif, label capaian per TP, dan standar KKM kelas {activeClass.nama}.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingTpTitle(false)}
+                className="p-2 rounded-2xl bg-[#fee2e2] hover:bg-[#fca5a5] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] text-rose-950 cursor-pointer"
+              >
+                <X className="w-5 h-5 stroke-[2.5]" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
+              {/* Jumlah Kolom Formatif */}
+              <div className="p-3.5 rounded-2xl bg-white border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] space-y-2">
+                <label className="text-xs font-black text-slate-800 block">
+                  Jumlah Kolom Formatif (Tujuan Pembelajaran):
+                </label>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {[3, 4, 5, 6, 8, 10, 12].map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => setFormatifColumns(num)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black border-2 border-slate-900 transition-all cursor-pointer ${
+                        formatifColumns === num
+                          ? 'bg-[#dcfce7] text-slate-950 shadow-[2px_2px_0px_#1e293b]'
+                          : 'bg-white hover:bg-slate-100 text-slate-700'
+                      }`}
+                    >
+                      {num} Kolom
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* KKM Setting */}
+              <div className="p-3.5 rounded-2xl bg-white border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] flex items-center justify-between gap-3">
+                <div>
+                  <label className="text-xs font-black text-slate-800 block">
+                    KKM / Kriteria Ketercapaian:
+                  </label>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Standar ketuntasan minimal untuk mata pelajaran {activeClass.mapel}.
+                  </p>
+                </div>
+                <input
+                  type="number"
+                  min="50"
+                  max="100"
+                  value={currentKkm}
+                  onChange={(e) => setCurrentKkm(Number(e.target.value))}
+                  className="w-20 px-3 py-1.5 rounded-xl bg-[#faf7ee] border-2 border-slate-900 text-center text-sm font-black text-slate-900 font-mono focus:outline-none focus:bg-white"
+                />
+              </div>
+
+              {/* Custom Titles per TP */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-slate-800">
+                    Label & Deskripsi Capaian per TP (Formatif 1 s/d {formatifColumns}):
+                  </label>
+                  <span className="text-[10px] text-slate-500 font-mono">Opsional</span>
+                </div>
+                <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                  {Array.from({ length: formatifColumns }, (_, i) => {
+                    const tpNum = i + 1;
+                    return (
+                      <div key={tpNum} className="flex items-center gap-2">
+                        <span className="w-14 px-2 py-1.5 rounded-xl bg-[#ede9fe] border-2 border-slate-900 text-center text-xs font-black font-mono text-indigo-950 shrink-0">
+                          TP {tpNum}
+                        </span>
+                        <input
+                          type="text"
+                          value={tpTitles[tpNum] || ''}
+                          placeholder={`Contoh: Capaian Pembelajaran Materi ${tpNum}`}
+                          onChange={(e) => {
+                            const updated = { ...tpTitles, [tpNum]: e.target.value };
+                            setTpTitles(updated);
+                          }}
+                          className="flex-1 px-3 py-1.5 rounded-xl bg-white border-2 border-slate-900 text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-white border-t-2 border-slate-900 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setEditingTpTitle(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border-2 border-slate-900 text-xs font-black text-slate-800 cursor-pointer"
+              >
+                Tutup
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    localStorage.setItem(`hndx_tp_titles_${activeClass.id}`, JSON.stringify(tpTitles));
+                  } catch (e) {
+                    console.warn(e);
+                  }
+                  if (onUpdateClass) {
+                    onUpdateClass({
+                      ...activeClass,
+                      formatifCount: formatifColumns,
+                      kkm: currentKkm,
+                    });
+                  }
+                  setEditingTpTitle(false);
+                }}
+                className="px-5 py-2 rounded-xl bg-[#6ee7b7] hover:bg-[#34d399] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] text-xs font-black text-slate-950 cursor-pointer"
+              >
+                Simpan & Terapkan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Formal Printable Document */}
       <PrintableDocument

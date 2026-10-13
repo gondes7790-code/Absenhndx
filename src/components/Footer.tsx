@@ -30,7 +30,7 @@ export const Footer: React.FC = () => {
           </span>
           <span className="bg-[#ede9fe] text-indigo-950 font-mono font-bold px-2.5 py-1 rounded-xl border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-indigo-700" />
-            Supabase RLS Active
+            Terverifikasi & Aman
           </span>
         </div>
       </div>

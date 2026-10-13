@@ -14,6 +14,7 @@ import { LoginView } from './components/LoginView';
 import { SupabaseModal } from './components/SupabaseModal';
 import { WhatsAppModal } from './components/WhatsAppModal';
 import { ParentPortalModal } from './components/ParentPortalModal';
+import { ClassManagementModal } from './components/ClassManagementModal';
 import { Footer } from './components/Footer';
 
 import {
@@ -139,6 +140,7 @@ export default function App() {
   // Navigation & Modals
   const [activeTab, setActiveTab] = useState<ActiveTab>('presensi');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isClassModalOpen, setIsClassModalOpen] = useState(false);
   const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
   const [targetStudentWA, setTargetStudentWA] = useState<Student | undefined>(undefined);
@@ -565,6 +567,78 @@ export default function App() {
     showToast('Murid Dihapus', 'Data murid telah dihapus dari rombel.');
   };
 
+  // Batch Student Import (from Excel / Copas Langsung)
+  const handleAddStudentsBatch = (
+    newStds: Omit<Student, 'id' | 'noUrut'>[],
+    mode: 'append' | 'replace'
+  ) => {
+    if (newStds.length === 0) return;
+
+    if (mode === 'replace') {
+      const otherClassStudents = students.filter((s) => s.classId !== activeClass.id);
+      const formatted: Student[] = newStds.map((s, idx) => ({
+        ...s,
+        id: `std-${Date.now()}-${idx}`,
+        classId: activeClass.id,
+        noUrut: idx + 1,
+      }));
+      setStudents([...otherClassStudents, ...formatted]);
+      showToast(
+        'Impor Selesai (Ganti Data)',
+        `${formatted.length} murid berhasil didaftarkan di kelas ${activeClass.nama}.`
+      );
+    } else {
+      const currentClassStudents = students.filter((s) => s.classId === activeClass.id);
+      const startNo = currentClassStudents.length;
+      const formatted: Student[] = newStds.map((s, idx) => ({
+        ...s,
+        id: `std-${Date.now()}-${idx}`,
+        classId: activeClass.id,
+        noUrut: startNo + idx + 1,
+      }));
+      setStudents([...students, ...formatted]);
+      showToast(
+        'Impor Selesai (Tambahkan)',
+        `${formatted.length} murid baru berhasil ditambahkan ke kelas ${activeClass.nama}.`
+      );
+    }
+  };
+
+  // Handlers for Classes (Add, Edit, Delete Rombel)
+  const handleAddClass = (newCls: Omit<ClassRoom, 'id'>) => {
+    const newClassRoom: ClassRoom = {
+      ...newCls,
+      id: `class-${Date.now()}`,
+    };
+    const nextClasses = [...classes, newClassRoom];
+    setClasses(nextClasses);
+    setActiveClass(newClassRoom);
+    showToast('Rombel Berhasil Ditambahkan', `Kelas ${newClassRoom.nama} siap digunakan.`);
+  };
+
+  const handleEditClass = (updatedCls: ClassRoom) => {
+    const nextClasses = classes.map((c) => (c.id === updatedCls.id ? updatedCls : c));
+    setClasses(nextClasses);
+    if (activeClass.id === updatedCls.id) {
+      setActiveClass(updatedCls);
+    }
+    showToast('Rombel Diperbarui', `Informasi kelas ${updatedCls.nama} berhasil disimpan.`);
+  };
+
+  const handleDeleteClass = (classId: string) => {
+    if (classes.length <= 1) {
+      showToast('Gagal Menghapus', 'Minimal harus ada 1 rombel belajar.');
+      return;
+    }
+    const target = classes.find((c) => c.id === classId);
+    const remaining = classes.filter((c) => c.id !== classId);
+    setClasses(remaining);
+    if (activeClass.id === classId) {
+      setActiveClass(remaining[0]);
+    }
+    showToast('Rombel Dihapus', `Kelas ${target?.nama || ''} telah dihapus.`);
+  };
+
   // Backup & Refresh
   const handleDownloadBackup = () => {
     downloadJsonBackup({
@@ -637,6 +711,7 @@ export default function App() {
         classes={classes}
         activeClass={activeClass}
         onSelectClass={handleSelectClass}
+        onOpenClassManagement={() => setIsClassModalOpen(true)}
       />
 
       {/* Navigation Drawer */}
@@ -645,11 +720,7 @@ export default function App() {
         onClose={() => setIsDrawerOpen(false)}
         activeTab={activeTab}
         onSelectTab={(tab) => {
-          if (tab === 'supabase') {
-            setIsSupabaseModalOpen(true);
-          } else {
-            setActiveTab(tab);
-          }
+          setActiveTab(tab);
         }}
         activeClass={activeClass}
         onSwitchClass={() => {
@@ -657,6 +728,7 @@ export default function App() {
           handleSelectClass(classes[nextIdx]);
           showToast('Kelas Berganti', `Sekarang melihat data ${classes[nextIdx].nama}`);
         }}
+        onOpenClassManagement={() => setIsClassModalOpen(true)}
         onRefreshData={handleRefreshData}
         onDownloadBackup={handleDownloadBackup}
         teacher={teacher}
@@ -710,6 +782,7 @@ export default function App() {
             onOpenParentLink={() => setIsParentPortalOpen(true)}
             schoolName={schoolName}
             teacher={teacher}
+            onUpdateClass={handleEditClass}
           />
         )}
 
@@ -722,6 +795,7 @@ export default function App() {
             onDeleteStudent={handleDeleteStudent}
             onSaveToCloud={handleSaveToCloud}
             schoolName={schoolName}
+            onAddStudentsBatch={handleAddStudentsBatch}
           />
         )}
 
@@ -829,7 +903,19 @@ export default function App() {
         }}
       />
 
-      {/* Footer Hadir! crediting @hndx07 and Supabase RLS */}
+      {/* Class / Rombel Management Modal (Tambah, Edit, Hapus Kelas) */}
+      <ClassManagementModal
+        isOpen={isClassModalOpen}
+        onClose={() => setIsClassModalOpen(false)}
+        classes={classes}
+        activeClass={activeClass}
+        onSelectClass={handleSelectClass}
+        onAddClass={handleAddClass}
+        onEditClass={handleEditClass}
+        onDeleteClass={handleDeleteClass}
+      />
+
+      {/* Footer Hadir! crediting @hndx07 */}
       <Footer />
     </div>
   );

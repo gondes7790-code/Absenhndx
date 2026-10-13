@@ -26,6 +26,7 @@ interface DrawerProps {
   onSelectTab: (tab: ActiveTab) => void;
   activeClass: ClassRoom;
   onSwitchClass: () => void;
+  onOpenClassManagement?: () => void;
   onRefreshData: () => void;
   onDownloadBackup: () => void;
   teacher: TeacherProfile;
@@ -40,6 +41,7 @@ export const Drawer: React.FC<DrawerProps> = ({
   onSelectTab,
   activeClass,
   onSwitchClass,
+  onOpenClassManagement,
   onRefreshData,
   onDownloadBackup,
   teacher,
@@ -120,22 +122,6 @@ export const Drawer: React.FC<DrawerProps> = ({
       pastelBg: 'bg-[#f3e8ff]',
       hoverBg: 'hover:bg-[#e9d5ff]',
     },
-    {
-      id: 'profil',
-      label: 'Profil Pendidik & Akun',
-      sub: 'Kelola identitas guru & status login',
-      icon: <User className="w-5 h-5 text-lime-900" />,
-      pastelBg: 'bg-[#ecfccb]',
-      hoverBg: 'hover:bg-[#d9f99d]',
-    },
-    {
-      id: 'supabase',
-      label: 'Skema Supabase & RLS',
-      sub: 'PostgreSQL Cloud & Row Level Security',
-      icon: <Database className="w-5 h-5 text-emerald-900" />,
-      pastelBg: 'bg-[#d1fae5]',
-      hoverBg: 'hover:bg-[#a7f3d0]',
-    },
   ];
 
   return (
@@ -194,12 +180,25 @@ export const Drawer: React.FC<DrawerProps> = ({
               </p>
             </div>
 
-            <button
-              onClick={onSwitchClass}
-              className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] text-xs font-black text-slate-900 active:translate-x-[1px] active:translate-y-[1px] cursor-pointer shrink-0 transition-all"
-            >
-              Ganti Kelas
-            </button>
+            <div className="flex flex-col gap-1.5 shrink-0">
+              <button
+                onClick={onSwitchClass}
+                className="px-3 py-1 rounded-xl bg-white hover:bg-slate-50 border-2 border-slate-900 shadow-[1.5px_1.5px_0px_#1e293b] text-xs font-black text-slate-900 active:translate-x-[1px] active:translate-y-[1px] cursor-pointer transition-all"
+              >
+                Ganti Kelas
+              </button>
+              {onOpenClassManagement && (
+                <button
+                  onClick={() => {
+                    onClose();
+                    onOpenClassManagement();
+                  }}
+                  className="px-3 py-1 rounded-xl bg-[#6ee7b7] hover:bg-[#34d399] border-2 border-slate-900 shadow-[1.5px_1.5px_0px_#1e293b] text-[11px] font-black text-slate-950 active:translate-x-[1px] active:translate-y-[1px] cursor-pointer transition-all"
+                >
+                  + Kelola Rombel
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -246,24 +245,8 @@ export const Drawer: React.FC<DrawerProps> = ({
             );
           })}
 
-          {/* Supabase & Cloud Actions Strip */}
+          {/* Cloud Actions Strip (Tanpa Bilah Skema Supabase RLS) */}
           <div className="pt-3 border-t-2 border-slate-200 space-y-2">
-            <div className="p-3 rounded-2xl bg-[#dcfce7] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-600" />
-                </span>
-                <div>
-                  <p className="text-xs font-black text-emerald-950">Cloud Supabase Aktif</p>
-                  <p className="text-[10px] font-medium text-emerald-800">PostgreSQL & RLS Proteksi</p>
-                </div>
-              </div>
-              <span className="text-[10px] font-mono font-bold bg-white border border-slate-900 text-emerald-950 px-2 py-0.5 rounded-md shadow-[1px_1px_0px_#1e293b]">
-                ONLINE
-              </span>
-            </div>
-
             <button
               onClick={() => {
                 onRefreshData();
@@ -272,7 +255,7 @@ export const Drawer: React.FC<DrawerProps> = ({
               className="w-full py-2 px-3 rounded-2xl bg-white hover:bg-[#faf7ee] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] text-slate-900 text-xs font-black flex items-center justify-center gap-2 transition-all active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5 text-slate-800" />
-              <span>Refresh Data dari Supabase</span>
+              <span>Refresh Data Cloud</span>
             </button>
 
             <button
@@ -288,46 +271,28 @@ export const Drawer: React.FC<DrawerProps> = ({
           </div>
         </div>
 
-        {/* Footer Profile & Logout Area */}
+        {/* Footer: Pusat Tombol Navigasi Profil Guru & Keluar Akun (Tanpa Tombol Duplikat) */}
         <div className="p-3.5 bg-[#ffffff] border-t-2 border-slate-900">
-          <div className="p-3 rounded-2xl bg-[#faf7ee] border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] flex items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => {
                 onSelectTab('profil');
                 onClose();
               }}
-              className="flex items-center gap-2.5 min-w-0 text-left hover:opacity-80 transition-opacity cursor-pointer flex-1"
-              title="Buka Halaman Profil"
+              className="flex-1 p-2.5 rounded-2xl bg-[#ecfccb] hover:bg-[#d9f99d] active:translate-x-[1px] active:translate-y-[1px] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] flex items-center gap-2.5 transition-all cursor-pointer min-w-0"
+              title="Pusat Navigasi Profil Guru"
             >
-              <div className="w-9 h-9 rounded-xl bg-[#ede9fe] border-2 border-slate-900 text-indigo-950 font-black flex items-center justify-center text-xs shrink-0 shadow-[1.5px_1.5px_0px_#1e293b]">
-                {teacher.name.charAt(0)}
+              <div className="w-9 h-9 rounded-xl bg-white border-2 border-slate-900 text-lime-950 font-black flex items-center justify-center text-xs shrink-0 shadow-[1px_1px_0px_#1e293b]">
+                <User className="w-4 h-4 text-lime-900" />
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 text-left flex-1">
                 <p className="text-xs font-black text-slate-900 truncate leading-tight">
                   {teacher.name}
                 </p>
-                <p className="text-[10px] text-slate-500 font-mono truncate">
-                  {teacher.email}
+                <p className="text-[10px] text-slate-600 font-medium truncate mt-0.5">
+                  Profil Pendidik • {teacher.handle}
                 </p>
               </div>
-            </button>
-
-            <span className="text-[10px] font-mono font-bold bg-slate-900 text-white px-2 py-1 rounded-lg shrink-0">
-              {teacher.handle}
-            </span>
-          </div>
-
-          {/* Quick Buttons: Profil Saya & Log Out */}
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => {
-                onSelectTab('profil');
-                onClose();
-              }}
-              className="py-2 px-2.5 rounded-xl bg-[#ecfccb] hover:bg-[#d9f99d] active:translate-x-[1px] active:translate-y-[1px] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] text-[11px] font-black text-lime-950 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-            >
-              <User className="w-3.5 h-3.5 text-lime-900" />
-              <span>Profil Guru</span>
             </button>
 
             {onLogout && (
@@ -336,10 +301,11 @@ export const Drawer: React.FC<DrawerProps> = ({
                   onClose();
                   onLogout();
                 }}
-                className="py-2 px-2.5 rounded-xl bg-[#fee2e2] hover:bg-[#fca5a5] active:translate-x-[1px] active:translate-y-[1px] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] text-[11px] font-black text-rose-950 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                className="p-3 rounded-2xl bg-[#fee2e2] hover:bg-[#fca5a5] active:translate-x-[1px] active:translate-y-[1px] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] text-rose-950 flex items-center justify-center transition-all cursor-pointer shrink-0"
+                title="Keluar dari Akun Guru"
+                aria-label="Keluar Akun"
               >
-                <LogOut className="w-3.5 h-3.5 text-rose-800" />
-                <span>Keluar Akun</span>
+                <LogOut className="w-4 h-4 text-rose-900 stroke-[2.5]" />
               </button>
             )}
           </div>

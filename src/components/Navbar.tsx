@@ -12,6 +12,7 @@ interface NavbarProps {
   classes: ClassRoom[];
   activeClass: ClassRoom;
   onSelectClass: (cls: ClassRoom) => void;
+  onOpenClassManagement?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -19,6 +20,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   classes,
   activeClass,
   onSelectClass,
+  onOpenClassManagement,
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
@@ -104,6 +106,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </button>
                 ))}
               </div>
+              {onOpenClassManagement && (
+                <div className="pt-1.5 mt-1 border-t-2 border-slate-100 px-1.5">
+                  <button
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      onOpenClassManagement();
+                    }}
+                    className="w-full py-1.5 px-3 rounded-xl bg-[#6ee7b7] hover:bg-[#34d399] border-2 border-slate-900 shadow-[1.5px_1.5px_0px_#1e293b] text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                  >
+                    <span>+ Kelola & Tambah Rombel</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
