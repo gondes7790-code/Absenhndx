@@ -5,7 +5,7 @@ export const initialTeacher: TeacherProfile = {
   email: 'hendrasetiawan72@guru.smk.belajar.id',
   nip: '19870415 201201 1 003',
   nuptk: '4351 7656 6720 0012',
-  school: 'SMK Merdeka Indonesia',
+  school: 'Hadir!',
   handle: '@hndx07',
   phone: '0812-3456-7890',
   mapelUtama: 'Teknik Otomotif & Bahasa Inggris Vokasi',

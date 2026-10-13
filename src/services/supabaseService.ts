@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   nip VARCHAR(50),
   nama_lengkap VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL,
-  nama_sekolah VARCHAR(255) DEFAULT 'SMK Merdeka Indonesia',
+  nama_sekolah VARCHAR(255) DEFAULT 'Hadir!',
   avatar_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

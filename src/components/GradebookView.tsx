@@ -10,7 +10,8 @@ import {
   CheckCircle2,
   AlertTriangle,
 } from 'lucide-react';
-import { Student, GradeRecord, ClassRoom } from '../types';
+import { Student, GradeRecord, ClassRoom, TeacherProfile } from '../types';
+import { PrintableDocument } from './PrintableDocument';
 
 interface GradebookViewProps {
   activeClass: ClassRoom;
@@ -21,6 +22,7 @@ interface GradebookViewProps {
   onSaveToCloud: () => void;
   onOpenParentLink: () => void;
   schoolName: string;
+  teacher?: TeacherProfile;
 }
 
 export const GradebookView: React.FC<GradebookViewProps> = ({
@@ -32,11 +34,19 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   onSaveToCloud,
   onOpenParentLink,
   schoolName,
+  teacher = {
+    name: 'Hendra Setiawan, S. Pd.',
+    email: 'hendrasetiawan72@guru.smk.belajar.id',
+    nip: '19870415 201201 1 003',
+    school: 'Hadir!',
+    handle: '@hndx07',
+  },
 }) => {
   const [formatifColumns, setFormatifColumns] = useState<number>(activeClass.formatifCount || 5);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<'no' | 'az' | 'za'>('az');
   const [editingTpTitle, setEditingTpTitle] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
 
   // Map studentId -> GradeRecord
   const gradesMap = useMemo(() => {
@@ -230,11 +240,12 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
             </button>
 
             <button
-              onClick={() => window.print()}
+              onClick={() => setShowPrintModal(true)}
               className="px-3 py-2 rounded-2xl bg-[#fee2e2] hover:bg-[#fca5a5] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-rose-950 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Cetak Kertas Nilai Formal A4 Putih"
             >
               <Printer className="w-3.5 h-3.5 text-rose-900" />
-              <span>Cetak</span>
+              <span>Kertas Cetak</span>
             </button>
 
             <button
@@ -497,6 +508,18 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Formal Printable Document */}
+      <PrintableDocument
+        type="gradebook"
+        isOpen={showPrintModal}
+        onClose={() => setShowPrintModal(false)}
+        activeClass={activeClass}
+        teacher={teacher}
+        schoolName={schoolName}
+        students={students}
+        grades={grades}
+      />
     </div>
   );
 };

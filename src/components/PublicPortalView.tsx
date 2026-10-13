@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Calendar,
   Wallet,
@@ -9,14 +9,18 @@ import {
   QrCode,
   ShieldCheck,
   Flame,
-  ArrowLeft,
-  ExternalLink,
+  Lock,
   User,
   GraduationCap,
+  Sparkles,
+  Info,
+  Clock,
+  BookOpen,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import {
   Student,
+  AttendanceSession,
   AttendanceRecord,
   GradeRecord,
   ClassRoom,
@@ -24,7 +28,7 @@ import {
   FinanceTransaction,
 } from '../types';
 
-export type PublicPortalType = 'absen' | 'tabungan' | 'nilai' | 'rekap';
+export type PublicPortalType = 'absen' | 'rekap' | 'nilai' | 'tabungan';
 
 interface PublicPortalViewProps {
   initialType?: PublicPortalType;
@@ -32,12 +36,12 @@ interface PublicPortalViewProps {
   initialNisn?: string;
   classes: ClassRoom[];
   students: Student[];
+  sessions: AttendanceSession[];
   attendanceRecords: AttendanceRecord[];
   grades: GradeRecord[];
   finances: FinanceTransaction[];
   teacher: TeacherProfile;
   schoolName: string;
-  onExitPortal: () => void;
 }
 
 export const PublicPortalView: React.FC<PublicPortalViewProps> = ({
@@ -46,12 +50,12 @@ export const PublicPortalView: React.FC<PublicPortalViewProps> = ({
   initialNisn,
   classes,
   students,
+  sessions,
   attendanceRecords,
   grades,
   finances,
   teacher,
   schoolName,
-  onExitPortal,
 }) => {
   const [activePortalType, setActivePortalType] = useState<PublicPortalType>(initialType);
   const [selectedClassId, setSelectedClassId] = useState<string>(
@@ -59,10 +63,35 @@ export const PublicPortalView: React.FC<PublicPortalViewProps> = ({
       ? initialClassId
       : classes[0]?.id || ''
   );
-  
-  const currentClass = classes.find((c) => c.id === selectedClassId) || classes[0];
-  const classStudents = students.filter((s) => s.classId === currentClass?.id);
 
+  const currentClass = classes.find((c) => c.id === selectedClassId) || classes[0];
+  const classStudents = useMemo(() => {
+    return students.filter((s) => s.classId === currentClass?.id);
+  }, [students, currentClass]);
+
+  const classSessions = useMemo(() => {
+    const list = sessions.filter((s) => s.classId === currentClass?.id);
+    // Sort descending by pertemuanKe so the latest is first
+    return list.sort((a, b) => b.pertemuanKe - a.pertemuanKe);
+  }, [sessions, currentClass]);
+
+  // The latest session (data absen yang diinput terakhir)
+  const latestSession = classSessions[0];
+
+  // Selected session for viewing (defaults to latest inputted session!)
+  const [selectedSessionId, setSelectedSessionId] = useState<string>(
+    latestSession?.id || ''
+  );
+
+  useEffect(() => {
+    if (latestSession && (!selectedSessionId || !classSessions.some(s => s.id === selectedSessionId))) {
+      setSelectedSessionId(latestSession.id);
+    }
+  }, [latestSession, classSessions, selectedSessionId]);
+
+  const activeSessionToDisplay = classSessions.find((s) => s.id === selectedSessionId) || latestSession;
+
+  // Selected student for student-specific tabs (if needed)
   const [selectedStudentId, setSelectedStudentId] = useState<string>(() => {
     if (initialNisn) {
       const match = classStudents.find((s) => s.nisn === initialNisn);
@@ -71,7 +100,6 @@ export const PublicPortalView: React.FC<PublicPortalViewProps> = ({
     return classStudents[0]?.id || '';
   });
 
-  // Keep selected student in sync when class changes
   useEffect(() => {
     if (!classStudents.some((s) => s.id === selectedStudentId)) {
       setSelectedStudentId(classStudents[0]?.id || '');
@@ -84,10 +112,8 @@ export const PublicPortalView: React.FC<PublicPortalViewProps> = ({
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [showQrModal, setShowQrModal] = useState(false);
 
-  // Generate public deep link for this specific view
-  const currentUrl = `${window.location.origin}?portal=publik&kelas=${currentClass?.id}&tipe=${activePortalType}${
-    currentStudent ? `&nisn=${currentStudent.nisn}` : ''
-  }`;
+  // Generate public deep link for this view
+  const currentUrl = `${window.location.origin}?portal=publik&kelas=${currentClass?.id}&tipe=${activePortalType}`;
 
   useEffect(() => {
     QRCode.toDataURL(currentUrl, {
@@ -108,68 +134,62 @@ export const PublicPortalView: React.FC<PublicPortalViewProps> = ({
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
-  // --- Calculations for Student & Class (Read-Only) ---
-  const studentAttendances = attendanceRecords.filter((r) => r.studentId === currentStudent?.id);
-  let hadirCount = 0;
-  let sakitCount = 0;
-  let izinCount = 0;
-  let alpaCount = 0;
-  let dispenCount = 0;
-  studentAttendances.forEach((r) => {
-    if (r.status === 'H') hadirCount++;
-    else if (r.status === 'S') sakitCount++;
-    else if (r.status === 'I') izinCount++;
-    else if (r.status === 'A') alpaCount++;
-    else if (r.status === 'D') dispenCount++;
-  });
-  const totalAttSessions = studentAttendances.length || 1;
-  const attendanceRate = Math.round((hadirCount / totalAttSessions) * 100);
+  // Metrics for active session
+  const sessionMetrics = useMemo(() => {
+    if (!activeSessionToDisplay) {
+      return { hadir: 0, sakit: 0, izin: 0, alpa: 0, dispen: 0, belum: classStudents.length, percent: 0 };
+    }
 
-  // Tabungan
-  const studentSavings = finances.filter(
-    (f) => f.kategori === 'Tabungan Siswa' && f.studentId === currentStudent?.id
-  );
-  let studentSavingsBalance = 0;
-  studentSavings.forEach((f) => {
-    if (f.tipe === 'Pemasukan') studentSavingsBalance += f.nominal;
-    else studentSavingsBalance -= f.nominal;
-  });
+    const sessionRecs = attendanceRecords.filter((r) => r.sessionId === activeSessionToDisplay.id);
+    const recMap = new Map<string, string>();
+    sessionRecs.forEach((r) => recMap.set(r.studentId, r.status));
 
-  // Nilai
-  const studentGrade = grades.find((g) => g.studentId === currentStudent?.id);
-  const validFormatif = (studentGrade?.formatif || []).filter((v): v is number => v !== null && !isNaN(v));
-  const formatifAvg =
-    validFormatif.length > 0 ? validFormatif.reduce((a, b) => a + b, 0) / validFormatif.length : 0;
-  const stsScore = studentGrade?.sts ?? formatifAvg;
-  const sasScore = studentGrade?.sas ?? formatifAvg;
-  const finalGrade = Math.round(formatifAvg * 0.5 + stsScore * 0.25 + sasScore * 0.25);
-  const kkm = currentClass?.kkm || 75;
-  const isTuntas = finalGrade >= kkm;
+    let hadir = 0;
+    let sakit = 0;
+    let izin = 0;
+    let alpa = 0;
+    let dispen = 0;
+    let belum = 0;
+
+    classStudents.forEach((std) => {
+      const st = recMap.get(std.id);
+      if (st === 'H') hadir++;
+      else if (st === 'S') sakit++;
+      else if (st === 'I') izin++;
+      else if (st === 'A') alpa++;
+      else if (st === 'D') dispen++;
+      else belum++;
+    });
+
+    const total = classStudents.length || 1;
+    const percent = Math.round((hadir / total) * 100);
+
+    return { hadir, sakit, izin, alpa, dispen, belum, percent };
+  }, [activeSessionToDisplay, attendanceRecords, classStudents]);
 
   return (
     <div className="min-h-screen bg-[#faf7ee] text-slate-900 font-sans selection:bg-[#6ee7b7] flex flex-col">
-      {/* Top Read-Only Banner */}
-      <div className="bg-[#fef9c3] border-b-2 border-slate-900 px-4 py-2 text-center text-xs font-black text-slate-900 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 mx-auto">
-          <Flame className="w-4 h-4 text-orange-600 fill-orange-500" />
-          <span>PORTAL RESMI HADIR! • TAMPILAN PUBLIK TERVERIFIKASI (READ-ONLY)</span>
-          <span className="hidden sm:inline bg-white px-2 py-0.5 rounded-full border border-slate-900 text-[10px] font-mono">
-            HANYA BACA
+      {/* Top Banner: Read-Only & Login Locked */}
+      <div className="bg-[#fef9c3] border-b-2 border-slate-900 px-3 sm:px-4 py-2 text-center text-xs font-black text-slate-900 flex items-center justify-between gap-2 shadow-xs">
+        <div className="flex items-center gap-2 mx-auto flex-wrap justify-center">
+          <Flame className="w-4 h-4 text-orange-600 fill-orange-500 shrink-0" />
+          <span>PORTAL PUBLIK RESMI HADIR! • DATA TERVERIFIKASI REAL-TIME</span>
+          <span className="bg-white px-2 py-0.5 rounded-full border border-slate-900 text-[10px] font-mono shadow-[1px_1px_0px_#1e293b]">
+            READ-ONLY
           </span>
         </div>
-        <button
-          onClick={onExitPortal}
-          className="text-[11px] font-black bg-white hover:bg-slate-100 text-slate-900 px-2.5 py-1 rounded-xl border border-slate-900 shadow-[1px_1px_0px_#1e293b] flex items-center gap-1 cursor-pointer shrink-0"
-          title="Kembali ke Aplikasi Utama"
-        >
-          <ArrowLeft className="w-3 h-3" />
-          <span className="hidden xs:inline">Keluar Portal</span>
-        </button>
+
+        {/* Locked Login Badge */}
+        <div className="flex items-center gap-1.5 bg-slate-900 text-white px-2.5 py-1 rounded-xl text-[10px] font-bold shrink-0 shadow-[1px_1px_0px_#1e293b]">
+          <Lock className="w-3 h-3 text-amber-400" />
+          <span className="hidden sm:inline">Akses Login Terkunci</span>
+          <span className="sm:hidden">Terkunci</span>
+        </div>
       </div>
 
       {/* Main Header */}
       <header className="bg-white border-b-2 border-slate-900 shadow-[0_3px_0px_#1e293b] py-3.5 px-4 sm:px-6">
-        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-2xl bg-[#ffedd5] border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] flex items-center justify-center text-2xl shrink-0">
               🔥
@@ -180,68 +200,86 @@ export const PublicPortalView: React.FC<PublicPortalViewProps> = ({
                   Hadir!
                 </h1>
                 <span className="text-[11px] font-mono font-bold bg-[#ede9fe] text-indigo-950 border border-slate-900 px-2 py-0.5 rounded-full shadow-[1px_1px_0px_#1e293b]">
-                  Wali Murid & Siswa
+                  Portal Terbuka Siswa & Wali Murid
                 </span>
               </div>
               <p className="text-xs text-slate-600 font-medium mt-0.5">
-                {schoolName} • Rombel {currentClass?.nama}
+                {schoolName} • Pendidik: {teacher.name} ({teacher.nip})
               </p>
             </div>
           </div>
 
           {/* Quick Sharing & QR Actions */}
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            {/* Class Selector for Visitors */}
+            <select
+              value={selectedClassId}
+              onChange={(e) => setSelectedClassId(e.target.value)}
+              className="px-3 py-1.5 rounded-2xl bg-[#faf7ee] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] text-xs font-black text-slate-900 focus:outline-none cursor-pointer"
+            >
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nama}
+                </option>
+              ))}
+            </select>
+
             <button
               onClick={() => setShowQrModal(true)}
-              className="flex-1 sm:flex-none px-3 py-2 rounded-2xl bg-[#ffedd5] hover:bg-[#fed7aa] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] text-xs font-black text-orange-950 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              className="px-3 py-1.5 rounded-2xl bg-[#ffedd5] hover:bg-[#fed7aa] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] text-xs font-black text-orange-950 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              title="Tampilkan QR Code"
             >
               <QrCode className="w-4 h-4 text-orange-900" />
-              <span>QR Code</span>
+              <span className="hidden xs:inline">QR Code</span>
             </button>
 
             <button
               onClick={handleCopy}
-              className="flex-1 sm:flex-none px-3.5 py-2 rounded-2xl bg-[#dcfce7] hover:bg-[#bbf7d0] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] text-xs font-black text-emerald-950 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              className="px-3.5 py-1.5 rounded-2xl bg-[#dcfce7] hover:bg-[#bbf7d0] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] text-xs font-black text-emerald-950 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              title="Salin Link Publik"
             >
               {copiedLink ? <Check className="w-4 h-4 text-emerald-800" /> : <Copy className="w-4 h-4 text-emerald-800" />}
-              <span>{copiedLink ? 'Tersalin!' : 'Salin Tautan'}</span>
+              <span>{copiedLink ? 'Tersalin!' : 'Salin Link'}</span>
             </button>
           </div>
         </div>
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-4xl mx-auto w-full p-4 sm:p-6 space-y-5">
-        {/* Dataset Focus Nav Pill - One link for all data, but isolated by category */}
-        <div className="bg-white rounded-3xl p-2 sm:p-2.5 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b] flex items-center justify-between gap-1.5 overflow-x-auto">
+      <main className="flex-1 max-w-5xl mx-auto w-full p-3 sm:p-6 space-y-5">
+        {/* Dataset Navigation Strip: One link for all data, organized cleanly */}
+        <div className="bg-white rounded-3xl p-1.5 sm:p-2 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b] flex items-center justify-between gap-1.5 overflow-x-auto">
           <div className="flex items-center gap-1.5 w-full">
+            {/* Tab 1: Data Absen (Default / Tampilan Awal: Absen Terakhir) */}
             <button
               onClick={() => setActivePortalType('absen')}
-              className={`flex-1 min-w-[100px] py-2 px-3 rounded-2xl text-xs font-black text-center border-2 border-slate-900 transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              className={`flex-1 min-w-[120px] py-2 px-3 rounded-2xl text-xs font-black text-center border-2 border-slate-900 transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 activePortalType === 'absen'
                   ? 'bg-[#dcfce7] text-slate-950 shadow-[2.5px_2.5px_0px_#1e293b]'
                   : 'bg-transparent border-transparent hover:bg-[#faf7ee] text-slate-600'
               }`}
             >
-              <Calendar className="w-3.5 h-3.5 text-emerald-800" />
-              <span>Data Absen</span>
+              <Clock className="w-3.5 h-3.5 text-emerald-800" />
+              <span>Absen Terakhir</span>
             </button>
 
+            {/* Tab 2: Rekap Absen */}
             <button
-              onClick={() => setActivePortalType('tabungan')}
-              className={`flex-1 min-w-[100px] py-2 px-3 rounded-2xl text-xs font-black text-center border-2 border-slate-900 transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                activePortalType === 'tabungan'
-                  ? 'bg-[#e0f2fe] text-slate-950 shadow-[2.5px_2.5px_0px_#1e293b]'
+              onClick={() => setActivePortalType('rekap')}
+              className={`flex-1 min-w-[120px] py-2 px-3 rounded-2xl text-xs font-black text-center border-2 border-slate-900 transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                activePortalType === 'rekap'
+                  ? 'bg-[#ede9fe] text-slate-950 shadow-[2.5px_2.5px_0px_#1e293b]'
                   : 'bg-transparent border-transparent hover:bg-[#faf7ee] text-slate-600'
               }`}
             >
-              <Wallet className="w-3.5 h-3.5 text-sky-800" />
-              <span>Data Tabungan</span>
+              <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-800" />
+              <span>Rekap Absen</span>
             </button>
 
+            {/* Tab 3: Data Nilai */}
             <button
               onClick={() => setActivePortalType('nilai')}
-              className={`flex-1 min-w-[100px] py-2 px-3 rounded-2xl text-xs font-black text-center border-2 border-slate-900 transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              className={`flex-1 min-w-[120px] py-2 px-3 rounded-2xl text-xs font-black text-center border-2 border-slate-900 transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 activePortalType === 'nilai'
                   ? 'bg-[#fef9c3] text-slate-950 shadow-[2.5px_2.5px_0px_#1e293b]'
                   : 'bg-transparent border-transparent hover:bg-[#faf7ee] text-slate-600'
@@ -251,373 +289,462 @@ export const PublicPortalView: React.FC<PublicPortalViewProps> = ({
               <span>Data Nilai</span>
             </button>
 
+            {/* Tab 4: Data Tabungan */}
             <button
-              onClick={() => setActivePortalType('rekap')}
-              className={`flex-1 min-w-[100px] py-2 px-3 rounded-2xl text-xs font-black text-center border-2 border-slate-900 transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                activePortalType === 'rekap'
-                  ? 'bg-[#ede9fe] text-slate-950 shadow-[2.5px_2.5px_0px_#1e293b]'
+              onClick={() => setActivePortalType('tabungan')}
+              className={`flex-1 min-w-[120px] py-2 px-3 rounded-2xl text-xs font-black text-center border-2 border-slate-900 transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                activePortalType === 'tabungan'
+                  ? 'bg-[#e0f2fe] text-slate-950 shadow-[2.5px_2.5px_0px_#1e293b]'
                   : 'bg-transparent border-transparent hover:bg-[#faf7ee] text-slate-600'
               }`}
             >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-800" />
-              <span>Rekap Kelas</span>
+              <Wallet className="w-3.5 h-3.5 text-sky-800" />
+              <span>Data Tabungan</span>
             </button>
           </div>
         </div>
 
-        {/* Student Selector Card (If viewing student-specific data) */}
-        {activePortalType !== 'rekap' && (
-          <div className="bg-[#fffdf8] rounded-3xl p-4 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex-1">
-              <label className="block text-xs font-black text-slate-800 mb-1">
-                Pilih Nama Siswa:
-              </label>
-              <select
-                value={selectedStudentId}
-                onChange={(e) => setSelectedStudentId(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-slate-900 bg-white text-xs font-bold text-slate-900 shadow-[1.5px_1.5px_0px_#1e293b] focus:outline-none cursor-pointer"
-              >
-                {classStudents.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.noUrut}. {s.nama} ({s.nisn}) - {s.gender === 'L' ? 'Laki-laki' : 'Perempuan'}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {currentStudent && (
-              <div className="bg-[#faf7ee] p-3 rounded-2xl border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] flex items-center gap-3 shrink-0">
-                <div className="w-10 h-10 rounded-xl bg-slate-900 text-[#6ee7b7] font-black flex items-center justify-center text-base shrink-0">
-                  {currentStudent.nama.charAt(0)}
-                </div>
-                <div>
-                  <h4 className="text-xs font-black text-slate-900 truncate max-w-[180px]">
-                    {currentStudent.nama}
-                  </h4>
-                  <p className="text-[10px] font-mono font-bold text-slate-500">
-                    NISN: {currentStudent.nisn} • No. {currentStudent.noUrut}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* ======================================================== */}
-        {/* VIEW 1: DATA ABSEN SAJA */}
+        {/* VIEW 1: DATA ABSEN YANG DIINPUT TERAKHIR (TAMPILAN AWAL) */}
         {/* ======================================================== */}
         {activePortalType === 'absen' && (
           <div className="space-y-4 animate-in fade-in duration-200">
-            <div className="bg-[#dcfce7] rounded-3xl p-5 sm:p-6 border-2 border-slate-900 shadow-[4px_4px_0px_#1e293b] relative overflow-hidden">
+            {/* Session Card Banner */}
+            <div className="bg-[#dcfce7] rounded-3xl p-4 sm:p-6 border-2 border-slate-900 shadow-[4px_4px_0px_#1e293b] relative overflow-hidden">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <span className="text-[11px] font-mono font-black text-emerald-950 uppercase tracking-wider bg-white/70 px-2.5 py-0.5 rounded-full border border-slate-900 inline-block mb-1">
-                    RINGKASAN KEHADIRAN SISWA
-                  </span>
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className="text-[10px] font-mono font-black text-emerald-950 uppercase tracking-wider bg-white px-2.5 py-0.5 rounded-full border border-slate-900 shadow-[1px_1px_0px_#1e293b]">
+                      DATA ABSEN TERAKHIR
+                    </span>
+                    {activeSessionToDisplay && (
+                      <span className="text-[10px] font-bold bg-[#6ee7b7] text-slate-900 px-2 py-0.5 rounded-full border border-slate-900">
+                        Pertemuan Ke-{activeSessionToDisplay.pertemuanKe}
+                      </span>
+                    )}
+                  </div>
+
                   <h3 className="text-xl sm:text-2xl font-black text-slate-950">
-                    Tingkat Kehadiran: {attendanceRate}%
+                    {activeSessionToDisplay
+                      ? new Date(activeSessionToDisplay.tanggal).toLocaleDateString('id-ID', {
+                          weekday: 'long',
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric',
+                        })
+                      : 'Belum Ada Sesi'}
                   </h3>
+
                   <p className="text-xs text-emerald-950 font-bold mt-1">
-                    {attendanceRate >= 85 ? 'Status: Sangat Disiplin & Aktif Belajar' : 'Status: Perlu Peningkatan Kehadiran'}
+                    Mapel: {activeSessionToDisplay?.mapel || currentClass.mapel} • {activeSessionToDisplay?.catatan || 'Praktikum & Tatap Muka'}
                   </p>
                 </div>
 
-                <div className="text-4xl sm:text-5xl font-black text-emerald-950 font-mono">
-                  {hadirCount} / {totalAttSessions}
-                  <span className="text-xs block font-sans font-bold text-emerald-900">Sesi Hadir</span>
+                {/* Progress Ring / Percentage */}
+                <div className="text-right flex sm:flex-col items-center sm:items-end justify-between sm:justify-center">
+                  <div className="text-3xl sm:text-5xl font-black text-emerald-950 font-mono">
+                    {sessionMetrics.percent}%
+                  </div>
+                  <span className="text-xs font-bold text-emerald-900">
+                    {sessionMetrics.hadir} dari {classStudents.length} Siswa Hadir
+                  </span>
                 </div>
               </div>
 
-              {/* Status Badges */}
-              <div className="grid grid-cols-2 xs:grid-cols-5 gap-2 mt-4 pt-4 border-t-2 border-slate-900/20 text-center">
+              {/* Stat Counters for this session */}
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-4 pt-4 border-t-2 border-slate-900/20 text-center">
                 <div className="bg-white p-2 rounded-xl border border-slate-900 shadow-[1px_1px_0px_#1e293b]">
                   <span className="text-[10px] font-black text-slate-600 block">HADIR (H)</span>
-                  <span className="text-base font-black text-emerald-700 font-mono">{hadirCount}</span>
+                  <span className="text-base font-black text-emerald-700 font-mono">{sessionMetrics.hadir}</span>
                 </div>
                 <div className="bg-white p-2 rounded-xl border border-slate-900 shadow-[1px_1px_0px_#1e293b]">
                   <span className="text-[10px] font-black text-slate-600 block">SAKIT (S)</span>
-                  <span className="text-base font-black text-amber-700 font-mono">{sakitCount}</span>
+                  <span className="text-base font-black text-amber-700 font-mono">{sessionMetrics.sakit}</span>
                 </div>
                 <div className="bg-white p-2 rounded-xl border border-slate-900 shadow-[1px_1px_0px_#1e293b]">
                   <span className="text-[10px] font-black text-slate-600 block">IZIN (I)</span>
-                  <span className="text-base font-black text-sky-700 font-mono">{izinCount}</span>
+                  <span className="text-base font-black text-orange-700 font-mono">{sessionMetrics.izin}</span>
                 </div>
                 <div className="bg-white p-2 rounded-xl border border-slate-900 shadow-[1px_1px_0px_#1e293b]">
-                  <span className="text-[10px] font-black text-slate-600 block">ALPA (A)</span>
-                  <span className="text-base font-black text-rose-700 font-mono">{alpaCount}</span>
+                  <span className="text-[10px] font-black text-slate-600 block">ALFA (A)</span>
+                  <span className="text-base font-black text-rose-700 font-mono">{sessionMetrics.alpa}</span>
                 </div>
-                <div className="bg-white p-2 rounded-xl border border-slate-900 shadow-[1px_1px_0px_#1e293b] col-span-2 xs:col-span-1">
+                <div className="bg-white p-2 rounded-xl border border-slate-900 shadow-[1px_1px_0px_#1e293b]">
                   <span className="text-[10px] font-black text-slate-600 block">DISPEN (D)</span>
-                  <span className="text-base font-black text-purple-700 font-mono">{dispenCount}</span>
+                  <span className="text-base font-black text-purple-700 font-mono">{sessionMetrics.dispen}</span>
+                </div>
+                <div className="bg-white p-2 rounded-xl border border-slate-900 shadow-[1px_1px_0px_#1e293b]">
+                  <span className="text-[10px] font-black text-slate-600 block">BELUM</span>
+                  <span className="text-base font-black text-slate-500 font-mono">{sessionMetrics.belum}</span>
                 </div>
               </div>
+
+              {/* Session Selector Dropdown if visitors wish to see previous sessions */}
+              {classSessions.length > 1 && (
+                <div className="mt-3 pt-3 border-t border-slate-900/10 flex items-center justify-between text-xs flex-wrap gap-2">
+                  <span className="font-bold text-slate-800">Lihat Arsip Pertemuan Lain:</span>
+                  <select
+                    value={selectedSessionId}
+                    onChange={(e) => setSelectedSessionId(e.target.value)}
+                    className="px-2.5 py-1 rounded-xl bg-white border border-slate-900 text-xs font-bold text-slate-900 cursor-pointer shadow-[1px_1px_0px_#1e293b]"
+                  >
+                    {classSessions.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        Pertemuan Ke-{s.pertemuanKe} ({s.tanggal})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
-            {/* Attendance Details Table */}
-            <div className="bg-white rounded-3xl p-5 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b]">
+            {/* Complete Student Attendance Table for this Session */}
+            <div className="bg-white rounded-3xl p-4 sm:p-5 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b]">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-emerald-800" />
-                  <span>Log Riwayat Presensi Per Sesi</span>
+                  <span>Daftar Kehadiran Siswa ({classStudents.length} Murid)</span>
                 </h4>
                 <span className="text-xs font-mono font-bold text-slate-500">
-                  {studentAttendances.length} Catatan
+                  {currentClass.nama}
                 </span>
               </div>
 
-              {studentAttendances.length === 0 ? (
-                <div className="p-8 text-center text-xs text-slate-500 italic bg-[#faf7ee] rounded-2xl border border-slate-900">
-                  Belum ada rekaman presensi harian untuk siswa ini.
-                </div>
-              ) : (
-                <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
-                  {studentAttendances.map((rec, idx) => (
-                    <div key={rec.id || idx} className="py-2.5 flex items-center justify-between gap-2 text-xs">
-                      <div>
-                        <p className="font-bold text-slate-900">
-                          Pertemuan: {rec.sessionId}
-                        </p>
-                        {rec.keterangan && (
-                          <p className="text-[11px] text-slate-500 italic mt-0.5">
-                            Keterangan: {rec.keterangan}
-                          </p>
-                        )}
-                      </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-[#faf7ee] text-slate-900 font-black tracking-wider uppercase border-b-2 border-slate-900">
+                      <th className="py-2.5 px-3 w-10 text-center">NO</th>
+                      <th className="py-2.5 px-3">NAMA SISWA</th>
+                      <th className="py-2.5 px-2 text-center w-12">L/P</th>
+                      <th className="py-2.5 px-3 text-center w-28">STATUS</th>
+                      <th className="py-2.5 px-3">KETERANGAN</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {classStudents.map((std, idx) => {
+                      const rec = attendanceRecords.find(
+                        (r) => r.sessionId === activeSessionToDisplay?.id && r.studentId === std.id
+                      );
+                      const status = rec?.status;
 
-                      <span
-                        className={`px-3 py-1 rounded-xl text-xs font-black border-2 border-slate-900 shadow-[1.5px_1.5px_0px_#1e293b] ${
-                          rec.status === 'H'
-                            ? 'bg-[#dcfce7] text-emerald-950'
-                            : rec.status === 'S'
-                            ? 'bg-[#fef9c3] text-amber-950'
-                            : rec.status === 'I'
-                            ? 'bg-[#e0f2fe] text-sky-950'
-                            : rec.status === 'D'
-                            ? 'bg-[#ede9fe] text-indigo-950'
-                            : 'bg-[#fee2e2] text-rose-950'
-                        }`}
-                      >
-                        {rec.status === 'H'
-                          ? 'Hadir'
-                          : rec.status === 'S'
-                          ? 'Sakit'
-                          : rec.status === 'I'
-                          ? 'Izin'
-                          : rec.status === 'D'
-                          ? 'Dispen'
-                          : 'Alpa'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
+                      let statusBadge = (
+                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-500">
+                          Belum Diabsen
+                        </span>
+                      );
+
+                      if (status === 'H') {
+                        statusBadge = (
+                          <span className="px-2.5 py-0.5 rounded-xl text-[11px] font-black bg-[#dcfce7] text-emerald-950 border border-slate-900 shadow-[1px_1px_0px_#1e293b]">
+                            Hadir (H)
+                          </span>
+                        );
+                      } else if (status === 'S') {
+                        statusBadge = (
+                          <span className="px-2.5 py-0.5 rounded-xl text-[11px] font-black bg-[#fef9c3] text-amber-950 border border-slate-900 shadow-[1px_1px_0px_#1e293b]">
+                            Sakit (S)
+                          </span>
+                        );
+                      } else if (status === 'I') {
+                        statusBadge = (
+                          <span className="px-2.5 py-0.5 rounded-xl text-[11px] font-black bg-[#ffedd5] text-orange-950 border border-slate-900 shadow-[1px_1px_0px_#1e293b]">
+                            Izin (I)
+                          </span>
+                        );
+                      } else if (status === 'A') {
+                        statusBadge = (
+                          <span className="px-2.5 py-0.5 rounded-xl text-[11px] font-black bg-[#fee2e2] text-rose-950 border border-slate-900 shadow-[1px_1px_0px_#1e293b]">
+                            Alfa (A)
+                          </span>
+                        );
+                      } else if (status === 'D') {
+                        statusBadge = (
+                          <span className="px-2.5 py-0.5 rounded-xl text-[11px] font-black bg-[#ede9fe] text-indigo-950 border border-slate-900 shadow-[1px_1px_0px_#1e293b]">
+                            Dispen (D)
+                          </span>
+                        );
+                      }
+
+                      return (
+                        <tr key={std.id} className="hover:bg-[#faf7ee]/50">
+                          <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-600">
+                            {idx + 1}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className="font-black text-slate-900 block">{std.nama}</span>
+                            <span className="text-[10px] font-mono text-slate-500">NISN: {std.nisn}</span>
+                          </td>
+                          <td className="py-2.5 px-2 text-center font-mono font-bold">
+                            {std.gender}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            {statusBadge}
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-600 text-xs italic">
+                            {rec?.keterangan || '-'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
 
         {/* ======================================================== */}
-        {/* VIEW 2: DATA TABUNGAN SAJA */}
+        {/* VIEW 2: DATA REKAP ABSEN                                 */}
+        {/* ======================================================== */}
+        {activePortalType === 'rekap' && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            <div className="bg-[#ede9fe] rounded-3xl p-5 sm:p-6 border-2 border-slate-900 shadow-[4px_4px_0px_#1e293b]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <span className="text-[10px] font-mono font-black text-indigo-950 uppercase tracking-wider bg-white px-2.5 py-0.5 rounded-full border border-slate-900 inline-block mb-1 shadow-[1px_1px_0px_#1e293b]">
+                    REKAPITULASI SEMESTER
+                  </span>
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-950">
+                    Rekapitulasi Kehadiran Seluruh Sesi
+                  </h3>
+                  <p className="text-xs text-indigo-900 font-bold mt-1">
+                    Total {classSessions.length} Pertemuan Telah Dilaksanakan • {currentClass.nama}
+                  </p>
+                </div>
+
+                <div className="text-right">
+                  <span className="text-3xl sm:text-4xl font-black font-mono text-indigo-950">
+                    {classStudents.length} Siswa
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Recap Table */}
+            <div className="bg-white rounded-3xl p-4 sm:p-5 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b]">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-[#faf7ee] text-slate-900 font-black tracking-wider uppercase border-b-2 border-slate-900">
+                      <th className="py-2.5 px-2 w-8 text-center">NO</th>
+                      <th className="py-2.5 px-3 min-w-[180px]">NAMA SISWA</th>
+                      <th className="py-2.5 px-1 text-center w-8">L/P</th>
+                      <th className="py-2.5 px-2 text-center w-10 text-emerald-800">H</th>
+                      <th className="py-2.5 px-2 text-center w-10 text-amber-800">S</th>
+                      <th className="py-2.5 px-2 text-center w-10 text-orange-800">I</th>
+                      <th className="py-2.5 px-2 text-center w-10 text-rose-800">A</th>
+                      <th className="py-2.5 px-2 text-center w-10 text-indigo-800">D</th>
+                      <th className="py-2.5 px-2 text-center w-14 font-mono">% HADIR</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {classStudents.map((std, idx) => {
+                      let h = 0;
+                      let s = 0;
+                      let i = 0;
+                      let a = 0;
+                      let d = 0;
+
+                      attendanceRecords
+                        .filter((rec) => rec.studentId === std.id && classSessions.some((sess) => sess.id === rec.sessionId))
+                        .forEach((rec) => {
+                          if (rec.status === 'H') h++;
+                          else if (rec.status === 'S') s++;
+                          else if (rec.status === 'I') i++;
+                          else if (rec.status === 'A') a++;
+                          else if (rec.status === 'D') d++;
+                        });
+
+                      const total = h + s + i + a + d || 1;
+                      const pct = Math.round((h / total) * 100);
+
+                      return (
+                        <tr key={std.id} className="hover:bg-[#faf7ee]/50">
+                          <td className="py-2 px-2 text-center font-mono font-bold text-slate-600">{idx + 1}</td>
+                          <td className="py-2 px-3 font-bold text-slate-900">{std.nama}</td>
+                          <td className="py-2 px-1 text-center font-mono">{std.gender}</td>
+                          <td className="py-2 px-2 text-center font-mono font-bold text-emerald-700">{h}</td>
+                          <td className="py-2 px-2 text-center font-mono font-bold text-amber-700">{s}</td>
+                          <td className="py-2 px-2 text-center font-mono font-bold text-orange-700">{i}</td>
+                          <td className="py-2 px-2 text-center font-mono font-bold text-rose-700">{a}</td>
+                          <td className="py-2 px-2 text-center font-mono font-bold text-indigo-700">{d}</td>
+                          <td className="py-2 px-2 text-center font-mono font-black text-slate-900">{pct}%</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* VIEW 3: DATA NILAI                                       */}
+        {/* ======================================================== */}
+        {activePortalType === 'nilai' && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            <div className="bg-[#fef9c3] rounded-3xl p-5 sm:p-6 border-2 border-slate-900 shadow-[4px_4px_0px_#1e293b]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <span className="text-[10px] font-mono font-black text-amber-950 uppercase tracking-wider bg-white px-2.5 py-0.5 rounded-full border border-slate-900 inline-block mb-1 shadow-[1px_1px_0px_#1e293b]">
+                    BUKU NILAI KURIKULUM MERDEKA
+                  </span>
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-950">
+                    Capaian Pembelajaran & Rapor Siswa
+                  </h3>
+                  <p className="text-xs text-amber-900 font-bold mt-1">
+                    KKM / Kriteria Ketercapaian TP: {currentClass.kkm} • {currentClass.mapel}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Grades Table */}
+            <div className="bg-white rounded-3xl p-4 sm:p-5 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b]">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-[#faf7ee] text-slate-900 font-black tracking-wider uppercase border-b-2 border-slate-900">
+                      <th className="py-2.5 px-2 w-8 text-center">NO</th>
+                      <th className="py-2.5 px-3 min-w-[180px]">NAMA SISWA</th>
+                      <th className="py-2.5 px-2 text-center w-12 font-mono">RATA TP</th>
+                      <th className="py-2.5 px-2 text-center w-10 font-mono">STS</th>
+                      <th className="py-2.5 px-2 text-center w-10 font-mono">SAS</th>
+                      <th className="py-2.5 px-2 text-center w-14 font-mono">AKHIR</th>
+                      <th className="py-2.5 px-3 min-w-[200px]">DESKRIPSI CAPAIAN</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {classStudents.map((std, idx) => {
+                      const g = grades.find((gr) => gr.studentId === std.id);
+                      const validFormatif = (g?.formatif || []).filter(
+                        (v): v is number => v !== null && !isNaN(v)
+                      );
+                      const formatifAvg =
+                        validFormatif.length > 0
+                          ? validFormatif.reduce((a, b) => a + b, 0) / validFormatif.length
+                          : 0;
+                      const sts = g?.sts ?? (formatifAvg ? Math.round(formatifAvg) : null);
+                      const sas = g?.sas ?? (formatifAvg ? Math.round(formatifAvg) : null);
+                      const finalScore = Math.round(formatifAvg * 0.5 + (sts || 0) * 0.25 + (sas || 0) * 0.25);
+
+                      return (
+                        <tr key={std.id} className="hover:bg-[#faf7ee]/50">
+                          <td className="py-2 px-2 text-center font-mono font-bold text-slate-600">{idx + 1}</td>
+                          <td className="py-2 px-3 font-bold text-slate-900">{std.nama}</td>
+                          <td className="py-2 px-2 text-center font-mono font-semibold">{Math.round(formatifAvg) || '-'}</td>
+                          <td className="py-2 px-2 text-center font-mono">{sts ?? '-'}</td>
+                          <td className="py-2 px-2 text-center font-mono">{sas ?? '-'}</td>
+                          <td className="py-2 px-2 text-center font-mono font-black text-emerald-800 text-sm">
+                            {finalScore || '-'}
+                          </td>
+                          <td className="py-2 px-3 text-slate-600 text-[11px] italic">
+                            {g?.deskripsi || 'Mencapai tujuan pembelajaran dengan baik.'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* VIEW 4: DATA TABUNGAN                                    */}
         {/* ======================================================== */}
         {activePortalType === 'tabungan' && (
           <div className="space-y-4 animate-in fade-in duration-200">
             <div className="bg-[#e0f2fe] rounded-3xl p-5 sm:p-6 border-2 border-slate-900 shadow-[4px_4px_0px_#1e293b]">
-              <span className="text-[11px] font-mono font-black text-sky-950 uppercase tracking-wider bg-white/70 px-2.5 py-0.5 rounded-full border border-slate-900 inline-block mb-1">
-                SALDO TABUNGAN MANDIRI SISWA
-              </span>
-              <h3 className="text-3xl sm:text-4xl font-black text-slate-950 font-mono mt-1">
-                Rp {studentSavingsBalance.toLocaleString('id-ID')}
-              </h3>
-              <p className="text-xs text-sky-950 font-bold mt-1.5">
-                Tercatat pada pembukuan kas kelas {currentClass?.nama} • Dikelola oleh Wali Kelas: {teacher.name}
-              </p>
-            </div>
-
-            {/* Mutations Log */}
-            <div className="bg-white rounded-3xl p-5 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b]">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
-                  <Wallet className="w-4 h-4 text-sky-800" />
-                  <span>Rincian Mutasi Setor & Tarik Tabungan</span>
-                </h4>
-                <span className="text-xs font-mono font-bold text-slate-500">
-                  {studentSavings.length} Transaksi
-                </span>
-              </div>
-
-              {studentSavings.length === 0 ? (
-                <div className="p-8 text-center text-xs text-slate-500 italic bg-[#faf7ee] rounded-2xl border border-slate-900">
-                  Belum ada mutasi setoran atau penarikan tabungan untuk siswa ini.
-                </div>
-              ) : (
-                <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
-                  {studentSavings.map((tx) => (
-                    <div key={tx.id} className="py-2.5 flex items-center justify-between gap-2 text-xs">
-                      <div>
-                        <p className="font-black text-slate-900">{tx.keterangan}</p>
-                        <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                          {tx.tanggal} • Dicatat: {tx.pencatat}
-                        </p>
-                      </div>
-
-                      <span
-                        className={`font-mono font-black px-2.5 py-1 rounded-xl border border-slate-900 text-xs ${
-                          tx.tipe === 'Pemasukan'
-                            ? 'bg-[#dcfce7] text-emerald-950'
-                            : 'bg-[#fee2e2] text-rose-950'
-                        }`}
-                      >
-                        {tx.tipe === 'Pemasukan' ? '+' : '-'} Rp {tx.nominal.toLocaleString('id-ID')}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ======================================================== */}
-        {/* VIEW 3: DATA NILAI & RAPOR SAJA */}
-        {/* ======================================================== */}
-        {activePortalType === 'nilai' && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="bg-[#fef9c3] rounded-3xl p-5 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b]">
-                <span className="text-[10px] font-mono font-black text-amber-950 uppercase tracking-wider bg-white/70 px-2.5 py-0.5 rounded-full border border-slate-900 inline-block mb-1">
-                  NILAI AKHIR RAPOR
-                </span>
-                <div className="text-4xl font-black text-slate-950 font-mono mt-1">
-                  {finalGrade}
-                </div>
-                <div className="mt-2 flex items-center gap-1.5">
-                  <span
-                    className={`text-xs font-black px-2.5 py-0.5 rounded-full border border-slate-900 ${
-                      isTuntas ? 'bg-[#dcfce7] text-emerald-950' : 'bg-[#fee2e2] text-rose-950'
-                    }`}
-                  >
-                    {isTuntas ? 'Tuntas Belajar (≥ KKM)' : 'Perlu Pendampingan Remedial'}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <span className="text-[10px] font-mono font-black text-sky-950 uppercase tracking-wider bg-white px-2.5 py-0.5 rounded-full border border-slate-900 inline-block mb-1 shadow-[1px_1px_0px_#1e293b]">
+                    BUKU TABUNGAN & KAS
                   </span>
-                  <span className="text-xs font-mono font-bold text-slate-600">
-                    (KKM: {kkm})
-                  </span>
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-950">
+                    Transparansi Keuangan & Tabungan Siswa
+                  </h3>
+                  <p className="text-xs text-sky-900 font-bold mt-1">
+                    Pencatatan tertib & terverifikasi wali murid
+                  </p>
                 </div>
               </div>
-
-              <div className="bg-[#ede9fe] rounded-3xl p-5 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b]">
-                <span className="text-[10px] font-mono font-black text-indigo-950 uppercase tracking-wider bg-white/70 px-2.5 py-0.5 rounded-full border border-slate-900 inline-block mb-1">
-                  KOMPONEN ASESMEN SUMATIF
-                </span>
-                <div className="text-xl font-black text-slate-950 font-mono mt-2 space-y-1">
-                  <p>STS: <span className="text-indigo-950 font-black">{stsScore}</span></p>
-                  <p>SAS: <span className="text-indigo-950 font-black">{sasScore}</span></p>
-                </div>
-                <p className="text-xs font-bold text-indigo-900 mt-2">
-                  Rata-rata Asesmen Formatif: {formatifAvg.toFixed(1)}
-                </p>
-              </div>
             </div>
 
-            {/* Competency Description Card */}
-            <div className="bg-white rounded-3xl p-5 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b]">
-              <span className="text-[11px] font-mono font-black text-slate-500 uppercase tracking-wider block mb-2">
-                Deskripsi Capaian Kompetensi Kurikulum Merdeka:
-              </span>
-              <div className="bg-[#faf7ee] p-4 rounded-2xl border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b]">
-                <p className="text-xs sm:text-sm text-slate-800 italic leading-relaxed font-medium">
-                  "{studentGrade?.deskripsi ||
-                    'Siswa telah menunjukkan penguasaan yang sangat baik dalam memahami konsep pembelajaran kurikulum merdeka pada semester ini.'}"
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+            {/* Savings summary table */}
+            <div className="bg-white rounded-3xl p-4 sm:p-5 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b]">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-[#faf7ee] text-slate-900 font-black tracking-wider uppercase border-b-2 border-slate-900">
+                      <th className="py-2.5 px-2 w-8 text-center">NO</th>
+                      <th className="py-2.5 px-3 min-w-[200px]">NAMA SISWA</th>
+                      <th className="py-2.5 px-3 text-right font-mono min-w-[140px]">SALDO TABUNGAN</th>
+                      <th className="py-2.5 px-3 text-center w-28">STATUS</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {classStudents.map((std, idx) => {
+                      const studentFinances = finances.filter(
+                        (f) => f.kategori === 'Tabungan Siswa' && f.studentId === std.id
+                      );
+                      let balance = 0;
+                      studentFinances.forEach((t) => {
+                        if (t.tipe === 'Pemasukan') balance += t.nominal;
+                        else balance -= t.nominal;
+                      });
 
-        {/* ======================================================== */}
-        {/* VIEW 4: REKAP KELAS SAJA */}
-        {/* ======================================================== */}
-        {activePortalType === 'rekap' && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            <div className="bg-[#ccfbf1] rounded-3xl p-5 sm:p-6 border-2 border-slate-900 shadow-[4px_4px_0px_#1e293b]">
-              <span className="text-[11px] font-mono font-black text-teal-950 uppercase tracking-wider bg-white/70 px-2.5 py-0.5 rounded-full border border-slate-900 inline-block mb-1">
-                REKAPITULASI ROMBONGAN BELAJAR
-              </span>
-              <h3 className="text-2xl sm:text-3xl font-black text-slate-950">
-                Kelas {currentClass?.nama}
-              </h3>
-              <p className="text-xs text-teal-950 font-bold mt-1">
-                Total {classStudents.length} Siswa Terdaftar • Mata Pelajaran: {currentClass?.mapel}
-              </p>
-            </div>
-
-            <div className="bg-white rounded-3xl p-5 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b]">
-              <h4 className="text-sm font-black text-slate-900 mb-3 flex items-center gap-2">
-                <GraduationCap className="w-4 h-4 text-teal-800" />
-                <span>Daftar Siswa Kelas Ini</span>
-              </h4>
-
-              <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
-                {classStudents.map((std) => (
-                  <div key={std.id} className="py-2.5 flex items-center justify-between gap-2 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-lg bg-[#faf7ee] border border-slate-900 font-mono font-bold flex items-center justify-center text-[11px]">
-                        {std.noUrut}
-                      </span>
-                      <span className="font-black text-slate-900">{std.nama}</span>
-                    </div>
-                    <span className="font-mono text-slate-500 font-bold">
-                      {std.nisn} ({std.gender})
-                    </span>
-                  </div>
-                ))}
+                      return (
+                        <tr key={std.id} className="hover:bg-[#faf7ee]/50">
+                          <td className="py-2.5 px-2 text-center font-mono font-bold text-slate-600">{idx + 1}</td>
+                          <td className="py-2.5 px-3 font-bold text-slate-900">{std.nama}</td>
+                          <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-800 text-sm">
+                            Rp {balance.toLocaleString('id-ID')}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#dcfce7] text-emerald-950 border border-slate-900">
+                              Aktif
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
         )}
       </main>
 
-      {/* QR Code Modal Display */}
+      {/* QR Code Modal */}
       {showQrModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 border-3 border-slate-900 shadow-[8px_8px_0px_#1e293b] text-center space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#fef9c3] border-2 border-slate-900 text-xs font-black">
-              <span>🔥</span>
-              <span>PINDAI QR PORTAL RESMI</span>
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border-3 border-slate-900 shadow-[8px_8px_0px_#1e293b] text-center">
+            <div className="w-12 h-12 rounded-2xl bg-[#ffedd5] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] flex items-center justify-center text-2xl mx-auto mb-3">
+              🔥
             </div>
-
-            <div className="p-3 bg-[#faf7ee] rounded-2xl border-2 border-slate-900 inline-block shadow-[3px_3px_0px_#1e293b]">
-              {qrDataUrl ? (
-                <img src={qrDataUrl} alt="QR Code Link Publik" className="w-48 h-48 rounded-xl mx-auto" />
-              ) : (
-                <div className="w-48 h-48 flex items-center justify-center text-xs text-slate-400">
-                  Membuat QR...
-                </div>
-              )}
-            </div>
-
-            <p className="text-xs text-slate-600 font-medium leading-relaxed">
-              Scan dengan kamera HP untuk langsung membuka data <strong>{activePortalType.toUpperCase()}</strong> pada kelas {currentClass?.nama}.
+            <h3 className="text-lg font-black text-slate-900">QR Code Portal Hadir!</h3>
+            <p className="text-xs text-slate-600 mt-1">
+              Pindai menggunakan kamera HP untuk membuka data {currentClass.nama} secara langsung.
             </p>
+
+            <div className="my-4 p-3 bg-white border-2 border-slate-900 rounded-2xl shadow-[3px_3px_0px_#1e293b] inline-block">
+              {qrDataUrl && <img src={qrDataUrl} alt="QR Code Hadir!" className="w-48 h-48 mx-auto" />}
+            </div>
 
             <button
               onClick={() => setShowQrModal(false)}
-              className="w-full py-2.5 rounded-2xl bg-slate-900 text-white font-black text-xs hover:bg-slate-800 transition-all cursor-pointer shadow-[2px_2px_0px_#1e293b]"
+              className="w-full py-2.5 rounded-2xl bg-slate-900 text-white font-black text-xs hover:bg-slate-800 cursor-pointer shadow-[2px_2px_0px_#1e293b]"
             >
               Tutup QR Code
             </button>
           </div>
         </div>
       )}
-
-      {/* Footer */}
-      <footer className="mt-8 bg-white border-t-2 border-slate-900 py-6 px-4 text-center text-xs font-medium text-slate-600 space-y-2">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#faf7ee] border border-slate-900 text-[11px] font-bold text-slate-800">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-          <span>Koneksi Aman Supabase PostgreSQL (RLS Protected) • Dikembangkan oleh @hndx07</span>
-        </div>
-        <p className="text-[11px]">
-          Hadir! • Sistem Informasi Presensi & Penilaian Kurikulum Merdeka
-        </p>
-      </footer>
     </div>
   );
 };

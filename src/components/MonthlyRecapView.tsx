@@ -10,6 +10,7 @@ import {
   Flame,
 } from 'lucide-react';
 import { Student, AttendanceSession, AttendanceRecord, ClassRoom, TeacherProfile } from '../types';
+import { PrintableDocument } from './PrintableDocument';
 
 interface MonthlyRecapViewProps {
   activeClass: ClassRoom;
@@ -31,6 +32,7 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
   const [selectedPeriod, setSelectedPeriod] = useState<string>('Bulan Ini');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortMode, setSortMode] = useState<'no' | 'az' | 'za'>('no');
+  const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
 
   const periodPills = [
     { label: 'Triwulan 1', val: 'Triwulan 1' },
@@ -195,11 +197,12 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
               <span>Ekspor Excel</span>
             </button>
             <button
-              onClick={() => window.print()}
-              className="px-3.5 py-2 rounded-2xl bg-[#a7f3d0] hover:bg-[#6ee7b7] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-emerald-950 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all cursor-pointer"
+              onClick={() => setShowPrintModal(true)}
+              className="px-3.5 py-2 rounded-2xl bg-[#fee2e2] hover:bg-[#fca5a5] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-rose-950 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Cetak Kertas Rekap Formal A4 Putih"
             >
-              <Printer className="w-4 h-4 text-emerald-950" />
-              <span>Cetak Rekap</span>
+              <Printer className="w-4 h-4 text-rose-900" />
+              <span>Kertas Cetak</span>
             </button>
           </div>
         </div>
@@ -423,6 +426,19 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Formal Printable Document */}
+      <PrintableDocument
+        type="recap"
+        isOpen={showPrintModal}
+        onClose={() => setShowPrintModal(false)}
+        activeClass={activeClass}
+        teacher={teacher}
+        schoolName={schoolName}
+        students={students}
+        sessions={sessions}
+        attendanceRecords={attendanceRecords}
+      />
     </div>
   );
 };

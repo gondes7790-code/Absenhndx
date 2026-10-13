@@ -14,8 +14,11 @@ import {
   CheckCircle2,
   X,
   Flame,
+  Printer,
+  RefreshCw,
 } from 'lucide-react';
 import { JournalEntry, ClassRoom, TeacherProfile } from '../types';
+import { PrintableDocument } from './PrintableDocument';
 
 interface JournalViewProps {
   journals: JournalEntry[];
@@ -24,6 +27,7 @@ interface JournalViewProps {
   onAddJournal: (entry: Omit<JournalEntry, 'id'>) => void;
   onSaveToCloud: () => void;
   schoolName: string;
+  onSyncAttendance?: () => void;
 }
 
 export const JournalView: React.FC<JournalViewProps> = ({
@@ -33,6 +37,7 @@ export const JournalView: React.FC<JournalViewProps> = ({
   onAddJournal,
   onSaveToCloud,
   schoolName,
+  onSyncAttendance,
 }) => {
   const [filterClass, setFilterClass] = useState('Semua');
   const [filterMonth, setFilterMonth] = useState('Semua');
@@ -40,6 +45,7 @@ export const JournalView: React.FC<JournalViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
 
   // New entry form state
   const [newTanggal, setNewTanggal] = useState(new Date().toISOString().split('T')[0]);
@@ -140,29 +146,37 @@ export const JournalView: React.FC<JournalViewProps> = ({
             </p>
           </div>
 
-          {/* Action Button Strip */}
+          {/* Action Button Strip - Streamlined without dualism */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+            {onSyncAttendance && (
+              <button
+                onClick={onSyncAttendance}
+                className="px-3.5 py-2 rounded-2xl bg-[#ccfbf1] hover:bg-[#99f6e4] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-teal-950 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all cursor-pointer"
+                title="Sinkronkan catatan kehadiran dari buku presensi"
+              >
+                <RefreshCw className="w-4 h-4 text-teal-900" />
+                <span>Sinkronkan Presensi</span>
+              </button>
+            )}
+
             <button
-              onClick={() => window.print()}
-              className="px-3.5 py-2 rounded-2xl bg-[#ede9fe] hover:bg-[#ddd6fe] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-indigo-950 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all cursor-pointer"
-            >
-              <Eye className="w-4 h-4 text-indigo-900" />
-              <span>Preview</span>
-            </button>
-            <button
-              onClick={() => window.print()}
+              onClick={() => setShowPrintModal(true)}
               className="px-3.5 py-2 rounded-2xl bg-[#fee2e2] hover:bg-[#fca5a5] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-rose-950 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Cetak Kertas Agenda Formal A4 Putih"
             >
-              <Download className="w-4 h-4 text-rose-900" />
-              <span>Unduh PDF</span>
+              <Printer className="w-4 h-4 text-rose-900" />
+              <span>Kertas Cetak</span>
             </button>
+
             <button
               onClick={handleExportCSV}
               className="px-3.5 py-2 rounded-2xl bg-[#fef9c3] hover:bg-[#fde047] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-amber-950 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Ekspor ke Excel / CSV"
             >
               <FileSpreadsheet className="w-4 h-4 text-amber-900" />
               <span>Excel</span>
             </button>
+
             <button
               onClick={onSaveToCloud}
               className="px-3.5 py-2 rounded-2xl bg-[#a7f3d0] hover:bg-[#6ee7b7] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-slate-950 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b] text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all cursor-pointer"
@@ -170,11 +184,12 @@ export const JournalView: React.FC<JournalViewProps> = ({
               <Cloud className="w-4 h-4 text-emerald-950" />
               <span>Simpan Cloud</span>
             </button>
+
             <button
               onClick={() => setIsModalOpen(true)}
-              className="px-3.5 py-2 rounded-2xl bg-[#dcfce7] hover:bg-[#bbf7d0] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-emerald-950 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b] text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-3.5 py-2 rounded-2xl bg-[#ede9fe] hover:bg-[#ddd6fe] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-indigo-950 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b] text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all cursor-pointer"
             >
-              <Plus className="w-4 h-4 text-emerald-950" />
+              <Plus className="w-4 h-4 text-indigo-950" />
               <span>Catat Agenda</span>
             </button>
           </div>
@@ -467,6 +482,17 @@ export const JournalView: React.FC<JournalViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Formal Printable Document */}
+      <PrintableDocument
+        type="journal"
+        isOpen={showPrintModal}
+        onClose={() => setShowPrintModal(false)}
+        activeClass={classes[0]}
+        teacher={teacher}
+        schoolName={schoolName}
+        journals={filteredJournals}
+      />
     </div>
   );
 };

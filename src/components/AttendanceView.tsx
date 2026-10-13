@@ -2,25 +2,33 @@ import React, { useState, useMemo } from 'react';
 import {
   Cloud,
   Plus,
-  Share2,
   FileSpreadsheet,
   FileText,
   Calendar,
   Check,
-  Save,
   Copy,
   MessageCircle,
   Search,
   CheckCircle2,
-  UserCheck,
   Flame,
   QrCode,
-  ArrowUpDown,
   Eye,
   Send,
+  Printer,
+  ChevronDown,
+  BookOpen,
+  Sparkles,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { Student, AttendanceSession, AttendanceRecord, AttendanceStatus, ClassRoom } from '../types';
+import {
+  Student,
+  AttendanceSession,
+  AttendanceRecord,
+  AttendanceStatus,
+  ClassRoom,
+  TeacherProfile,
+} from '../types';
+import { PrintableDocument } from './PrintableDocument';
 
 interface AttendanceViewProps {
   activeClass: ClassRoom;
@@ -36,6 +44,7 @@ interface AttendanceViewProps {
   onOpenParentLink: () => void;
   onOpenWhatsAppModal: (targetStudent?: Student) => void;
   schoolName: string;
+  teacher?: TeacherProfile;
 }
 
 export const AttendanceView: React.FC<AttendanceViewProps> = ({
@@ -52,43 +61,64 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   onOpenParentLink,
   onOpenWhatsAppModal,
   schoolName,
+  teacher = {
+    name: 'Hendra Setiawan, S. Pd.',
+    email: 'hendrasetiawan72@guru.smk.belajar.id',
+    nip: '19870415 201201 1 003',
+    school: 'Hadir!',
+    handle: '@hndx07',
+  },
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<'no' | 'az' | 'za'>('no');
   const [sessionDropdownOpen, setSessionDropdownOpen] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
 
   // Map of studentId -> AttendanceRecord
   const recordsMap = useMemo(() => {
     const map = new Map<string, AttendanceRecord>();
-    attendanceRecords
-      .filter((r) => r.sessionId === activeSession.id)
-      .forEach((r) => map.set(r.studentId, r));
+    if (activeSession) {
+      attendanceRecords
+        .filter((r) => r.sessionId === activeSession.id)
+        .forEach((r) => map.set(r.studentId, r));
+    }
     return map;
-  }, [attendanceRecords, activeSession.id]);
+  }, [attendanceRecords, activeSession]);
 
-  // Attendance metrics calculation
+  // Attendance metrics calculation (handles newly created sessions starting empty / kosong)
   const metrics = useMemo(() => {
     let hadir = 0;
     let sakit = 0;
     let izin = 0;
     let alpa = 0;
     let dispen = 0;
+    let belumDiisi = 0;
 
     students.forEach((std) => {
       const rec = recordsMap.get(std.id);
-      const status = rec?.status || 'H';
+      const status = rec?.status;
       if (status === 'H') hadir++;
       else if (status === 'S') sakit++;
       else if (status === 'I') izin++;
       else if (status === 'A') alpa++;
       else if (status === 'D') dispen++;
+      else belumDiisi++;
     });
 
     const total = students.length || 1;
     const percentage = Math.round((hadir / total) * 100);
 
-    return { hadir, sakit, izin, alpa, dispen, total: students.length, percentage };
+    return {
+      hadir,
+      sakit,
+      izin,
+      alpa,
+      dispen,
+      belumDiisi,
+      total: students.length,
+      percentage,
+    };
   }, [students, recordsMap]);
 
   // Filter & sort students
@@ -114,7 +144,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     const absentList: string[] = [];
     students.forEach((s) => {
       const rec = recordsMap.get(s.id);
-      if (rec && rec.status !== 'H') {
+      if (rec && rec.status && rec.status !== 'H') {
         const ket = rec.keterangan ? ` (${rec.keterangan})` : '';
         absentList.push(`• ${s.nama}: [${rec.status}]${ket}`);
       }
@@ -123,7 +153,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     const text = `*LAPORAN PRESENSI HARIAN SISWA*
 🏫 *${schoolName}*
 📚 Kelas: ${activeClass.nama} | ${activeClass.mapel}
-📅 Tanggal: ${activeSession.tanggal} (Pertemuan Ke-${activeSession.pertemuanKe})
+📅 Tanggal: ${activeSession ? activeSession.tanggal : '-'} (Pertemuan Ke-${activeSession ? activeSession.pertemuanKe : '-'})
 ━━━━━━━━━━━━━━━━━━
 📊 *Statistik Kehadiran:*
 • Total Siswa: ${students.length}
@@ -132,11 +162,17 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
 • Izin (I): ${metrics.izin}
 • Alpa (A): ${metrics.alpa}
 • Dispen (D): ${metrics.dispen}
-
-${absentList.length > 0 ? `*Siswa Yang Tidak Hadir:*\n${absentList.join('\n')}` : '✅ *Semua Siswa Hadir Lengkap (100%)*'}
+${metrics.belumDiisi > 0 ? `• Belum Diisi: ${metrics.belumDiisi}\n` : ''}
+${
+  absentList.length > 0
+    ? `*Siswa Yang Tidak Hadir:*\n${absentList.join('\n')}`
+    : metrics.belumDiisi > 0
+    ? `_Catatan: Masih ada ${metrics.belumDiisi} siswa belum diisi presensinya._`
+    : '✅ *Semua Siswa Hadir Lengkap (100%)*'
+}
 
 ━━━━━━━━━━━━━━━━━━
-_Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud PostgreSQL)._`;
+_Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otomatis ke Agenda Mengajar)._`;
     return text;
   };
 
@@ -156,7 +192,7 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
         `"${s.nisn}"`,
         `"${s.nama}"`,
         s.gender,
-        rec?.status || 'H',
+        rec?.status || '-',
         `"${rec?.keterangan || ''}"`,
       ].join(',');
     });
@@ -164,7 +200,10 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Presensi_${activeClass.nama}_Pertemuan_${activeSession.pertemuanKe}.csv`);
+    link.setAttribute(
+      'download',
+      `Presensi_${activeClass.nama}_Pertemuan_${activeSession?.pertemuanKe || 1}.csv`
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -184,12 +223,28 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
     }
   };
 
+  if (!activeSession) {
+    return (
+      <div className="bg-white rounded-3xl p-8 border-2 border-slate-900 shadow-[4px_4px_0px_#1e293b] text-center">
+        <p className="text-sm font-bold text-slate-600 mb-4">
+          Belum ada sesi presensi untuk kelas ini.
+        </p>
+        <button
+          onClick={onCreateNewSession}
+          className="px-4 py-2 rounded-2xl bg-[#6ee7b7] text-slate-950 font-black text-xs border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] cursor-pointer"
+        >
+          Buat Pertemuan Pertama
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5 sm:space-y-6">
-      {/* Top Header Card - Vintage Postmodern Neobrutalist */}
-      <div className="bg-[#fffdf8] rounded-3xl p-4 sm:p-6 border-2 border-slate-900 shadow-[4px_4px_0px_#1e293b] relative overflow-hidden">
+      {/* Top Header Card - Vintage Postmodern Neobrutalist (overflow-visible to prevent clipping dropdowns) */}
+      <div className="bg-[#fffdf8] rounded-3xl p-4 sm:p-6 border-2 border-slate-900 shadow-[4px_4px_0px_#1e293b] relative overflow-visible z-20">
         {/* Retro Corner Stamp with Fire */}
-        <div className="absolute top-0 right-0 bg-[#dcfce7] border-b-2 border-l-2 border-slate-900 px-3 py-1 rounded-bl-2xl text-[10px] font-mono font-bold text-emerald-950 flex items-center gap-1 shadow-xs">
+        <div className="absolute top-0 right-0 bg-[#dcfce7] border-b-2 border-l-2 border-slate-900 px-3 py-1 rounded-bl-2xl text-[10px] font-mono font-bold text-emerald-950 flex items-center gap-1 shadow-xs z-10">
           <Flame className="w-3 h-3 text-orange-600 fill-orange-500" />
           <span>PRESENSI HARIAN</span>
         </div>
@@ -201,17 +256,19 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
                 {activeClass.nama}
               </span>
               <span>•</span>
-              <span className="font-bold text-slate-700">Tahun Ajaran {activeClass.tahunAjaran} ({activeClass.semester})</span>
+              <span className="font-bold text-slate-700">
+                Tahun Ajaran {activeClass.tahunAjaran} ({activeClass.semester})
+              </span>
             </div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
               Buku Presensi & Kehadiran Murid
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 font-medium mt-0.5">
-              {schoolName} • Pencatatan Harian Realtime Terhubung Cloud Supabase
+              {schoolName} • Pencatatan Harian Realtime Terhubung Cloud & Agenda Mengajar
             </p>
           </div>
 
-          {/* Action Button Strip - Streamlined without dualism */}
+          {/* Action Button Strip - Clean & No Dualism */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
             <button
               onClick={onSaveToCloud}
@@ -224,6 +281,7 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
             <button
               onClick={onCreateNewSession}
               className="px-3.5 py-2 rounded-2xl bg-[#ede9fe] hover:bg-[#ddd6fe] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-indigo-950 text-xs sm:text-sm font-black flex items-center gap-2 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b] transition-all cursor-pointer"
+              title="Tambah pertemuan baru dengan absen kosong"
             >
               <Plus className="w-4 h-4 text-indigo-950" />
               <span>Pertemuan Baru</span>
@@ -232,7 +290,7 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
             <button
               onClick={onOpenParentLink}
               className="px-3.5 py-2 rounded-2xl bg-[#ffedd5] hover:bg-[#fed7aa] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-orange-950 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b] text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all cursor-pointer"
-              title="Buka Portal Publik & QR Code untuk Wali Murid"
+              title="Buka Portal Publik & QR Code"
             >
               <QrCode className="w-4 h-4 text-orange-900" />
               <span>Link Publik & QR</span>
@@ -241,72 +299,122 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
             <button
               onClick={handleExportCSV}
               className="px-3 py-2 rounded-2xl bg-[#fef9c3] hover:bg-[#fde047] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-amber-950 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer"
-              title="Ekspor Data ke File Excel"
+              title="Ekspor Data ke File Excel / CSV"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-amber-900" />
               <span>Excel</span>
             </button>
 
+            {/* Kertas Siap Cetak Button (Dokumen Standar Putih Bersih) */}
             <button
-              onClick={() => window.print()}
+              onClick={() => setShowPrintModal(true)}
               className="px-3 py-2 rounded-2xl bg-[#fee2e2] hover:bg-[#fca5a5] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-rose-950 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer"
-              title="Cetak atau Simpan PDF"
+              title="Cetak Kertas Dokumen Resmi Putih Tanpa Margin Web"
             >
-              <FileText className="w-3.5 h-3.5 text-rose-900" />
-              <span>PDF</span>
+              <Printer className="w-3.5 h-3.5 text-rose-900" />
+              <span>Kertas Cetak</span>
             </button>
           </div>
         </div>
 
-        {/* Meeting Dropdown Selector */}
-        <div className="mt-4 pt-4 border-t-2 border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-          <div className="relative">
-            <button
-              onClick={() => setSessionDropdownOpen(!sessionDropdownOpen)}
-              className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#faf7ee] hover:bg-[#f5eedc] border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] text-xs sm:text-sm font-black text-slate-900 transition-all cursor-pointer"
-            >
-              <Calendar className="w-4 h-4 text-emerald-800" />
-              <span>
-                Pertemuan Ke-{activeSession.pertemuanKe} ({activeSession.tanggal})
-              </span>
-              <span className="text-xs bg-slate-900 text-white px-2 py-0.5 rounded-full ml-1 font-mono">
-                {sessions.length} Sesi ▾
-              </span>
-            </button>
+        {/* Meeting Dropdown & Interactive Timeline Selector */}
+        <div className="mt-4 pt-4 border-t-2 border-slate-100 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="relative">
+              <button
+                onClick={() => setSessionDropdownOpen(!sessionDropdownOpen)}
+                className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#faf7ee] hover:bg-[#f5eedc] border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] text-xs sm:text-sm font-black text-slate-900 transition-all cursor-pointer"
+              >
+                <Calendar className="w-4 h-4 text-emerald-800" />
+                <span>
+                  Pertemuan Ke-{activeSession.pertemuanKe} ({activeSession.tanggal})
+                </span>
+                <span className="text-xs bg-slate-900 text-white px-2 py-0.5 rounded-full ml-1 font-mono">
+                  {sessions.length} Sesi <ChevronDown className="w-3 h-3 inline-block ml-0.5" />
+                </span>
+              </button>
 
-            {sessionDropdownOpen && (
-              <div className="absolute left-0 mt-2 w-72 bg-white rounded-3xl shadow-[5px_5px_0px_#1e293b] border-2 border-slate-900 py-2 z-40 max-h-64 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
-                <div className="px-3.5 py-1.5 text-[11px] font-black text-slate-500 uppercase tracking-wider border-b border-slate-100">
-                  PILIH SESI PERTEMUAN
+              {/* Dropdown Menu - Unclipped with high z-index */}
+              {sessionDropdownOpen && (
+                <div className="absolute left-0 mt-2 w-72 sm:w-80 bg-white rounded-3xl shadow-[6px_6px_0px_#1e293b] border-2 border-slate-900 py-2 z-50 max-h-72 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-3.5 py-1.5 text-[11px] font-black text-slate-500 uppercase tracking-wider border-b border-slate-100 flex items-center justify-between">
+                    <span>DAFTAR SESI PERTEMUAN</span>
+                    <span className="font-mono">{sessions.length} Sesi</span>
+                  </div>
+                  <div className="p-1.5 space-y-1">
+                    {sessions.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => {
+                          onSelectSession(s);
+                          setSessionDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer ${
+                          s.id === activeSession.id
+                            ? 'bg-[#dcfce7] border-2 border-slate-900 text-slate-950 font-black shadow-[2px_2px_0px_#1e293b]'
+                            : 'hover:bg-[#faf7ee] text-slate-800 font-bold'
+                        }`}
+                      >
+                        <div>
+                          <p className="font-bold">Pertemuan Ke-{s.pertemuanKe}</p>
+                          <p className="text-[10px] text-slate-500">
+                            {s.tanggal} • {s.mapel}
+                          </p>
+                        </div>
+                        {s.id === activeSession.id && <Check className="w-4 h-4 text-emerald-700" />}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="p-1.5 space-y-1">
-                  {sessions.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => {
-                        onSelectSession(s);
-                        setSessionDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer ${
-                        s.id === activeSession.id
-                          ? 'bg-[#dcfce7] border-2 border-slate-900 text-slate-950 font-black shadow-[2px_2px_0px_#1e293b]'
-                          : 'hover:bg-[#faf7ee] text-slate-800 font-bold'
-                      }`}
-                    >
-                      <div>
-                        <p className="font-bold">Pertemuan Ke-{s.pertemuanKe}</p>
-                        <p className="text-[10px] text-slate-500">{s.tanggal} • {s.mapel}</p>
-                      </div>
-                      {s.id === activeSession.id && <Check className="w-4 h-4 text-emerald-700" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+              )}
+            </div>
+
+            <span className="text-[11px] font-medium text-slate-500">
+              Pilih sesi untuk melihat atau mengedit daftar hadir tanggal terkait.
+            </span>
           </div>
-          <span className="text-[11px] font-medium text-slate-500">
-            Pilih sesi di atas untuk beralih tanggal atau buat pertemuan baru.
-          </span>
+
+          {/* Horizontal Meeting Pills Timeline so meetings are immediately visible and clickable */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5">
+            <span className="text-[10px] font-black uppercase text-slate-500 shrink-0 font-mono mr-1">
+              Sesi:
+            </span>
+            {sessions.map((s) => {
+              const isActive = s.id === activeSession.id;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => onSelectSession(s)}
+                  className={`px-3 py-1 rounded-xl text-xs font-black transition-all cursor-pointer shrink-0 border-2 border-slate-900 ${
+                    isActive
+                      ? 'bg-[#6ee7b7] text-slate-950 shadow-[2px_2px_0px_#1e293b]'
+                      : 'bg-white hover:bg-[#faf7ee] text-slate-700 shadow-[1px_1px_0px_#1e293b]'
+                  }`}
+                >
+                  Ke-{s.pertemuanKe}{' '}
+                  <span className="text-[10px] font-mono font-medium opacity-80">
+                    ({s.tanggal.slice(5)})
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Dedicated Pratinjau Pertemuan Banner (ensures preview below meeting is clear & synchronized) */}
+          <div className="bg-[#f0fdf4] border-2 border-emerald-900/30 rounded-2xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="font-black text-emerald-950 bg-white px-2 py-0.5 rounded-lg border border-emerald-900/20 shadow-xs">
+                Pratinjau Pertemuan Ke-{activeSession.pertemuanKe}
+              </span>
+              <span className="text-slate-700 font-medium">
+                📅 {activeSession.tanggal} • 📚 {activeSession.mapel}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-emerald-900 font-bold text-[11px]">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Tersinkronisasi otomatis ke Agenda Mengajar</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -339,6 +447,7 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
             <button
               onClick={handleTriggerConfetti}
               className="flex-1 py-2 px-3 rounded-2xl bg-[#6ee7b7] hover:bg-[#34d399] active:translate-x-[1px] active:translate-y-[1px] text-slate-950 text-xs font-black flex items-center justify-center gap-1.5 transition-all border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] cursor-pointer"
+              title="Setel semua siswa menjadi Hadir (100%)"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>Set Semua Hadir</span>
@@ -367,6 +476,11 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
                 ({metrics.hadir}/{metrics.total} Murid)
               </span>
             </div>
+            {metrics.belumDiisi > 0 && (
+              <span className="text-[11px] font-black text-amber-900 bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-900/30 inline-block mt-1">
+                {metrics.belumDiisi} Siswa Belum Diabsen
+              </span>
+            )}
           </div>
 
           <div className="mt-4">
@@ -389,9 +503,7 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
             <span className="text-xl sm:text-2xl font-black text-emerald-950 font-mono">
               {metrics.hadir}
             </span>
-            <span className="text-[10px] sm:text-xs font-black text-emerald-900 mt-0.5">
-              Hadir
-            </span>
+            <span className="text-[10px] sm:text-xs font-black text-emerald-900 mt-0.5">Hadir</span>
           </div>
 
           {/* Sakit */}
@@ -399,9 +511,7 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
             <span className="text-xl sm:text-2xl font-black text-amber-950 font-mono">
               {metrics.sakit}
             </span>
-            <span className="text-[10px] sm:text-xs font-black text-amber-900 mt-0.5">
-              Sakit
-            </span>
+            <span className="text-[10px] sm:text-xs font-black text-amber-900 mt-0.5">Sakit</span>
           </div>
 
           {/* Izin */}
@@ -409,9 +519,7 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
             <span className="text-xl sm:text-2xl font-black text-orange-950 font-mono">
               {metrics.izin}
             </span>
-            <span className="text-[10px] sm:text-xs font-black text-orange-900 mt-0.5">
-              Izin
-            </span>
+            <span className="text-[10px] sm:text-xs font-black text-orange-900 mt-0.5">Izin</span>
           </div>
 
           {/* Alfa */}
@@ -419,9 +527,7 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
             <span className="text-xl sm:text-2xl font-black text-rose-950 font-mono">
               {metrics.alpa}
             </span>
-            <span className="text-[10px] sm:text-xs font-black text-rose-900 mt-0.5">
-              Alfa
-            </span>
+            <span className="text-[10px] sm:text-xs font-black text-rose-900 mt-0.5">Alfa</span>
           </div>
 
           {/* Dispen */}
@@ -429,14 +535,12 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
             <span className="text-xl sm:text-2xl font-black text-indigo-950 font-mono">
               {metrics.dispen}
             </span>
-            <span className="text-[10px] sm:text-xs font-black text-indigo-900 mt-0.5">
-              Dispen
-            </span>
+            <span className="text-[10px] sm:text-xs font-black text-indigo-900 mt-0.5">Dispen</span>
           </div>
         </div>
       </div>
 
-      {/* WhatsApp Parent Notification Strip - Vintage Postmodern */}
+      {/* WhatsApp Parent Notification Strip */}
       <div className="bg-[#faf7ee] border-2 border-slate-900 rounded-3xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-[3px_3px_0px_#1e293b]">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-2xl bg-[#dcfce7] border-2 border-slate-900 text-emerald-950 flex items-center justify-center shrink-0 shadow-[2px_2px_0px_#1e293b]">
@@ -452,26 +556,12 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
               </span>
             </div>
             <p className="text-xs text-slate-600 mt-0.5 font-medium">
-              Format etika kesopanan Indonesia terstruktur. Otomatis diperbarui saat opsi status absensi dipilih.
+              Format etika kesopanan Indonesia terstruktur. Otomatis diperbarui saat status absensi dipilih.
             </p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => onOpenWhatsAppModal()}
-            className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border-2 border-slate-900 text-slate-900 text-xs font-bold flex items-center gap-1.5 shadow-[2px_2px_0px_#1e293b] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer transition-all"
-          >
-            <Eye className="w-3.5 h-3.5 text-slate-700" />
-            <span>Pratinjau Teks</span>
-          </button>
-          <button
-            onClick={handleCopyReport}
-            className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 border-2 border-slate-900 text-slate-900 text-xs font-bold flex items-center gap-1.5 shadow-[2px_2px_0px_#1e293b] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer transition-all"
-          >
-            <Copy className="w-3.5 h-3.5 text-slate-700" />
-            <span>Salin WA</span>
-          </button>
           <button
             onClick={() => onOpenWhatsAppModal()}
             className="px-3.5 py-1.5 rounded-xl bg-[#6ee7b7] hover:bg-[#34d399] border-2 border-slate-900 text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-[2.5px_2.5px_0px_#1e293b] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer transition-all"
@@ -506,7 +596,9 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
               <button
                 onClick={() => setSortMode('no')}
                 className={`px-2.5 py-1 text-xs font-black rounded-xl transition-all cursor-pointer ${
-                  sortMode === 'no' ? 'bg-[#dcfce7] text-slate-900 border border-slate-900' : 'text-slate-600 hover:text-slate-900'
+                  sortMode === 'no'
+                    ? 'bg-[#dcfce7] text-slate-900 border border-slate-900'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 No
@@ -514,7 +606,9 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
               <button
                 onClick={() => setSortMode('az')}
                 className={`px-2.5 py-1 text-xs font-black rounded-xl transition-all cursor-pointer ${
-                  sortMode === 'az' ? 'bg-[#e0f2fe] text-slate-900 border border-slate-900' : 'text-slate-600 hover:text-slate-900'
+                  sortMode === 'az'
+                    ? 'bg-[#e0f2fe] text-slate-900 border border-slate-900'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 A-Z
@@ -522,7 +616,9 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
               <button
                 onClick={() => setSortMode('za')}
                 className={`px-2.5 py-1 text-xs font-black rounded-xl transition-all cursor-pointer ${
-                  sortMode === 'za' ? 'bg-[#ede9fe] text-slate-900 border border-slate-900' : 'text-slate-600 hover:text-slate-900'
+                  sortMode === 'za'
+                    ? 'bg-[#ede9fe] text-slate-900 border border-slate-900'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Z-A
@@ -539,7 +635,7 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
                 <th className="py-3 px-3 w-12 text-center">NO</th>
                 <th className="py-3 px-4 min-w-[200px]">NAMA MURID</th>
                 <th className="py-3 px-3 w-14 text-center">L/P</th>
-                <th className="py-3 px-4 min-w-[230px] text-center">STATUS KEHADIRAN (H/S/I/A/D)</th>
+                <th className="py-3 px-4 min-w-[240px] text-center">STATUS KEHADIRAN (H/S/I/A/D)</th>
                 <th className="py-3 px-4 min-w-[220px]">KETERANGAN / ALASAN</th>
                 <th className="py-3 px-3 w-24 text-center">WA ORTU</th>
               </tr>
@@ -547,20 +643,23 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
             <tbody className="divide-y-2 divide-slate-100">
               {filteredStudents.map((student, idx) => {
                 const record = recordsMap.get(student.id);
-                const currentStatus: AttendanceStatus = record?.status || 'H';
+                // When status is undefined or empty, it is empty (belum diisi)
+                const currentStatus: AttendanceStatus | '' = record?.status || '';
                 const currentKet = record?.keterangan || '';
 
                 return (
-                  <tr
-                    key={student.id}
-                    className="hover:bg-[#faf7ee]/60 transition-colors group"
-                  >
+                  <tr key={student.id} className="hover:bg-[#faf7ee]/60 transition-colors group">
                     <td className="py-3 px-3 text-center text-slate-600 font-mono font-bold">
                       {idx + 1}
                     </td>
                     <td className="py-3 px-4">
-                      <div className="font-black text-slate-900 group-hover:text-emerald-800 transition-colors">
-                        {student.nama}
+                      <div className="font-black text-slate-900 group-hover:text-emerald-800 transition-colors flex items-center gap-1.5">
+                        <span>{student.nama}</span>
+                        {currentStatus === '' && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                            Kosong
+                          </span>
+                        )}
                       </div>
                       <div className="text-[11px] text-slate-500 font-mono font-medium">
                         NISN: {student.nisn}
@@ -572,7 +671,7 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
                       </span>
                     </td>
                     <td className="py-3 px-4 text-center">
-                      {/* Interactive H S I A D Toggle Buttons with Tactile Neobrutalism */}
+                      {/* Interactive H S I A D Toggle Buttons */}
                       <div className="inline-flex items-center gap-1 sm:gap-1.5 p-1 bg-[#faf7ee] rounded-2xl border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b]">
                         {/* H */}
                         <button
@@ -645,7 +744,11 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
                         type="text"
                         placeholder="Catatan izin/keterangan..."
                         value={currentKet}
-                        onChange={(e) => onUpdateRecord(student.id, currentStatus, e.target.value)}
+                        onChange={(e) => {
+                          if (currentStatus) {
+                            onUpdateRecord(student.id, currentStatus, e.target.value);
+                          }
+                        }}
                         className="w-full px-3 py-1.5 text-xs rounded-xl border-2 border-slate-900 bg-[#faf7ee] text-slate-900 font-bold focus:bg-white focus:outline-none focus:shadow-[2px_2px_0px_#0d9488] transition-all placeholder:text-slate-400"
                       />
                     </td>
@@ -666,6 +769,20 @@ _Laporan resmi dibuat otomatis via Sistem Kurikulum Merdeka @hndx07 (Cloud Postg
           </table>
         </div>
       </div>
+
+      {/* Formal Printable Document Component (Modal View & Print Target) */}
+      <PrintableDocument
+        type="attendance"
+        isOpen={showPrintModal}
+        onClose={() => setShowPrintModal(false)}
+        activeClass={activeClass}
+        teacher={teacher}
+        schoolName={schoolName}
+        session={activeSession}
+        sessions={sessions}
+        students={students}
+        attendanceRecords={attendanceRecords}
+      />
     </div>
   );
 };
