@@ -17,7 +17,7 @@ import {
   Printer,
   RefreshCw,
 } from 'lucide-react';
-import { JournalEntry, ClassRoom, TeacherProfile } from '../types';
+import { JournalEntry, ClassRoom, TeacherProfile, PrintConfig } from '../types';
 import { PrintableDocument } from './PrintableDocument';
 
 interface JournalViewProps {
@@ -28,6 +28,7 @@ interface JournalViewProps {
   onSaveToCloud: () => void;
   schoolName: string;
   onSyncAttendance?: () => void;
+  printConfig?: PrintConfig;
 }
 
 export const JournalView: React.FC<JournalViewProps> = ({
@@ -38,6 +39,7 @@ export const JournalView: React.FC<JournalViewProps> = ({
   onSaveToCloud,
   schoolName,
   onSyncAttendance,
+  printConfig,
 }) => {
   const [filterClass, setFilterClass] = useState('Semua');
   const [filterMonth, setFilterMonth] = useState('Semua');
@@ -491,6 +493,7 @@ export const JournalView: React.FC<JournalViewProps> = ({
         activeClass={classes[0]}
         teacher={teacher}
         schoolName={schoolName}
+        printConfig={printConfig}
         journals={filteredJournals}
       />
     </div>

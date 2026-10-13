@@ -88,30 +88,75 @@
 
 @media print {
   @page {
-    size: auto;
-    margin: 10mm 12mm;
+    size: A4 portrait;
+    margin: 10mm 12mm 12mm 12mm;
   }
 
   html,
-  body {
+  body,
+  #root {
+    background: #ffffff !important;
     background-color: #ffffff !important;
     background-image: none !important;
     color: #000000 !important;
     margin: 0 !important;
     padding: 0 !important;
+    width: 100% !important;
+    min-height: 100% !important;
+    box-shadow: none !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* Hide web interface elements, backgrounds, banners, buttons */
+  /* Hide all web UI chrome, headers, buttons, footers, notifications */
   header,
   nav,
   aside,
   footer,
   button,
   .no-print,
-  .web-app-wrapper > *:not(.printable-document) {
+  .no-print-area,
+  .toast-container {
     display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Reset all modal overlays so they don't add dark margins or borders */
+  .fixed,
+  .print-modal-backdrop {
+    position: static !important;
+    inset: auto !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  .print-modal-dialog {
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  .print-scroll-container,
+  .print-paper-card {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    overflow: visible !important;
   }
 
   main {
@@ -122,7 +167,7 @@
     background: #ffffff !important;
   }
 
-  /* Reveal formal printable paper document */
+  /* Formal printable sheet rules */
   .printable-document,
   .printable-document.hidden-on-screen,
   .printable-sheet {
@@ -133,14 +178,36 @@
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
+    background-color: #ffffff !important;
     color: #000000 !important;
     border: none !important;
     box-shadow: none !important;
   }
 
-  .print-page {
-    page-break-after: always;
-    break-after: page;
+  .printable-sheet * {
+    color: #000000 !important;
+    box-shadow: none !important;
+  }
+
+  .printable-sheet table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  .printable-sheet th,
+  .printable-sheet td {
+    border-color: #000000 !important;
+  }
+
+  .printable-sheet thead tr {
+    background-color: #f1f5f9 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print-page-break {
+    page-break-after: always !important;
+    break-after: page !important;
   }
 }
 

@@ -135,3 +135,22 @@ export type ActiveTab =
   | 'profil'
   | 'supabase';
 
+export interface PrintConfig {
+  dinasHeader: string;
+  dinasSubHeader: string;
+  schoolName: string;
+  unitSubHeader?: string;
+  address: string;
+  phone: string;
+  emailWeb: string;
+  logoEmbedCode: string; // URL, <img src="..." />, or SVG
+  logoPosition: 'left' | 'right' | 'both';
+  showTutWuriLogo: boolean;
+  principalName: string;
+  principalNip: string;
+  documentCity: string;
+  customDateText?: string;
+  borderStyle: 'double' | 'solid' | 'thick';
+  footerNote: string;
+}
+

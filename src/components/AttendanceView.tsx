@@ -27,6 +27,7 @@ import {
   AttendanceStatus,
   ClassRoom,
   TeacherProfile,
+  PrintConfig,
 } from '../types';
 import { PrintableDocument } from './PrintableDocument';
 
@@ -45,6 +46,7 @@ interface AttendanceViewProps {
   onOpenWhatsAppModal: (targetStudent?: Student) => void;
   schoolName: string;
   teacher?: TeacherProfile;
+  printConfig?: PrintConfig;
 }
 
 export const AttendanceView: React.FC<AttendanceViewProps> = ({
@@ -68,6 +70,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     school: 'Hadir!',
     handle: '@hndx07',
   },
+  printConfig,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<'no' | 'az' | 'za'>('no');
@@ -778,6 +781,7 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
         activeClass={activeClass}
         teacher={teacher}
         schoolName={schoolName}
+        printConfig={printConfig}
         session={activeSession}
         sessions={sessions}
         students={students}

@@ -22,7 +22,19 @@ import {
   RotateCcw,
   GraduationCap,
 } from 'lucide-react';
-import { TeacherProfile, ClassRoom } from '../types';
+import {
+  TeacherProfile,
+  ClassRoom,
+  Student,
+  AttendanceSession,
+  AttendanceRecord,
+  GradeRecord,
+  JournalEntry,
+  FinanceTransaction,
+  PrintConfig,
+} from '../types';
+import { getSavedPrintConfig } from '../utils/printConfig';
+import { PrintConfigManualEditor } from './PrintConfigManualEditor';
 
 interface ProfileViewProps {
   teacher: TeacherProfile;
@@ -32,6 +44,16 @@ interface ProfileViewProps {
   onUpdateTeacher: (updated: TeacherProfile) => void;
   onLogout: () => void;
   onShowToast: (title: string, desc: string) => void;
+  // Universal Print & Document integration
+  activeClass?: ClassRoom;
+  students?: Student[];
+  sessions?: AttendanceSession[];
+  attendanceRecords?: AttendanceRecord[];
+  grades?: GradeRecord[];
+  journals?: JournalEntry[];
+  financeTransactions?: FinanceTransaction[];
+  printConfig?: PrintConfig;
+  onUpdatePrintConfig?: (config: PrintConfig) => void;
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({
@@ -42,7 +64,28 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onUpdateTeacher,
   onLogout,
   onShowToast,
+  activeClass,
+  students = [],
+  sessions = [],
+  attendanceRecords = [],
+  grades = [],
+  journals = [],
+  financeTransactions = [],
+  printConfig,
+  onUpdatePrintConfig,
 }) => {
+  // Print Config state
+  const [currentPrintConfig, setCurrentPrintConfig] = useState<PrintConfig>(
+    () => printConfig || getSavedPrintConfig(schoolName)
+  );
+
+  const handlePrintConfigChange = (updated: PrintConfig) => {
+    setCurrentPrintConfig(updated);
+    if (onUpdatePrintConfig) {
+      onUpdatePrintConfig(updated);
+    }
+  };
+
   // Form State
   const [formData, setFormData] = useState<TeacherProfile>({ ...teacher });
   const [isEditing, setIsEditing] = useState(false);
@@ -442,6 +485,23 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </div>
             </form>
           </div>
+
+          {/* Edit Manual untuk Dokumen Siap Cetak (Persis di bawah profil guru/pendidik, diatas keamanan dan kata sandi akun) */}
+          <PrintConfigManualEditor
+            teacher={formData}
+            schoolName={formData.school || schoolName}
+            classes={classes}
+            activeClass={activeClass || classes[0]}
+            students={students}
+            sessions={sessions}
+            attendanceRecords={attendanceRecords}
+            grades={grades}
+            journals={journals}
+            financeTransactions={financeTransactions}
+            printConfig={currentPrintConfig}
+            onUpdatePrintConfig={handlePrintConfigChange}
+            onShowToast={onShowToast}
+          />
 
           {/* Security & Password Card */}
           <div className="bg-white border-2 border-slate-900 rounded-3xl p-6 shadow-[4px_4px_0px_#1e293b]">

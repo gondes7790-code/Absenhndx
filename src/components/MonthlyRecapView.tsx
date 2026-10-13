@@ -9,7 +9,14 @@ import {
   Calendar,
   Flame,
 } from 'lucide-react';
-import { Student, AttendanceSession, AttendanceRecord, ClassRoom, TeacherProfile } from '../types';
+import {
+  Student,
+  AttendanceSession,
+  AttendanceRecord,
+  ClassRoom,
+  TeacherProfile,
+  PrintConfig,
+} from '../types';
 import { PrintableDocument } from './PrintableDocument';
 
 interface MonthlyRecapViewProps {
@@ -19,6 +26,7 @@ interface MonthlyRecapViewProps {
   attendanceRecords: AttendanceRecord[];
   teacher: TeacherProfile;
   schoolName: string;
+  printConfig?: PrintConfig;
 }
 
 export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
@@ -28,6 +36,7 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
   attendanceRecords,
   teacher,
   schoolName,
+  printConfig,
 }) => {
   const [selectedPeriod, setSelectedPeriod] = useState<string>('Bulan Ini');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -435,6 +444,7 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
         activeClass={activeClass}
         teacher={teacher}
         schoolName={schoolName}
+        printConfig={printConfig}
         students={students}
         sessions={sessions}
         attendanceRecords={attendanceRecords}

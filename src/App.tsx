@@ -28,7 +28,9 @@ import {
   TeacherProfile,
   ActiveTab,
   AttendanceStatus,
+  PrintConfig,
 } from './types';
+import { getSavedPrintConfig, savePrintConfig } from './utils/printConfig';
 
 import {
   initialClasses,
@@ -135,7 +137,14 @@ export default function App() {
     }
   });
 
-  const [schoolName] = useState<string>('Hadir!');
+  const [printConfig, setPrintConfig] = useState<PrintConfig>(() =>
+    getSavedPrintConfig('SMK Merdeka Indonesia')
+  );
+
+  const [schoolName, setSchoolName] = useState<string>(() => {
+    const savedCfg = getSavedPrintConfig('SMK Merdeka Indonesia');
+    return savedCfg.schoolName || 'SMK Merdeka Indonesia';
+  });
 
   // Navigation & Modals
   const [activeTab, setActiveTab] = useState<ActiveTab>('presensi');
@@ -757,6 +766,7 @@ export default function App() {
             }}
             schoolName={schoolName}
             teacher={teacher}
+            printConfig={printConfig}
           />
         )}
 
@@ -768,6 +778,7 @@ export default function App() {
             attendanceRecords={attendanceRecords}
             teacher={teacher}
             schoolName={schoolName}
+            printConfig={printConfig}
           />
         )}
 
@@ -783,6 +794,7 @@ export default function App() {
             schoolName={schoolName}
             teacher={teacher}
             onUpdateClass={handleEditClass}
+            printConfig={printConfig}
           />
         )}
 
@@ -808,6 +820,7 @@ export default function App() {
             onSaveToCloud={handleSaveToCloud}
             schoolName={schoolName}
             onSyncAttendance={handleSyncAllAttendanceToJournals}
+            printConfig={printConfig}
           />
         )}
 
@@ -859,6 +872,19 @@ export default function App() {
             }}
             onLogout={handleLogout}
             onShowToast={showToast}
+            activeClass={activeClass}
+            students={students}
+            sessions={sessions}
+            attendanceRecords={attendanceRecords}
+            grades={grades}
+            journals={journals}
+            financeTransactions={finances}
+            printConfig={printConfig}
+            onUpdatePrintConfig={(cfg) => {
+              setPrintConfig(cfg);
+              setSchoolName(cfg.schoolName);
+              savePrintConfig(cfg);
+            }}
           />
         )}
       </main>

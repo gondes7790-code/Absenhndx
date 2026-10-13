@@ -1,16 +1,28 @@
 import React from 'react';
-import { Printer, X, Download, FileText, CheckCircle2 } from 'lucide-react';
+import { Printer, X } from 'lucide-react';
 import {
   Student,
   AttendanceSession,
   AttendanceRecord,
   GradeRecord,
   JournalEntry,
+  FinanceTransaction,
   ClassRoom,
   TeacherProfile,
+  PrintConfig,
 } from '../types';
+import {
+  getSavedPrintConfig,
+  parseLogoEmbed,
+  TUT_WURI_LOGO_SVG,
+} from '../utils/printConfig';
 
-export type PrintableDocumentType = 'attendance' | 'recap' | 'gradebook' | 'journal';
+export type PrintableDocumentType =
+  | 'attendance'
+  | 'recap'
+  | 'gradebook'
+  | 'journal'
+  | 'finance';
 
 interface PrintableDocumentProps {
   type: PrintableDocumentType;
@@ -19,6 +31,7 @@ interface PrintableDocumentProps {
   activeClass: ClassRoom;
   teacher: TeacherProfile;
   schoolName: string;
+  printConfig?: PrintConfig;
   // Specific data
   students?: Student[];
   session?: AttendanceSession;
@@ -26,6 +39,7 @@ interface PrintableDocumentProps {
   attendanceRecords?: AttendanceRecord[];
   grades?: GradeRecord[];
   journals?: JournalEntry[];
+  financeTransactions?: FinanceTransaction[];
 }
 
 export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
@@ -35,21 +49,75 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
   activeClass,
   teacher,
   schoolName,
+  printConfig,
   students = [],
   session,
   sessions = [],
   attendanceRecords = [],
   grades = [],
   journals = [],
+  financeTransactions = [],
 }) => {
+  // Use passed printConfig or load from storage
+  const cfg = printConfig || getSavedPrintConfig(schoolName);
+
   const todayFormatted = new Date().toLocaleDateString('id-ID', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   });
 
+  const signatureDate = cfg.customDateText?.trim() ? cfg.customDateText.trim() : todayFormatted;
+
   const handlePrint = () => {
     window.print();
+  };
+
+  const parsedLogo = parseLogoEmbed(cfg.logoEmbedCode);
+
+  const renderSchoolLogo = () => {
+    if (parsedLogo.type === 'svg') {
+      return (
+        <div
+          className="w-18 h-18 sm:w-20 sm:h-20 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:max-h-20"
+          dangerouslySetInnerHTML={{ __html: parsedLogo.content }}
+        />
+      );
+    }
+    if (parsedLogo.type === 'img' && parsedLogo.content) {
+      return (
+        <img
+          src={parsedLogo.content}
+          alt="Logo Sekolah"
+          className="max-w-[72px] max-h-[72px] sm:max-w-[82px] sm:max-h-[82px] object-contain mx-auto"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).style.display = 'none';
+          }}
+        />
+      );
+    }
+    return (
+      <img
+        src={TUT_WURI_LOGO_SVG}
+        alt="Logo Tut Wuri"
+        className="w-16 h-16 object-contain mx-auto"
+      />
+    );
+  };
+
+  const renderTutWuriLogo = () => (
+    <img
+      src={TUT_WURI_LOGO_SVG}
+      alt="Lambang Tut Wuri Handayani"
+      className="max-w-[70px] max-h-[70px] sm:max-w-[78px] sm:max-h-[78px] object-contain mx-auto"
+    />
+  );
+
+  // Determine Kop border style
+  const getKopBorderClass = () => {
+    if (cfg.borderStyle === 'solid') return 'border-b-2 border-black';
+    if (cfg.borderStyle === 'thick') return 'border-b-4 border-black';
+    return 'border-b-4 border-double border-black';
   };
 
   // Content renderer based on type
@@ -102,7 +170,7 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
                 <tr>
                   <td className="w-28 font-semibold py-0.5">Satuan Pendidikan</td>
                   <td className="w-3 py-0.5">:</td>
-                  <td className="py-0.5 font-bold">{schoolName}</td>
+                  <td className="py-0.5 font-bold">{cfg.schoolName}</td>
                   <td className="w-28 font-semibold py-0.5">Mata Pelajaran</td>
                   <td className="w-3 py-0.5">:</td>
                   <td className="py-0.5">{activeSess?.mapel || activeClass.mapel}</td>
@@ -229,7 +297,7 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
                 <tr>
                   <td className="w-28 font-semibold py-0.5">Satuan Pendidikan</td>
                   <td className="w-3 py-0.5">:</td>
-                  <td className="py-0.5 font-bold">{schoolName}</td>
+                  <td className="py-0.5 font-bold">{cfg.schoolName}</td>
                   <td className="w-28 font-semibold py-0.5">Jumlah Sesi Selesai</td>
                   <td className="w-3 py-0.5">:</td>
                   <td className="py-0.5">{sessions.length} Pertemuan</td>
@@ -335,7 +403,7 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
                 <tr>
                   <td className="w-28 font-semibold py-0.5">Satuan Pendidikan</td>
                   <td className="w-3 py-0.5">:</td>
-                  <td className="py-0.5 font-bold">{schoolName}</td>
+                  <td className="py-0.5 font-bold">{cfg.schoolName}</td>
                   <td className="w-28 font-semibold py-0.5">KKM / Kriteria TP</td>
                   <td className="w-3 py-0.5">:</td>
                   <td className="py-0.5">{activeClass.kkm}</td>
@@ -427,7 +495,7 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
                 <tr>
                   <td className="w-28 font-semibold py-0.5">Satuan Pendidikan</td>
                   <td className="w-3 py-0.5">:</td>
-                  <td className="py-0.5 font-bold">{schoolName}</td>
+                  <td className="py-0.5 font-bold">{cfg.schoolName}</td>
                   <td className="w-28 font-semibold py-0.5">Nama Pendidik</td>
                   <td className="w-3 py-0.5">:</td>
                   <td className="py-0.5 font-bold">{teacher.name}</td>
@@ -483,69 +551,225 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
           </div>
         );
       }
+
+      case 'finance': {
+        const classTxs = financeTransactions.filter(
+          (t) => !t.classId || t.classId === activeClass.id
+        );
+        let totalPemasukan = 0;
+        let totalPengeluaran = 0;
+        classTxs.forEach((t) => {
+          if (t.tipe === 'Pemasukan') totalPemasukan += t.nominal;
+          else totalPengeluaran += t.nominal;
+        });
+        const saldo = totalPemasukan - totalPengeluaran;
+
+        return (
+          <div className="text-black bg-white">
+            <div className="text-center mb-4">
+              <h2 className="text-base font-bold uppercase tracking-wider underline">
+                BUKU REKAPITULASI KAS & TABUNGAN SISWA
+              </h2>
+              <p className="text-xs font-semibold mt-1">
+                Tahun Ajaran {activeClass.tahunAjaran} • Semester {activeClass.semester}
+              </p>
+            </div>
+
+            {/* Meta Table */}
+            <table className="w-full text-xs mb-3 border-none">
+              <tbody>
+                <tr>
+                  <td className="w-28 font-semibold py-0.5">Satuan Pendidikan</td>
+                  <td className="w-3 py-0.5">:</td>
+                  <td className="py-0.5 font-bold">{cfg.schoolName}</td>
+                  <td className="w-28 font-semibold py-0.5">Total Pemasukan</td>
+                  <td className="w-3 py-0.5">:</td>
+                  <td className="py-0.5 font-mono text-emerald-800">
+                    Rp {totalPemasukan.toLocaleString('id-ID')}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="font-semibold py-0.5">Kelas / Rombel</td>
+                  <td className="py-0.5">:</td>
+                  <td className="py-0.5 font-bold">{activeClass.nama}</td>
+                  <td className="font-semibold py-0.5">Total Pengeluaran</td>
+                  <td className="py-0.5">:</td>
+                  <td className="py-0.5 font-mono text-rose-800">
+                    Rp {totalPengeluaran.toLocaleString('id-ID')}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="font-semibold py-0.5">Wali Kelas / Guru</td>
+                  <td className="py-0.5">:</td>
+                  <td className="py-0.5">{teacher.name}</td>
+                  <td className="font-semibold py-0.5 font-bold">Saldo Akhir</td>
+                  <td className="py-0.5">:</td>
+                  <td className="py-0.5 font-mono font-bold">
+                    Rp {saldo.toLocaleString('id-ID')}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            {/* Formal Finance Table */}
+            <table className="w-full text-[10px] border-collapse border border-black mb-6">
+              <thead>
+                <tr className="bg-slate-100 font-bold text-center">
+                  <th className="border border-black py-1.5 px-1 w-7">NO</th>
+                  <th className="border border-black py-1.5 px-2 w-20">TANGGAL</th>
+                  <th className="border border-black py-1.5 px-2 w-24">KATEGORI</th>
+                  <th className="border border-black py-1.5 px-2 w-16">TIPE</th>
+                  <th className="border border-black py-1.5 px-3 text-left">
+                    SISWA / URAIAN TRANSAKSI
+                  </th>
+                  <th className="border border-black py-1.5 px-2 text-right w-24">
+                    MASUK (RP)
+                  </th>
+                  <th className="border border-black py-1.5 px-2 text-right w-24">
+                    KELUAR (RP)
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {classTxs.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="border border-black py-4 text-center text-slate-500 italic">
+                      Belum ada mutasi keuangan untuk kelas ini.
+                    </td>
+                  </tr>
+                ) : (
+                  classTxs.map((t, idx) => (
+                    <tr key={t.id || idx} className="text-center even:bg-slate-50/50">
+                      <td className="border border-black py-1 px-1 font-mono">{idx + 1}</td>
+                      <td className="border border-black py-1 px-2 font-mono">{t.tanggal}</td>
+                      <td className="border border-black py-1 px-2">{t.kategori}</td>
+                      <td className="border border-black py-1 px-2 font-bold font-mono">
+                        {t.tipe}
+                      </td>
+                      <td className="border border-black py-1 px-3 text-left">
+                        {t.studentName ? <span className="font-semibold">[{t.studentName}] </span> : null}
+                        {t.keterangan}
+                      </td>
+                      <td className="border border-black py-1 px-2 text-right font-mono">
+                        {t.tipe === 'Pemasukan' ? t.nominal.toLocaleString('id-ID') : '-'}
+                      </td>
+                      <td className="border border-black py-1 px-2 text-right font-mono">
+                        {t.tipe === 'Pengeluaran' ? t.nominal.toLocaleString('id-ID') : '-'}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        );
+      }
     }
   };
 
-  // The Formal Paper Document (Kertas Siap Cetak Resmi Standar Sekolah)
+  const showLeftLogo = cfg.showTutWuriLogo || cfg.logoPosition === 'left' || cfg.logoPosition === 'both';
+  const showRightLogo = cfg.logoPosition === 'right' || cfg.logoPosition === 'both' || (cfg.showTutWuriLogo && parsedLogo.type !== 'none');
+
+  // The Formal Paper Document (Kertas Siap Cetak Resmi Standar Sekolah - Full Putih)
   const paperSheet = (
-    <div className="printable-sheet bg-white text-black p-8 sm:p-10 font-sans max-w-[210mm] mx-auto border-0 shadow-none leading-normal">
-      {/* Official School Letterhead (Kop Surat Resmi) */}
-      <div className="border-b-4 border-double border-black pb-3 mb-4 text-center">
-        <h3 className="text-xs font-bold tracking-widest uppercase">
-          PEMERINTAH PROVINSI • DINAS PENDIDIKAN DAN KEBUDAYAAN
-        </h3>
-        <h1 className="text-2xl font-black tracking-wider uppercase mt-0.5">
-          {schoolName}
-        </h1>
-        <p className="text-[11px] text-black font-medium mt-0.5">
-          SISTEM INFORMASI MANAJEMEN PRESENSI & KURIKULUM MERDEKA INDONESIA
-        </p>
-        <p className="text-[10px] text-slate-800 font-mono mt-0.5">
-          Tautan Portal Publik: hadir.app • Pengampu: {teacher.name} ({teacher.nip})
-        </p>
+    <div className="printable-sheet bg-white text-black p-6 sm:p-10 font-serif max-w-[210mm] mx-auto border-0 shadow-none leading-normal">
+      {/* Official School Letterhead (Kop Surat Resmi Lengkap) */}
+      <div className={`pb-3 mb-4 text-center ${getKopBorderClass()}`}>
+        <div className="flex items-center justify-between gap-3 mb-1">
+          {/* Logo Sisi Kiri: Tut Wuri Handayani / Lambang Dinas */}
+          {showLeftLogo ? (
+            <div className="w-20 h-20 shrink-0 flex items-center justify-center">
+              {renderTutWuriLogo()}
+            </div>
+          ) : (
+            <div className="w-4 shrink-0" />
+          )}
+
+          {/* Teks Identitas Kop Surat Resmi */}
+          <div className="flex-1 text-center px-2">
+            <h3 className="text-xs sm:text-[13px] font-bold tracking-widest uppercase leading-snug font-serif text-black">
+              {cfg.dinasHeader}
+            </h3>
+            {cfg.dinasSubHeader ? (
+              <h4 className="text-[10.5px] sm:text-xs font-bold tracking-wider uppercase leading-snug font-serif text-black mt-0.5">
+                {cfg.dinasSubHeader}
+              </h4>
+            ) : null}
+            <h1 className="text-lg sm:text-2xl font-black tracking-wide uppercase leading-tight font-serif text-black mt-1">
+              {cfg.schoolName}
+            </h1>
+            {cfg.unitSubHeader ? (
+              <p className="text-[10px] sm:text-[11px] font-bold tracking-wide uppercase leading-snug font-serif text-black mt-0.5">
+                {cfg.unitSubHeader}
+              </p>
+            ) : null}
+            <p className="text-[10px] text-black font-normal leading-tight font-serif mt-1">
+              {cfg.address}
+            </p>
+            <p className="text-[9.5px] text-black font-normal leading-tight font-serif mt-0.5">
+              {cfg.phone} • {cfg.emailWeb}
+            </p>
+          </div>
+
+          {/* Logo Sisi Kanan: Logo Sekolah yang di-Embed */}
+          {showRightLogo ? (
+            <div className="w-20 h-20 shrink-0 flex items-center justify-center">
+              {renderSchoolLogo()}
+            </div>
+          ) : (
+            <div className="w-4 shrink-0" />
+          )}
+        </div>
       </div>
 
       {/* Main Document Content */}
       {renderDocumentContent()}
 
       {/* Official Signatures Block (Tanda Tangan Pengesahan) */}
-      <div className="mt-8 pt-4 grid grid-cols-2 gap-8 text-xs text-center break-inside-avoid">
+      <div className="mt-8 pt-4 grid grid-cols-2 gap-8 text-xs text-center break-inside-avoid font-serif">
         <div>
           <p className="font-semibold">Mengetahui,</p>
-          <p className="font-bold">Kepala Sekolah {schoolName}</p>
+          <p className="font-bold">Kepala Sekolah {cfg.schoolName}</p>
           <div className="h-16" />
-          <p className="font-bold underline uppercase">Drs. H. Mulyadi, M.Pd.</p>
-          <p className="text-[10px] font-mono">NIP. 19680512 199403 1 004</p>
+          <p className="font-bold underline uppercase">{cfg.principalName}</p>
+          <p className="text-[10px] font-mono">NIP. {cfg.principalNip}</p>
         </div>
 
         <div>
-          <p className="font-semibold">Kota, {todayFormatted}</p>
+          <p className="font-semibold">{cfg.documentCity}, {signatureDate}</p>
           <p className="font-bold">Guru Mata Pelajaran / Pendidik</p>
           <div className="h-16" />
           <p className="font-bold underline uppercase">{teacher.name}</p>
           <p className="text-[10px] font-mono">NIP. {teacher.nip}</p>
         </div>
       </div>
+
+      {/* Footer Catatan Dokumen */}
+      {cfg.footerNote ? (
+        <div className="mt-6 pt-2 border-t border-dotted border-black/30 text-[9px] text-black/70 font-mono text-center">
+          {cfg.footerNote}
+        </div>
+      ) : null}
     </div>
   );
 
-  // If in screen modal mode (when previewing the printable sheet)
+  // Screen modal mode (when user previews the document before printing)
   if (isOpen) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
-        <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[95vh] flex flex-col shadow-[8px_8px_0px_#1e293b] border-3 border-slate-900 overflow-hidden my-auto">
-          {/* Modal Header */}
-          <div className="p-4 bg-[#faf7ee] border-b-2 border-slate-900 flex items-center justify-between no-print">
+      <div className="print-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150 print:p-0 print:m-0 print:bg-white print:static print:overflow-visible">
+        <div className="print-modal-dialog bg-white rounded-3xl max-w-4xl w-full max-h-[95vh] flex flex-col shadow-[8px_8px_0px_#1e293b] border-3 border-slate-900 overflow-hidden my-auto print:border-none print:shadow-none print:rounded-none print:max-w-none print:max-h-none print:overflow-visible print:w-full print:m-0">
+          {/* Modal Header - Hidden completely when printing */}
+          <div className="p-4 bg-[#faf7ee] border-b-2 border-slate-900 flex items-center justify-between no-print print:hidden">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-[#dcfce7] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] flex items-center justify-center text-xl shrink-0">
                 📄
               </div>
               <div>
                 <h3 className="text-base font-black text-slate-900">
-                  Kertas Dokumen Siap Cetak (Formal A4)
+                  Kertas Dokumen Siap Cetak (Formal A4 Putih Bersih)
                 </h3>
                 <p className="text-xs text-slate-600 font-medium">
-                  Putih bersih tanpa margin/warna web • Standar format laporan dinas pendidikan
+                  Kop surat resmi • Logo sekolah ter-embed • Standar format dinas pendidikan
                 </p>
               </div>
             </div>
@@ -572,8 +796,8 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
           </div>
 
           {/* Paper Scroll Area */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-200/80 flex justify-center">
-            <div className="bg-white shadow-[0_0_20px_rgba(0,0,0,0.15)] rounded-sm w-full max-w-[210mm]">
+          <div className="print-scroll-container flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-200/80 flex justify-center print:bg-white print:p-0 print:m-0 print:overflow-visible">
+            <div className="print-paper-card bg-white shadow-[0_0_20px_rgba(0,0,0,0.15)] rounded-sm w-full max-w-[210mm] print:shadow-none print:border-none print:rounded-none print:max-w-none print:w-full print:p-0 print:m-0">
               {paperSheet}
             </div>
           </div>

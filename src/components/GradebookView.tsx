@@ -12,7 +12,7 @@ import {
   X,
   Check,
 } from 'lucide-react';
-import { Student, GradeRecord, ClassRoom, TeacherProfile } from '../types';
+import { Student, GradeRecord, ClassRoom, TeacherProfile, PrintConfig } from '../types';
 import { PrintableDocument } from './PrintableDocument';
 
 interface GradebookViewProps {
@@ -26,6 +26,7 @@ interface GradebookViewProps {
   schoolName: string;
   teacher?: TeacherProfile;
   onUpdateClass?: (updatedClass: ClassRoom) => void;
+  printConfig?: PrintConfig;
 }
 
 export const GradebookView: React.FC<GradebookViewProps> = ({
@@ -45,6 +46,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     handle: '@hndx07',
   },
   onUpdateClass,
+  printConfig,
 }) => {
   const [formatifColumns, setFormatifColumns] = useState<number>(activeClass.formatifCount || 5);
   const [searchQuery, setSearchQuery] = useState('');
@@ -676,6 +678,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
         activeClass={activeClass}
         teacher={teacher}
         schoolName={schoolName}
+        printConfig={printConfig}
         students={students}
         grades={grades}
       />
