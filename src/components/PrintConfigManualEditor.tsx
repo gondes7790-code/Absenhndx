@@ -35,6 +35,7 @@ import {
   TUT_WURI_LOGO_SVG,
   SMK_BISA_LOGO_SVG,
   GARUDA_LOGO_SVG,
+  APP_LOGO_URL,
 } from '../utils/printConfig';
 import { PrintableDocument, PrintableDocumentType } from './PrintableDocument';
 
@@ -112,8 +113,11 @@ export const PrintConfigManualEditor: React.FC<PrintConfigManualEditorProps> = (
     onShowToast('Pengaturan Direset', 'Kop surat dan tanda tangan dikembalikan ke format standar dinas.');
   };
 
-  const handlePresetLogo = (type: 'tutwuri' | 'smkbisa' | 'garuda' | 'empty') => {
-    if (type === 'tutwuri') {
+  const handlePresetLogo = (type: 'tutwuri' | 'smkbisa' | 'garuda' | 'applogo' | 'empty') => {
+    if (type === 'applogo') {
+      handleInputChange('logoEmbedCode', APP_LOGO_URL);
+      onShowToast('Preset Logo Dimuat', 'Logo Resmi Hadir! berhasil disematkan.');
+    } else if (type === 'tutwuri') {
       handleInputChange('logoEmbedCode', TUT_WURI_LOGO_SVG);
       onShowToast('Preset Logo Dimuat', 'Logo Tut Wuri Handayani berhasil disematkan.');
     } else if (type === 'smkbisa') {
@@ -379,6 +383,15 @@ export const PrintConfigManualEditor: React.FC<PrintConfigManualEditorProps> = (
                   Preset Lambang Pendidikan Siap Pakai (1 Klik):
                 </span>
                 <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handlePresetLogo('applogo')}
+                    className="px-2.5 py-1.5 rounded-xl bg-[#dcfce7] hover:bg-[#bbf7d0] border-2 border-slate-900 text-[11px] font-black text-emerald-950 shadow-[1.5px_1.5px_0px_#1e293b] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer flex items-center gap-1.5"
+                  >
+                    <img src={APP_LOGO_URL} alt="Logo" className="w-4 h-4 object-contain" />
+                    <span>Logo Resmi Hadir!</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => handlePresetLogo('tutwuri')}

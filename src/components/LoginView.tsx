@@ -12,6 +12,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { TeacherProfile } from '../types';
+import { APP_LOGO_URL } from '../utils/printConfig';
 
 interface LoginViewProps {
   onLogin: (email: string, pass: string) => void;
@@ -60,7 +61,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
         {/* Top Floating Badge */}
         <div className="text-center mb-4">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#fef9c3] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] text-xs font-bold text-slate-900">
-            <Flame className="w-3.5 h-3.5 text-orange-600 fill-orange-500" />
+            <img src={APP_LOGO_URL} alt="Logo" className="w-4 h-4 object-contain shrink-0" />
             <span>Hadir! • Kurikulum Merdeka</span>
             <span className="bg-slate-900 text-white text-[10px] px-2 py-0.2 rounded-full font-mono">
               @hndx07
@@ -77,8 +78,12 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
           {/* Logo & School Header */}
           <div className="flex items-center gap-3.5 mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-[#dcfce7] border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] flex items-center justify-center shrink-0">
-              <GraduationCap className="w-6 h-6 text-emerald-800" />
+            <div className="w-14 h-14 rounded-2xl bg-white border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] flex items-center justify-center shrink-0 p-1.5 overflow-hidden">
+              <img
+                src={APP_LOGO_URL}
+                alt="Logo Sekolah & Aplikasi"
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
               <h1 className="text-lg font-black text-slate-900 tracking-tight leading-tight">

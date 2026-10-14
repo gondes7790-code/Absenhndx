@@ -27,6 +27,7 @@ import {
   TeacherProfile,
   FinanceTransaction,
 } from '../types';
+import { APP_LOGO_URL } from '../utils/printConfig';
 
 export type PublicPortalType = 'absen' | 'rekap' | 'nilai' | 'tabungan';
 
@@ -191,8 +192,12 @@ export const PublicPortalView: React.FC<PublicPortalViewProps> = ({
       <header className="bg-white border-b-2 border-slate-900 shadow-[0_3px_0px_#1e293b] py-3.5 px-4 sm:px-6">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-[#ffedd5] border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] flex items-center justify-center text-2xl shrink-0">
-              🔥
+            <div className="w-11 h-11 rounded-2xl bg-white border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] flex items-center justify-center shrink-0 p-1 overflow-hidden">
+              <img
+                src={APP_LOGO_URL}
+                alt="Logo Hadir!"
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
               <div className="flex items-center gap-2">

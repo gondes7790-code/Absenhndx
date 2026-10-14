@@ -1,13 +1,14 @@
 import React from 'react';
 import { ShieldCheck } from 'lucide-react';
+import { APP_LOGO_URL } from '../utils/printConfig';
 
 export const Footer: React.FC = () => {
   return (
     <footer className="mt-12 bg-[#fffdf8] border-t-2 border-slate-900 py-8 px-4 text-slate-900">
       <div className="max-w-5xl mx-auto text-center space-y-3">
-        {/* Postmodern Badge Pill with Fire */}
+        {/* Postmodern Badge Pill with App Logo */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#fef9c3] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] text-xs font-black text-slate-900">
-          <span>🔥</span>
+          <img src={APP_LOGO_URL} alt="Logo" className="w-4 h-4 object-contain shrink-0" />
           <span>HADIR! • SISTEM INFORMASI PRESENSI & PENILAIAN</span>
         </div>
 

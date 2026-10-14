@@ -1,5 +1,8 @@
 import { PrintConfig } from '../types';
 
+export const APP_LOGO_URL =
+  'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhYKnZQtngqKIln1uLBVvStR512j7QPf5q66cbDXh58rZKdjSpK71BUECeQS6yGOw17WCBLSLPwnJxEu4ghxoLsKdsQ0jckGJfEute9VIZjkn0IglM5a8QTTcH9x7_TSp-BP52AsIRfFtAkRcfO1uXhOyuYr1ud7N4AiGg5HG1P6VLxFENCnPZOV9I6BJON/s1254/56332.png';
+
 export const TUT_WURI_LOGO_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><circle cx="50" cy="50" r="48" fill="%230f4c81" stroke="%23facc15" stroke-width="3"/><polygon points="50,15 63,40 90,40 68,56 77,82 50,66 23,82 32,56 10,40 37,40" fill="%23facc15"/><circle cx="50" cy="48" r="14" fill="%23ffffff"/><polygon points="50,38 54,46 62,47 56,53 58,61 50,57 42,61 44,53 38,47 46,46" fill="%23dc2626"/></svg>`;
 
 export const SMK_BISA_LOGO_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120"><rect width="120" height="120" rx="24" fill="%231e3a8a"/><circle cx="60" cy="60" r="45" fill="%23f59e0b"/><polygon points="60,25 70,50 95,50 75,65 83,90 60,75 37,90 45,65 25,50 50,50" fill="%23ffffff"/><text x="60" y="112" font-family="Arial,sans-serif" font-size="12" font-weight="900" fill="%23ffffff" text-anchor="middle">SMK BISA!</text></svg>`;
