@@ -724,9 +724,9 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
                 <th className="py-3 px-3 w-12 text-center whitespace-nowrap">NO</th>
                 <th className="py-3 px-4 min-w-[180px]">NAMA MURID</th>
                 <th className="py-3 px-2 w-12 text-center whitespace-nowrap">L/P</th>
-                <th className="py-3 px-3 min-w-[210px] text-center whitespace-nowrap">PRESENSI (H/S/I/A/D)</th>
-                <th className="py-3 px-3 min-w-[190px] max-w-[260px]">KETERANGAN / ALASAN</th>
-                <th className="py-3 px-3 w-28 text-center whitespace-nowrap">AKSI</th>
+                <th className="py-3 px-3 min-w-[230px] text-center whitespace-nowrap">PRESENSI (H/S/I/A/D)</th>
+                <th className="py-3 px-3 min-w-[180px] max-w-[250px]">KETERANGAN / ALASAN</th>
+                <th className="py-3 px-3 min-w-[135px] text-center whitespace-nowrap">AKSI</th>
               </tr>
             </thead>
             <tbody className="divide-y-2 divide-slate-100">
@@ -759,9 +759,9 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
                         {student.gender}
                       </span>
                     </td>
-                    <td className="py-3 px-3 text-center whitespace-nowrap">
+                    <td className="py-3 px-3 text-center whitespace-nowrap min-w-[230px]">
                       {/* H S I A D Toggle Buttons */}
-                      <div className="inline-flex items-center gap-1 p-1 bg-[#faf7ee] rounded-xl border border-slate-900 shadow-[1px_1px_0px_#1e293b] whitespace-nowrap">
+                      <div className="inline-flex items-center justify-center gap-1 p-1 bg-[#faf7ee] rounded-xl border border-slate-900 shadow-[1px_1px_0px_#1e293b] whitespace-nowrap">
                         {/* H */}
                         <button
                           onClick={() => onUpdateRecord(student.id, 'H', currentKet)}
@@ -828,8 +828,8 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
                         </button>
                       </div>
                     </td>
-                    <td className="py-3 px-3">
-                      <div className="w-full min-w-[170px] max-w-[260px]">
+                    <td className="py-3 px-3 min-w-[180px] max-w-[250px]">
+                      <div className="w-full">
                         <input
                           type="text"
                           placeholder="Catatan izin/keterangan..."
@@ -843,11 +843,11 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
                         />
                       </div>
                     </td>
-                    <td className="py-3 px-3 text-center whitespace-nowrap">
+                    <td className="py-3 px-3 text-center whitespace-nowrap min-w-[135px]">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
                           onClick={() => onOpenWhatsAppModal(student)}
-                          className="px-2 py-1.5 rounded-xl bg-[#dcfce7] hover:bg-[#bbf7d0] text-emerald-950 border border-slate-900 shadow-[1px_1px_0px_#1e293b] text-xs font-black flex items-center gap-1 transition-all cursor-pointer active:translate-x-[1px] active:translate-y-[1px]"
+                          className="px-2.5 py-1.5 rounded-xl bg-[#dcfce7] hover:bg-[#bbf7d0] text-emerald-950 border border-slate-900 shadow-[1px_1px_0px_#1e293b] text-xs font-black flex items-center gap-1 transition-all cursor-pointer active:translate-x-[1px] active:translate-y-[1px]"
                           title="Kirim pesan WA ke Wali Murid"
                         >
                           <MessageCircle className="w-3.5 h-3.5" />

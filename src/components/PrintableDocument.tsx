@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Printer, X } from 'lucide-react';
 import {
   Student,
@@ -61,6 +62,32 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
   // Use passed printConfig or load from storage
   const cfg = printConfig || getSavedPrintConfig(schoolName);
 
+  // Reference to #print-root element for portal
+  const [printTarget, setPrintTarget] = useState<HTMLElement | null>(() => {
+    if (typeof document !== 'undefined') {
+      let el = document.getElementById('print-root');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'print-root';
+        document.body.appendChild(el);
+      }
+      return el;
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    if (typeof document !== 'undefined' && !printTarget) {
+      let el = document.getElementById('print-root');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'print-root';
+        document.body.appendChild(el);
+      }
+      setPrintTarget(el);
+    }
+  }, [printTarget]);
+
   const todayFormatted = new Date().toLocaleDateString('id-ID', {
     day: 'numeric',
     month: 'long',
@@ -70,7 +97,10 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
   const signatureDate = cfg.customDateText?.trim() ? cfg.customDateText.trim() : todayFormatted;
 
   const handlePrint = () => {
-    window.print();
+    // Brief timeout to guarantee DOM portal flush before print dialog opens
+    setTimeout(() => {
+      window.print();
+    }, 50);
   };
 
   const parsedLogo = parseLogoEmbed(cfg.logoEmbedCode);
@@ -762,56 +792,62 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
   // Screen modal mode (when user previews the document before printing)
   if (isOpen) {
     return (
-      <div className="print-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150 print:p-0 print:m-0 print:bg-white print:static print:overflow-visible">
-        <div className="print-modal-dialog bg-white rounded-3xl max-w-4xl w-full max-h-[95vh] flex flex-col shadow-[8px_8px_0px_#1e293b] border-3 border-slate-900 overflow-hidden my-auto print:border-none print:shadow-none print:rounded-none print:max-w-none print:max-h-none print:overflow-visible print:w-full print:m-0">
-          {/* Modal Header - Hidden completely when printing */}
-          <div className="p-4 bg-[#faf7ee] border-b-2 border-slate-900 flex items-center justify-between no-print print:hidden">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-[#dcfce7] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] flex items-center justify-center text-xl shrink-0">
-                📄
-              </div>
-              <div>
-                <h3 className="text-base font-black text-slate-900">
-                  Kertas Dokumen Siap Cetak (Formal A4 Putih Bersih)
-                </h3>
-                <p className="text-xs text-slate-600 font-medium">
-                  Kop surat resmi • Logo sekolah ter-embed • Standar format dinas pendidikan
-                </p>
-              </div>
-            </div>
+      <>
+        {/* Portal directly to #print-root (starts at page 1 line 1, no web UI bleed) */}
+        {printTarget && createPortal(paperSheet, printTarget)}
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handlePrint}
-                className="px-4 py-2 rounded-2xl bg-[#6ee7b7] hover:bg-[#34d399] active:translate-x-[1px] active:translate-y-[1px] text-slate-950 font-black text-xs flex items-center gap-2 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] cursor-pointer"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Cetak / Simpan PDF</span>
-              </button>
+        {/* Live On-Screen Modal Preview (hidden when printing) */}
+        <div className="print-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150 no-print">
+          <div className="print-modal-dialog bg-white rounded-3xl max-w-4xl w-full max-h-[95vh] flex flex-col shadow-[8px_8px_0px_#1e293b] border-3 border-slate-900 overflow-hidden my-auto no-print">
+            {/* Modal Header */}
+            <div className="p-4 bg-[#faf7ee] border-b-2 border-slate-900 flex items-center justify-between no-print">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#dcfce7] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] flex items-center justify-center text-xl shrink-0">
+                  📄
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    Kertas Dokumen Siap Cetak (Formal A4 Putih Bersih)
+                  </h3>
+                  <p className="text-xs text-slate-600 font-medium">
+                    Kop surat resmi • Logo sekolah ter-embed • Dimulai dari Halaman 1
+                  </p>
+                </div>
+              </div>
 
-              {onClose && (
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={onClose}
-                  className="p-2 rounded-2xl bg-[#fee2e2] hover:bg-[#fca5a5] text-rose-950 border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] cursor-pointer"
-                  title="Tutup Pratinjau"
+                  onClick={handlePrint}
+                  className="px-4 py-2 rounded-2xl bg-[#6ee7b7] hover:bg-[#34d399] active:translate-x-[1px] active:translate-y-[1px] text-slate-950 font-black text-xs flex items-center gap-2 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] cursor-pointer"
                 >
-                  <X className="w-4 h-4" />
+                  <Printer className="w-4 h-4" />
+                  <span>Cetak / Simpan PDF</span>
                 </button>
-              )}
-            </div>
-          </div>
 
-          {/* Paper Scroll Area */}
-          <div className="print-scroll-container flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-200/80 flex justify-center print:bg-white print:p-0 print:m-0 print:overflow-visible">
-            <div className="print-paper-card bg-white shadow-[0_0_20px_rgba(0,0,0,0.15)] rounded-sm w-full max-w-[210mm] print:shadow-none print:border-none print:rounded-none print:max-w-none print:w-full print:p-0 print:m-0">
-              {paperSheet}
+                {onClose && (
+                  <button
+                    onClick={onClose}
+                    className="p-2 rounded-2xl bg-[#fee2e2] hover:bg-[#fca5a5] text-rose-950 border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] cursor-pointer"
+                    title="Tutup Pratinjau"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Paper Scroll Area for live screen preview */}
+            <div className="print-scroll-container flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-200/80 flex justify-center">
+              <div className="print-paper-card bg-white shadow-[0_0_20px_rgba(0,0,0,0.15)] rounded-sm w-full max-w-[210mm]">
+                {paperSheet}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
-  // Hidden on screen, but revealed and printed via @media print!
-  return <div className="printable-document hidden-on-screen">{paperSheet}</div>;
+  // When modal is not open, paperSheet remains portaled so Ctrl+P directly prints page 1
+  return printTarget ? createPortal(paperSheet, printTarget) : null;
 };

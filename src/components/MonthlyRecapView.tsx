@@ -377,33 +377,33 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
                 <th className="py-3 px-4 min-w-[180px]">NAMA MURID</th>
                 <th className="py-3 px-2 w-10 text-center whitespace-nowrap">L/P</th>
                 <th className="py-3 px-3 min-w-[120px]">KELAS</th>
-                <th className="py-3 px-2 w-12 text-center whitespace-nowrap">
-                  <span className="inline-block px-1.5 py-0.5 rounded-md bg-[#dcfce7] text-emerald-950 border border-slate-900 text-[10px] font-black shadow-[1px_1px_0px_#1e293b]">
+                <th className="py-3 px-2 min-w-[52px] text-center whitespace-nowrap">
+                  <span className="inline-flex items-center justify-center w-7 h-6 rounded-md bg-[#dcfce7] text-emerald-950 border border-slate-900 text-[10px] font-black shadow-[1px_1px_0px_#1e293b]">
                     H
                   </span>
                 </th>
-                <th className="py-3 px-2 w-12 text-center whitespace-nowrap">
-                  <span className="inline-block px-1.5 py-0.5 rounded-md bg-[#fef9c3] text-amber-950 border border-slate-900 text-[10px] font-black shadow-[1px_1px_0px_#1e293b]">
+                <th className="py-3 px-2 min-w-[52px] text-center whitespace-nowrap">
+                  <span className="inline-flex items-center justify-center w-7 h-6 rounded-md bg-[#fef9c3] text-amber-950 border border-slate-900 text-[10px] font-black shadow-[1px_1px_0px_#1e293b]">
                     S
                   </span>
                 </th>
-                <th className="py-3 px-2 w-12 text-center whitespace-nowrap">
-                  <span className="inline-block px-1.5 py-0.5 rounded-md bg-[#ffedd5] text-orange-950 border border-slate-900 text-[10px] font-black shadow-[1px_1px_0px_#1e293b]">
+                <th className="py-3 px-2 min-w-[52px] text-center whitespace-nowrap">
+                  <span className="inline-flex items-center justify-center w-7 h-6 rounded-md bg-[#ffedd5] text-orange-950 border border-slate-900 text-[10px] font-black shadow-[1px_1px_0px_#1e293b]">
                     I
                   </span>
                 </th>
-                <th className="py-3 px-2 w-12 text-center whitespace-nowrap">
-                  <span className="inline-block px-1.5 py-0.5 rounded-md bg-[#fee2e2] text-rose-950 border border-slate-900 text-[10px] font-black shadow-[1px_1px_0px_#1e293b]">
+                <th className="py-3 px-2 min-w-[52px] text-center whitespace-nowrap">
+                  <span className="inline-flex items-center justify-center w-7 h-6 rounded-md bg-[#fee2e2] text-rose-950 border border-slate-900 text-[10px] font-black shadow-[1px_1px_0px_#1e293b]">
                     A
                   </span>
                 </th>
-                <th className="py-3 px-2 w-12 text-center whitespace-nowrap">
-                  <span className="inline-block px-1.5 py-0.5 rounded-md bg-[#ede9fe] text-indigo-950 border border-slate-900 text-[10px] font-black shadow-[1px_1px_0px_#1e293b]">
+                <th className="py-3 px-2 min-w-[52px] text-center whitespace-nowrap">
+                  <span className="inline-flex items-center justify-center w-7 h-6 rounded-md bg-[#ede9fe] text-indigo-950 border border-slate-900 text-[10px] font-black shadow-[1px_1px_0px_#1e293b]">
                     D
                   </span>
                 </th>
-                <th className="py-3 px-3 w-20 text-center whitespace-nowrap">PERSENTASE</th>
-                <th className="py-3 px-3 w-36 text-center whitespace-nowrap">PREDIKAT KEHADIRAN</th>
+                <th className="py-3 px-3 w-24 text-center whitespace-nowrap">PERSENTASE</th>
+                <th className="py-3 px-3 min-w-[160px] text-center whitespace-nowrap">PREDIKAT KEHADIRAN</th>
               </tr>
             </thead>
             <tbody className="divide-y-2 divide-slate-100">
@@ -426,36 +426,36 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
                   <td className="py-3 px-3 text-slate-600 font-bold truncate max-w-[130px]">
                     {activeClass.nama}
                   </td>
-                  <td className="py-3 px-2 text-center font-mono font-black text-emerald-900">
-                    <span className="inline-block px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-950 font-bold">
+                  <td className="py-3 px-2 text-center font-mono font-black text-emerald-900 min-w-[52px]">
+                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-950 font-bold border border-emerald-200">
                       {item.h}
                     </span>
                   </td>
-                  <td className="py-3 px-2 text-center font-mono font-black text-amber-900">
-                    <span className="inline-block px-1.5 py-0.5 rounded bg-amber-50 text-amber-950 font-bold">
+                  <td className="py-3 px-2 text-center font-mono font-black text-amber-900 min-w-[52px]">
+                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-amber-50 text-amber-950 font-bold border border-amber-200">
                       {item.s}
                     </span>
                   </td>
-                  <td className="py-3 px-2 text-center font-mono font-black text-orange-900">
-                    <span className="inline-block px-1.5 py-0.5 rounded bg-orange-50 text-orange-950 font-bold">
+                  <td className="py-3 px-2 text-center font-mono font-black text-orange-900 min-w-[52px]">
+                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-orange-50 text-orange-950 font-bold border border-orange-200">
                       {item.i}
                     </span>
                   </td>
-                  <td className="py-3 px-2 text-center font-mono font-black text-rose-900">
-                    <span className="inline-block px-1.5 py-0.5 rounded bg-rose-50 text-rose-950 font-bold">
+                  <td className="py-3 px-2 text-center font-mono font-black text-rose-900 min-w-[52px]">
+                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-rose-50 text-rose-950 font-bold border border-rose-200">
                       {item.a}
                     </span>
                   </td>
-                  <td className="py-3 px-2 text-center font-mono font-black text-indigo-900">
-                    <span className="inline-block px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-950 font-bold">
+                  <td className="py-3 px-2 text-center font-mono font-black text-indigo-900 min-w-[52px]">
+                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-950 font-bold border border-indigo-200">
                       {item.d}
                     </span>
                   </td>
                   <td className="py-3 px-3 text-center font-mono font-black text-slate-900 whitespace-nowrap">
                     {item.percentage}%
                   </td>
-                  <td className="py-3 px-3 text-center whitespace-nowrap">
-                    <span className={`inline-block px-2.5 py-1 rounded-xl border-2 text-[10px] font-black shadow-[1.5px_1.5px_0px_#1e293b] ${item.ketBg}`}>
+                  <td className="py-3 px-3 text-center whitespace-nowrap min-w-[160px]">
+                    <span className={`inline-block px-2.5 py-1 rounded-xl border-2 text-[10px] font-black shadow-[1.5px_1.5px_0px_#1e293b] max-w-full truncate align-middle ${item.ketBg}`}>
                       {item.keterangan}
                     </span>
                   </td>

@@ -86,10 +86,36 @@
   display: none;
 }
 
+/* On screen: #print-root is completely hidden */
+#print-root {
+  display: none;
+}
+
 @media print {
   @page {
     size: A4 portrait;
-    margin: 10mm 12mm 12mm 12mm;
+    margin: 8mm 10mm 10mm 10mm;
+  }
+
+  /* CRITICAL: Completely hide and remove #root from print layout so it produces 0 height and 0 blank pages */
+  #root {
+    display: none !important;
+    visibility: hidden !important;
+    position: absolute !important;
+    top: -99999px !important;
+    left: -99999px !important;
+    width: 0 !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .print-modal-backdrop,
+  .print-modal-dialog {
+    display: none !important;
+    visibility: hidden !important;
   }
 
   /* Reset browser canvas to pure white */
@@ -109,35 +135,34 @@
     print-color-adjust: exact !important;
   }
 
-  /* CRITICAL: Hide all web UI elements completely */
-  body * {
-    visibility: hidden !important;
+  /* #print-root is the FIRST and ONLY element printed, starting at page 1 line 1 */
+  #print-root {
+    display: block !important;
+    visibility: visible !important;
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
   }
 
-  /* Reveal ONLY the official printable document sheet and all its inner content */
-  .printable-sheet,
-  .printable-sheet * {
+  #print-root .printable-sheet,
+  #print-root .printable-sheet * {
     visibility: visible !important;
     color: #000000 !important;
-    text-shadow: none !important;
-    box-shadow: none !important;
   }
 
-  /* Ensure the sheet is anchored to the very top-left of the printed page */
-  .printable-sheet {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+  #print-root .printable-sheet {
+    display: block !important;
+    position: static !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
-    background-color: #ffffff !important;
     border: none !important;
     box-shadow: none !important;
     font-family: 'Times New Roman', Times, Georgia, serif !important;
-    display: block !important;
   }
 
   /* Hide interactive web chrome, banners, buttons, sidebars, navigations */
@@ -156,26 +181,6 @@
     visibility: hidden !important;
   }
 
-  /* Collapse any overlay modal wrappers during print */
-  .fixed,
-  .print-modal-backdrop,
-  .print-modal-dialog,
-  .print-scroll-container,
-  .print-paper-card {
-    position: static !important;
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    box-shadow: none !important;
-    border: none !important;
-    border-radius: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    max-width: 100% !important;
-    max-height: none !important;
-    overflow: visible !important;
-    display: block !important;
-  }
-
   /* Formal table borders: pure clean black lines */
   .printable-sheet table {
     border-collapse: collapse !important;
@@ -192,6 +197,7 @@
   .printable-sheet td {
     border: 1px solid #000000 !important;
     color: #000000 !important;
+    background-color: transparent !important;
   }
 
   .printable-sheet thead tr th,

@@ -407,25 +407,30 @@ export const JournalView: React.FC<JournalViewProps> = ({
               <tr className="bg-[#faf7ee] text-slate-900 font-black text-[11px] tracking-wider uppercase border-b-2 border-slate-900">
                 <th className="py-3 px-3 w-10 text-center">NO</th>
                 <th className="py-3 px-3 w-28">TANGGAL</th>
-                <th className="py-3 px-3 w-36">KELAS & SESI</th>
-                <th className="py-3 px-3 w-28">JAM KBM</th>
+                <th className="py-3 px-3 min-w-[150px] max-w-[200px]">KELAS & SESI</th>
+                <th className="py-3 px-3 w-28 whitespace-nowrap">JAM KBM</th>
                 <th className="py-3 px-4 min-w-[280px]">MATERI & KEGIATAN TP MERDEKA</th>
                 <th className="py-3 px-4 min-w-[200px]">CATATAN PRESENSI SISWA</th>
-                <th className="py-3 px-3 w-24 text-center">AKSI EDIT</th>
+                <th className="py-3 px-3 min-w-[100px] text-center whitespace-nowrap">AKSI EDIT</th>
               </tr>
             </thead>
             <tbody className="divide-y-2 divide-slate-100">
               {filteredJournals.map((j, idx) => (
                 <tr key={j.id} className="hover:bg-[#faf7ee]/60 transition-colors group">
-                  <td className="py-3 px-3 text-center text-slate-600 font-mono font-bold">
+                  <td className="py-3 px-3 text-center text-slate-600 font-mono font-bold whitespace-nowrap">
                     {idx + 1}
                   </td>
-                  <td className="py-3 px-3 font-mono font-bold text-slate-900">
+                  <td className="py-3 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
                     {j.tanggal}
                   </td>
-                  <td className="py-3 px-3">
-                    <span className="font-black text-slate-900 block">{j.className}</span>
-                    <span className="text-[10px] font-bold text-emerald-800 bg-[#dcfce7] px-1.5 py-0.2 rounded border border-slate-900">
+                  <td className="py-3 px-3 min-w-[150px] max-w-[200px]">
+                    <span className="font-black text-slate-900 block truncate" title={j.className}>
+                      {j.className}
+                    </span>
+                    <span
+                      className="inline-block mt-1 text-[10px] font-bold text-emerald-950 bg-[#dcfce7] px-2 py-0.5 rounded-md border border-slate-900 max-w-full truncate align-middle shadow-[0.5px_0.5px_0px_#1e293b]"
+                      title={j.pertemuanKe}
+                    >
                       {j.pertemuanKe}
                     </span>
                   </td>
