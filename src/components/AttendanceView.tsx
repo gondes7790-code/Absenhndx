@@ -721,12 +721,12 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
           <table className="w-full text-left border-collapse text-xs sm:text-sm">
             <thead>
               <tr className="bg-[#faf7ee] text-slate-900 font-black text-xs tracking-wider uppercase border-b-2 border-slate-900">
-                <th className="py-3 px-3 w-12 text-center">NO</th>
-                <th className="py-3 px-4 min-w-[200px]">NAMA MURID</th>
-                <th className="py-3 px-3 w-14 text-center">L/P</th>
-                <th className="py-3 px-4 min-w-[240px] text-center">STATUS KEHADIRAN (H/S/I/A/D)</th>
-                <th className="py-3 px-4 min-w-[220px]">KETERANGAN / ALASAN</th>
-                <th className="py-3 px-3 w-28 text-center">AKSI</th>
+                <th className="py-3 px-3 w-12 text-center whitespace-nowrap">NO</th>
+                <th className="py-3 px-4 min-w-[180px]">NAMA MURID</th>
+                <th className="py-3 px-2 w-12 text-center whitespace-nowrap">L/P</th>
+                <th className="py-3 px-3 min-w-[210px] text-center whitespace-nowrap">PRESENSI (H/S/I/A/D)</th>
+                <th className="py-3 px-3 min-w-[190px] max-w-[260px]">KETERANGAN / ALASAN</th>
+                <th className="py-3 px-3 w-28 text-center whitespace-nowrap">AKSI</th>
               </tr>
             </thead>
             <tbody className="divide-y-2 divide-slate-100">
@@ -738,14 +738,14 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
 
                 return (
                   <tr key={student.id} className="hover:bg-[#faf7ee]/60 transition-colors group">
-                    <td className="py-3 px-3 text-center text-slate-600 font-mono font-bold">
+                    <td className="py-3 px-3 text-center text-slate-600 font-mono font-bold whitespace-nowrap">
                       {displayNo}
                     </td>
-                    <td className="py-3 px-4">
-                      <div className="font-black text-slate-900 group-hover:text-emerald-800 transition-colors flex items-center gap-1.5">
-                        <span>{student.nama}</span>
+                    <td className="py-3 px-4 min-w-[180px]">
+                      <div className="font-black text-slate-900 group-hover:text-emerald-800 transition-colors flex items-center gap-1.5 flex-wrap">
+                        <span className="break-words">{student.nama}</span>
                         {currentStatus === '' && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 shrink-0">
                             Kosong
                           </span>
                         )}
@@ -754,20 +754,20 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
                         NISN: {student.nisn}
                       </div>
                     </td>
-                    <td className="py-3 px-3 text-center">
+                    <td className="py-3 px-2 text-center whitespace-nowrap">
                       <span className="inline-block w-6 h-6 rounded-xl bg-[#faf7ee] text-slate-900 font-black text-xs leading-6 text-center border-2 border-slate-900 shadow-[1px_1px_0px_#1e293b]">
                         {student.gender}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-center">
+                    <td className="py-3 px-3 text-center whitespace-nowrap">
                       {/* H S I A D Toggle Buttons */}
-                      <div className="inline-flex items-center gap-1 sm:gap-1.5 p-1 bg-[#faf7ee] rounded-2xl border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b]">
+                      <div className="inline-flex items-center gap-1 p-1 bg-[#faf7ee] rounded-xl border border-slate-900 shadow-[1px_1px_0px_#1e293b] whitespace-nowrap">
                         {/* H */}
                         <button
                           onClick={() => onUpdateRecord(student.id, 'H', currentKet)}
-                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl text-xs font-black transition-all flex items-center justify-center cursor-pointer ${
+                          className={`w-7 h-7 sm:w-7.5 sm:h-7.5 rounded-lg text-xs font-black transition-all flex items-center justify-center cursor-pointer shrink-0 ${
                             currentStatus === 'H'
-                              ? 'bg-[#6ee7b7] text-slate-950 border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b]'
+                              ? 'bg-[#6ee7b7] text-slate-950 border border-slate-900 shadow-[1px_1px_0px_#1e293b]'
                               : 'text-slate-600 hover:bg-white hover:text-slate-900'
                           }`}
                           title="Hadir"
@@ -778,9 +778,9 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
                         {/* S */}
                         <button
                           onClick={() => onUpdateRecord(student.id, 'S', currentKet)}
-                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl text-xs font-black transition-all flex items-center justify-center cursor-pointer ${
+                          className={`w-7 h-7 sm:w-7.5 sm:h-7.5 rounded-lg text-xs font-black transition-all flex items-center justify-center cursor-pointer shrink-0 ${
                             currentStatus === 'S'
-                              ? 'bg-[#fde047] text-amber-950 border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b]'
+                              ? 'bg-[#fde047] text-amber-950 border border-slate-900 shadow-[1px_1px_0px_#1e293b]'
                               : 'text-slate-600 hover:bg-white hover:text-slate-900'
                           }`}
                           title="Sakit"
@@ -791,9 +791,9 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
                         {/* I */}
                         <button
                           onClick={() => onUpdateRecord(student.id, 'I', currentKet)}
-                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl text-xs font-black transition-all flex items-center justify-center cursor-pointer ${
+                          className={`w-7 h-7 sm:w-7.5 sm:h-7.5 rounded-lg text-xs font-black transition-all flex items-center justify-center cursor-pointer shrink-0 ${
                             currentStatus === 'I'
-                              ? 'bg-[#fdba74] text-orange-950 border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b]'
+                              ? 'bg-[#fdba74] text-orange-950 border border-slate-900 shadow-[1px_1px_0px_#1e293b]'
                               : 'text-slate-600 hover:bg-white hover:text-slate-900'
                           }`}
                           title="Izin"
@@ -804,9 +804,9 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
                         {/* A */}
                         <button
                           onClick={() => onUpdateRecord(student.id, 'A', currentKet)}
-                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl text-xs font-black transition-all flex items-center justify-center cursor-pointer ${
+                          className={`w-7 h-7 sm:w-7.5 sm:h-7.5 rounded-lg text-xs font-black transition-all flex items-center justify-center cursor-pointer shrink-0 ${
                             currentStatus === 'A'
-                              ? 'bg-[#f87171] text-white border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b]'
+                              ? 'bg-[#f87171] text-white border border-slate-900 shadow-[1px_1px_0px_#1e293b]'
                               : 'text-slate-600 hover:bg-white hover:text-slate-900'
                           }`}
                           title="Alfa (Tanpa Keterangan)"
@@ -817,9 +817,9 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
                         {/* D */}
                         <button
                           onClick={() => onUpdateRecord(student.id, 'D', currentKet)}
-                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl text-xs font-black transition-all flex items-center justify-center cursor-pointer ${
+                          className={`w-7 h-7 sm:w-7.5 sm:h-7.5 rounded-lg text-xs font-black transition-all flex items-center justify-center cursor-pointer shrink-0 ${
                             currentStatus === 'D'
-                              ? 'bg-[#c084fc] text-white border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b]'
+                              ? 'bg-[#c084fc] text-white border border-slate-900 shadow-[1px_1px_0px_#1e293b]'
                               : 'text-slate-600 hover:bg-white hover:text-slate-900'
                           }`}
                           title="Dispensasi"
@@ -828,20 +828,22 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
                         </button>
                       </div>
                     </td>
-                    <td className="py-3 px-4">
-                      <input
-                        type="text"
-                        placeholder="Catatan izin/keterangan..."
-                        value={currentKet}
-                        onChange={(e) => {
-                          if (currentStatus) {
-                            onUpdateRecord(student.id, currentStatus, e.target.value);
-                          }
-                        }}
-                        className="w-full px-3 py-1.5 text-xs rounded-xl border-2 border-slate-900 bg-[#faf7ee] text-slate-900 font-bold focus:bg-white focus:outline-none transition-all placeholder:text-slate-400"
-                      />
+                    <td className="py-3 px-3">
+                      <div className="w-full min-w-[170px] max-w-[260px]">
+                        <input
+                          type="text"
+                          placeholder="Catatan izin/keterangan..."
+                          value={currentKet}
+                          onChange={(e) => {
+                            if (currentStatus) {
+                              onUpdateRecord(student.id, currentStatus, e.target.value);
+                            }
+                          }}
+                          className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-900 bg-[#faf7ee] text-slate-900 font-bold focus:bg-white focus:outline-none transition-all placeholder:text-slate-400"
+                        />
+                      </div>
                     </td>
-                    <td className="py-3 px-3 text-center">
+                    <td className="py-3 px-3 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
                           onClick={() => onOpenWhatsAppModal(student)}

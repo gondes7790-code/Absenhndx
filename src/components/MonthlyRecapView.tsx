@@ -372,33 +372,53 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-[#faf7ee] text-slate-900 font-black text-[11px] tracking-wider uppercase border-b-2 border-slate-900">
-                <th className="py-3 px-3 w-10 text-center">NO</th>
-                <th className="py-3 px-3 w-24">NISN</th>
-                <th className="py-3 px-4 min-w-[200px]">NAMA MURID</th>
-                <th className="py-3 px-2 w-10 text-center">L/P</th>
-                <th className="py-3 px-3 min-w-[140px]">KELAS</th>
-                <th className="py-3 px-2 w-14 text-center bg-[#dcfce7]">H</th>
-                <th className="py-3 px-2 w-14 text-center bg-[#fef9c3]">S</th>
-                <th className="py-3 px-2 w-14 text-center bg-[#ffedd5]">I</th>
-                <th className="py-3 px-2 w-14 text-center bg-[#fee2e2]">A</th>
-                <th className="py-3 px-2 w-14 text-center bg-[#ede9fe]">D</th>
-                <th className="py-3 px-3 w-20 text-center">PERSENTASE</th>
-                <th className="py-3 px-3 w-36 text-center">PREDIKAT KEHADIRAN</th>
+                <th className="py-3 px-3 w-10 text-center whitespace-nowrap">NO</th>
+                <th className="py-3 px-3 w-24 whitespace-nowrap">NISN</th>
+                <th className="py-3 px-4 min-w-[180px]">NAMA MURID</th>
+                <th className="py-3 px-2 w-10 text-center whitespace-nowrap">L/P</th>
+                <th className="py-3 px-3 min-w-[120px]">KELAS</th>
+                <th className="py-3 px-2 w-12 text-center whitespace-nowrap">
+                  <span className="inline-block px-1.5 py-0.5 rounded-md bg-[#dcfce7] text-emerald-950 border border-slate-900 text-[10px] font-black shadow-[1px_1px_0px_#1e293b]">
+                    H
+                  </span>
+                </th>
+                <th className="py-3 px-2 w-12 text-center whitespace-nowrap">
+                  <span className="inline-block px-1.5 py-0.5 rounded-md bg-[#fef9c3] text-amber-950 border border-slate-900 text-[10px] font-black shadow-[1px_1px_0px_#1e293b]">
+                    S
+                  </span>
+                </th>
+                <th className="py-3 px-2 w-12 text-center whitespace-nowrap">
+                  <span className="inline-block px-1.5 py-0.5 rounded-md bg-[#ffedd5] text-orange-950 border border-slate-900 text-[10px] font-black shadow-[1px_1px_0px_#1e293b]">
+                    I
+                  </span>
+                </th>
+                <th className="py-3 px-2 w-12 text-center whitespace-nowrap">
+                  <span className="inline-block px-1.5 py-0.5 rounded-md bg-[#fee2e2] text-rose-950 border border-slate-900 text-[10px] font-black shadow-[1px_1px_0px_#1e293b]">
+                    A
+                  </span>
+                </th>
+                <th className="py-3 px-2 w-12 text-center whitespace-nowrap">
+                  <span className="inline-block px-1.5 py-0.5 rounded-md bg-[#ede9fe] text-indigo-950 border border-slate-900 text-[10px] font-black shadow-[1px_1px_0px_#1e293b]">
+                    D
+                  </span>
+                </th>
+                <th className="py-3 px-3 w-20 text-center whitespace-nowrap">PERSENTASE</th>
+                <th className="py-3 px-3 w-36 text-center whitespace-nowrap">PREDIKAT KEHADIRAN</th>
               </tr>
             </thead>
             <tbody className="divide-y-2 divide-slate-100">
               {filteredRecaps.map((item, idx) => (
                 <tr key={item.student.id} className="hover:bg-[#faf7ee]/60 transition-colors">
-                  <td className="py-3 px-3 text-center text-slate-600 font-mono font-bold">
+                  <td className="py-3 px-3 text-center text-slate-600 font-mono font-bold whitespace-nowrap">
                     {item.student.noUrut || idx + 1}
                   </td>
-                  <td className="py-3 px-3 font-mono font-medium text-slate-500">
+                  <td className="py-3 px-3 font-mono font-medium text-slate-500 whitespace-nowrap">
                     {item.student.nisn}
                   </td>
-                  <td className="py-3 px-4 font-black text-slate-900">
-                    {item.student.nama}
+                  <td className="py-3 px-4 font-black text-slate-900 min-w-[180px]">
+                    <span className="break-words">{item.student.nama}</span>
                   </td>
-                  <td className="py-3 px-2 text-center">
+                  <td className="py-3 px-2 text-center whitespace-nowrap">
                     <span className="inline-block w-6 h-6 rounded-xl bg-[#faf7ee] text-slate-900 font-black text-xs leading-6 text-center border-2 border-slate-900 shadow-[1px_1px_0px_#1e293b]">
                       {item.student.gender}
                     </span>
@@ -406,25 +426,35 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
                   <td className="py-3 px-3 text-slate-600 font-bold truncate max-w-[130px]">
                     {activeClass.nama}
                   </td>
-                  <td className="py-3 px-2 text-center font-mono font-black text-emerald-950 bg-[#dcfce7]/40">
-                    {item.h}
+                  <td className="py-3 px-2 text-center font-mono font-black text-emerald-900">
+                    <span className="inline-block px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-950 font-bold">
+                      {item.h}
+                    </span>
                   </td>
-                  <td className="py-3 px-2 text-center font-mono font-black text-amber-950 bg-[#fef9c3]/40">
-                    {item.s}
+                  <td className="py-3 px-2 text-center font-mono font-black text-amber-900">
+                    <span className="inline-block px-1.5 py-0.5 rounded bg-amber-50 text-amber-950 font-bold">
+                      {item.s}
+                    </span>
                   </td>
-                  <td className="py-3 px-2 text-center font-mono font-black text-orange-950 bg-[#ffedd5]/40">
-                    {item.i}
+                  <td className="py-3 px-2 text-center font-mono font-black text-orange-900">
+                    <span className="inline-block px-1.5 py-0.5 rounded bg-orange-50 text-orange-950 font-bold">
+                      {item.i}
+                    </span>
                   </td>
-                  <td className="py-3 px-2 text-center font-mono font-black text-rose-950 bg-[#fee2e2]/40">
-                    {item.a}
+                  <td className="py-3 px-2 text-center font-mono font-black text-rose-900">
+                    <span className="inline-block px-1.5 py-0.5 rounded bg-rose-50 text-rose-950 font-bold">
+                      {item.a}
+                    </span>
                   </td>
-                  <td className="py-3 px-2 text-center font-mono font-black text-indigo-950 bg-[#ede9fe]/40">
-                    {item.d}
+                  <td className="py-3 px-2 text-center font-mono font-black text-indigo-900">
+                    <span className="inline-block px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-950 font-bold">
+                      {item.d}
+                    </span>
                   </td>
-                  <td className="py-3 px-3 text-center font-mono font-black text-slate-900">
+                  <td className="py-3 px-3 text-center font-mono font-black text-slate-900 whitespace-nowrap">
                     {item.percentage}%
                   </td>
-                  <td className="py-3 px-3 text-center">
+                  <td className="py-3 px-3 text-center whitespace-nowrap">
                     <span className={`inline-block px-2.5 py-1 rounded-xl border-2 text-[10px] font-black shadow-[1.5px_1.5px_0px_#1e293b] ${item.ketBg}`}>
                       {item.keterangan}
                     </span>

@@ -92,9 +92,9 @@
     margin: 10mm 12mm 12mm 12mm;
   }
 
+  /* Reset browser canvas to pure white */
   html,
-  body,
-  #root {
+  body {
     background: #ffffff !important;
     background-color: #ffffff !important;
     background-image: none !important;
@@ -102,18 +102,53 @@
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
+    height: auto !important;
     min-height: 100% !important;
     box-shadow: none !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* Hide all web UI chrome, headers, buttons, footers, notifications */
+  /* CRITICAL: Hide all web UI elements completely */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Reveal ONLY the official printable document sheet and all its inner content */
+  .printable-sheet,
+  .printable-sheet * {
+    visibility: visible !important;
+    color: #000000 !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Ensure the sheet is anchored to the very top-left of the printed page */
+  .printable-sheet {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+    font-family: 'Times New Roman', Times, Georgia, serif !important;
+    display: block !important;
+  }
+
+  /* Hide interactive web chrome, banners, buttons, sidebars, navigations */
   header,
   nav,
   aside,
   footer,
   button,
+  input,
+  select,
+  textarea,
   .no-print,
   .no-print-area,
   .toast-container {
@@ -121,88 +156,56 @@
     visibility: hidden !important;
   }
 
-  /* Reset all modal overlays so they don't add dark margins or borders */
+  /* Collapse any overlay modal wrappers during print */
   .fixed,
-  .print-modal-backdrop {
+  .print-modal-backdrop,
+  .print-modal-dialog,
+  .print-scroll-container,
+  .print-paper-card {
     position: static !important;
-    inset: auto !important;
     background: #ffffff !important;
     background-color: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
     padding: 0 !important;
     margin: 0 !important;
-    overflow: visible !important;
-  }
-
-  .print-modal-dialog {
-    border: none !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
     max-width: 100% !important;
     max-height: none !important;
     overflow: visible !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    background: #ffffff !important;
-  }
-
-  .print-scroll-container,
-  .print-paper-card {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    box-shadow: none !important;
-    border: none !important;
-    border-radius: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    max-width: 100% !important;
-    width: 100% !important;
-    overflow: visible !important;
-  }
-
-  main {
-    margin: 0 !important;
-    padding: 0 !important;
-    max-width: 100% !important;
-    width: 100% !important;
-    background: #ffffff !important;
-  }
-
-  /* Formal printable sheet rules */
-  .printable-document,
-  .printable-document.hidden-on-screen,
-  .printable-sheet {
     display: block !important;
-    visibility: visible !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #000000 !important;
-    border: none !important;
-    box-shadow: none !important;
   }
 
-  .printable-sheet * {
-    color: #000000 !important;
-    box-shadow: none !important;
-  }
-
+  /* Formal table borders: pure clean black lines */
   .printable-sheet table {
     border-collapse: collapse !important;
     width: 100% !important;
+    page-break-inside: auto !important;
+  }
+
+  .printable-sheet tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   .printable-sheet th,
   .printable-sheet td {
-    border-color: #000000 !important;
+    border: 1px solid #000000 !important;
+    color: #000000 !important;
   }
 
-  .printable-sheet thead tr {
+  .printable-sheet thead tr th,
+  .printable-sheet thead th {
     background-color: #f1f5f9 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    font-weight: bold !important;
+  }
+
+  .printable-sheet table.border-none,
+  .printable-sheet table.border-none td,
+  .printable-sheet table.border-none th {
+    border: none !important;
   }
 
   .print-page-break {
@@ -210,4 +213,5 @@
     break-after: page !important;
   }
 }
+
 

@@ -772,20 +772,37 @@ export const PrintConfigManualEditor: React.FC<PrintConfigManualEditorProps> = (
             }`}
           >
             <div className="flex items-center justify-between gap-3">
-              {/* Left Logo */}
-              {formData.showTutWuriLogo ||
-              formData.logoPosition === 'left' ||
-              formData.logoPosition === 'both' ? (
-                <div className="w-14 h-14 shrink-0 flex items-center justify-center">
+              {/* Left Logo Slot */}
+              <div className="w-14 h-14 shrink-0 flex items-center justify-center">
+                {formData.logoPosition === 'left' ? (
+                  parsedLogo.type === 'svg' ? (
+                    <div
+                      className="w-12 h-12 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full"
+                      dangerouslySetInnerHTML={{ __html: parsedLogo.content }}
+                    />
+                  ) : parsedLogo.type === 'img' && parsedLogo.content ? (
+                    <img
+                      src={parsedLogo.content}
+                      alt="Logo Sekolah"
+                      className="max-w-[48px] max-h-[48px] object-contain"
+                    />
+                  ) : (
+                    <img
+                      src={TUT_WURI_LOGO_SVG}
+                      alt="Logo Tut Wuri"
+                      className="max-w-[44px] max-h-[44px] object-contain"
+                    />
+                  )
+                ) : formData.showTutWuriLogo ? (
                   <img
                     src={TUT_WURI_LOGO_SVG}
                     alt="Tut Wuri"
                     className="max-w-[48px] max-h-[48px] object-contain"
                   />
-                </div>
-              ) : (
-                <div className="w-4 shrink-0" />
-              )}
+                ) : (
+                  <div className="w-4 shrink-0" />
+                )}
+              </div>
 
               {/* Text */}
               <div className="flex-1 text-center px-2">
@@ -813,12 +830,10 @@ export const PrintConfigManualEditor: React.FC<PrintConfigManualEditorProps> = (
                 </p>
               </div>
 
-              {/* Right Logo */}
-              {formData.logoPosition === 'right' ||
-              formData.logoPosition === 'both' ||
-              (formData.showTutWuriLogo && parsedLogo.type !== 'none') ? (
-                <div className="w-14 h-14 shrink-0 flex items-center justify-center">
-                  {parsedLogo.type === 'svg' ? (
+              {/* Right Logo Slot */}
+              <div className="w-14 h-14 shrink-0 flex items-center justify-center">
+                {formData.logoPosition === 'right' || formData.logoPosition === 'both' ? (
+                  parsedLogo.type === 'svg' ? (
                     <div
                       className="w-12 h-12 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full"
                       dangerouslySetInnerHTML={{ __html: parsedLogo.content }}
@@ -828,9 +843,6 @@ export const PrintConfigManualEditor: React.FC<PrintConfigManualEditorProps> = (
                       src={parsedLogo.content}
                       alt="Logo Sekolah"
                       className="max-w-[48px] max-h-[48px] object-contain"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).style.display = 'none';
-                      }}
                     />
                   ) : (
                     <img
@@ -838,11 +850,17 @@ export const PrintConfigManualEditor: React.FC<PrintConfigManualEditorProps> = (
                       alt="Logo Tut Wuri"
                       className="max-w-[44px] max-h-[44px] object-contain"
                     />
-                  )}
-                </div>
-              ) : (
-                <div className="w-4 shrink-0" />
-              )}
+                  )
+                ) : formData.logoPosition === 'left' && formData.showTutWuriLogo ? (
+                  <img
+                    src={TUT_WURI_LOGO_SVG}
+                    alt="Logo Tut Wuri"
+                    className="max-w-[44px] max-h-[44px] object-contain"
+                  />
+                ) : (
+                  <div className="w-4 shrink-0" />
+                )}
+              </div>
             </div>
           </div>
 

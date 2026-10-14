@@ -966,6 +966,8 @@ export default function App() {
             students={students}
             finances={finances}
             teacher={teacher}
+            schoolName={schoolName}
+            printConfig={printConfig}
             onAddTransaction={handleAddTransaction}
             onDeleteTransaction={handleDeleteTransaction}
             onSaveToCloud={handleSaveToCloud}

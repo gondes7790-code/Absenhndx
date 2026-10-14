@@ -56,10 +56,35 @@ export const savePrintConfig = (config: PrintConfig): void => {
 };
 
 /**
+ * Cleans image URL from quotes, Google Drive sharing links, Dropbox links, etc.
+ */
+export const cleanImageUrl = (url: string): string => {
+  if (!url) return '';
+  let cleaned = url.trim().replace(/^["']|["']$/g, '');
+
+  // Google Drive sharing URL converter
+  // Matches /file/d/FILE_ID or id=FILE_ID or open?id=FILE_ID
+  const gdriveMatch = cleaned.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?id=)([a-zA-Z0-9_-]+)/i);
+  if (gdriveMatch && gdriveMatch[1]) {
+    return `https://drive.google.com/thumbnail?id=${gdriveMatch[1]}&sz=w1000`;
+  }
+
+  // Dropbox dl=0 to raw=1
+  if (cleaned.includes('dropbox.com') && cleaned.includes('dl=0')) {
+    return cleaned.replace('dl=0', 'raw=1');
+  }
+
+  return cleaned;
+};
+
+/**
  * Parses user input for logo:
  * - HTML <img> embed code (extracts src attribute)
- * - Raw SVG code (<svg...>...</svg>)
- * - Direct image URL (https://... or data:image/...)
+ * - Raw SVG code (<svg...>...</svg>) even with XML headers or wrapper tags
+ * - SVG data URIs (data:image/svg+xml;...)
+ * - Markdown image syntax ![alt](url)
+ * - <iframe> / <embed> src tags
+ * - Direct image URL (https://..., http://..., data:image/...)
  */
 export const parseLogoEmbed = (
   embedCode: string
@@ -70,24 +95,39 @@ export const parseLogoEmbed = (
 
   const trimmed = embedCode.trim();
 
-  // If user pasted an SVG
-  if (trimmed.startsWith('<svg') && trimmed.endsWith('</svg>')) {
-    return { type: 'svg', content: trimmed };
+  // 1. Check for SVG markup anywhere in string (handles <?xml ...>, comments, wrappers)
+  const svgMatch = trimmed.match(/<svg[\s\S]*?<\/svg>/i);
+  if (svgMatch && svgMatch[0]) {
+    return { type: 'svg', content: svgMatch[0] };
   }
 
-  // If user pasted an <img> tag with src
-  const imgMatch = trimmed.match(/<img[^>]+src=["']([^"']+)["']/i);
+  // 2. Check for data:image/svg+xml;utf8,<svg...
+  if (trimmed.startsWith('data:image/svg+xml;utf8,<svg') || trimmed.startsWith('data:image/svg+xml,<svg')) {
+    const rawSvg = decodeURIComponent(
+      trimmed.replace(/^data:image\/svg\+xml(?:;utf8)?,/, '')
+    );
+    return { type: 'svg', content: rawSvg };
+  }
+
+  // 3. Check for HTML <img> tag with src
+  const imgMatch = trimmed.match(/<img[^>]+src=["']?([^"'>\s]+)["']?/i);
   if (imgMatch && imgMatch[1]) {
-    return { type: 'img', content: imgMatch[1] };
+    return { type: 'img', content: cleanImageUrl(imgMatch[1]) };
   }
 
-  // If user pasted iframe or other tag with src
-  const srcMatch = trimmed.match(/src=["']([^"']+)["']/i);
+  // 4. Check for any tag with src (iframe, embed, object)
+  const srcMatch = trimmed.match(/src=["']?([^"'>\s]+)["']?/i);
   if (srcMatch && srcMatch[1]) {
-    return { type: 'img', content: srcMatch[1] };
+    return { type: 'img', content: cleanImageUrl(srcMatch[1]) };
   }
 
-  // If user pasted a direct URL or data URI
+  // 5. Check for Markdown image syntax ![alt](url)
+  const mdMatch = trimmed.match(/!\[.*?\]\((https?:\/\/[^\s)]+)\)/i);
+  if (mdMatch && mdMatch[1]) {
+    return { type: 'img', content: cleanImageUrl(mdMatch[1]) };
+  }
+
+  // 6. Direct URLs or Data URIs
   if (
     trimmed.startsWith('http://') ||
     trimmed.startsWith('https://') ||
@@ -95,9 +135,14 @@ export const parseLogoEmbed = (
     trimmed.startsWith('/') ||
     trimmed.startsWith('./')
   ) {
-    return { type: 'img', content: trimmed };
+    return { type: 'img', content: cleanImageUrl(trimmed) };
   }
 
-  // Fallback: if it has any url-like structure
-  return { type: 'img', content: trimmed };
+  // 7. General URL regex fallback (e.g. if user pasted arbitrary text containing a URL)
+  const anyUrlMatch = trimmed.match(/(https?:\/\/[^\s"'<>]+)/i);
+  if (anyUrlMatch && anyUrlMatch[1]) {
+    return { type: 'img', content: cleanImageUrl(anyUrlMatch[1]) };
+  }
+
+  return { type: 'none', content: '' };
 };

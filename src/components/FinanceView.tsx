@@ -13,14 +13,18 @@ import {
   X,
   CreditCard,
   Flame,
+  Printer,
 } from 'lucide-react';
-import { FinanceTransaction, Student, ClassRoom, TeacherProfile } from '../types';
+import { FinanceTransaction, Student, ClassRoom, TeacherProfile, PrintConfig } from '../types';
+import { PrintableDocument } from './PrintableDocument';
 
 interface FinanceViewProps {
   activeClass: ClassRoom;
   students: Student[];
   finances: FinanceTransaction[];
   teacher: TeacherProfile;
+  schoolName?: string;
+  printConfig?: PrintConfig;
   onAddTransaction: (tx: Omit<FinanceTransaction, 'id'>) => void;
   onDeleteTransaction: (id: string) => void;
   onSaveToCloud: () => void;
@@ -32,6 +36,8 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
   students,
   finances,
   teacher,
+  schoolName = 'SMK Merdeka Indonesia',
+  printConfig,
   onAddTransaction,
   onDeleteTransaction,
   onSaveToCloud,
@@ -39,6 +45,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'kas' | 'tabungan'>('kas');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
 
   // Modal form states
   const [txType, setTxType] = useState<'Pemasukan' | 'Pengeluaran'>('Pemasukan');
@@ -153,6 +160,14 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+            <button
+              onClick={() => setShowPrintModal(true)}
+              className="px-3.5 py-2 rounded-2xl bg-[#e0f2fe] hover:bg-[#bae6fd] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-sky-950 text-xs sm:text-sm font-black flex items-center gap-2 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b] transition-all cursor-pointer"
+              title="Cetak Buku Kas / Laporan Keuangan format resmi A4 putih"
+            >
+              <Printer className="w-4 h-4 text-sky-900" />
+              <span>Cetak Laporan</span>
+            </button>
             <button
               onClick={onSaveToCloud}
               className="px-3.5 py-2 rounded-2xl bg-[#a7f3d0] hover:bg-[#6ee7b7] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-slate-950 text-xs sm:text-sm font-black flex items-center gap-2 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b] transition-all cursor-pointer"
@@ -503,6 +518,19 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Formal Printable Document */}
+      <PrintableDocument
+        type="finance"
+        isOpen={showPrintModal}
+        onClose={() => setShowPrintModal(false)}
+        activeClass={activeClass}
+        teacher={teacher}
+        schoolName={schoolName}
+        printConfig={printConfig}
+        students={students}
+        financeTransactions={finances}
+      />
     </div>
   );
 };

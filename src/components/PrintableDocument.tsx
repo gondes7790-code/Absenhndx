@@ -79,7 +79,7 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
     if (parsedLogo.type === 'svg') {
       return (
         <div
-          className="w-18 h-18 sm:w-20 sm:h-20 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:max-h-20"
+          className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:max-h-20 [&>svg]:max-w-20 [&>svg]:object-contain"
           dangerouslySetInnerHTML={{ __html: parsedLogo.content }}
         />
       );
@@ -90,9 +90,6 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
           src={parsedLogo.content}
           alt="Logo Sekolah"
           className="max-w-[72px] max-h-[72px] sm:max-w-[82px] sm:max-h-[82px] object-contain mx-auto"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.display = 'none';
-          }}
         />
       );
     }
@@ -100,7 +97,7 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
       <img
         src={TUT_WURI_LOGO_SVG}
         alt="Logo Tut Wuri"
-        className="w-16 h-16 object-contain mx-auto"
+        className="max-w-[70px] max-h-[70px] sm:max-w-[78px] sm:max-h-[78px] object-contain mx-auto"
       />
     );
   };
@@ -112,6 +109,26 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
       className="max-w-[70px] max-h-[70px] sm:max-w-[78px] sm:max-h-[78px] object-contain mx-auto"
     />
   );
+
+  const renderLeftSlot = () => {
+    if (cfg.logoPosition === 'left') {
+      return renderSchoolLogo();
+    }
+    if (cfg.showTutWuriLogo) {
+      return renderTutWuriLogo();
+    }
+    return <div className="w-4 shrink-0" />;
+  };
+
+  const renderRightSlot = () => {
+    if (cfg.logoPosition === 'right' || cfg.logoPosition === 'both') {
+      return renderSchoolLogo();
+    }
+    if (cfg.logoPosition === 'left' && cfg.showTutWuriLogo) {
+      return renderTutWuriLogo();
+    }
+    return <div className="w-4 shrink-0" />;
+  };
 
   // Determine Kop border style
   const getKopBorderClass = () => {
@@ -667,23 +684,16 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
     }
   };
 
-  const showLeftLogo = cfg.showTutWuriLogo || cfg.logoPosition === 'left' || cfg.logoPosition === 'both';
-  const showRightLogo = cfg.logoPosition === 'right' || cfg.logoPosition === 'both' || (cfg.showTutWuriLogo && parsedLogo.type !== 'none');
-
   // The Formal Paper Document (Kertas Siap Cetak Resmi Standar Sekolah - Full Putih)
   const paperSheet = (
-    <div className="printable-sheet bg-white text-black p-6 sm:p-10 font-serif max-w-[210mm] mx-auto border-0 shadow-none leading-normal">
+    <div id="printable-official-sheet" className="printable-sheet bg-white text-black p-6 sm:p-10 font-serif max-w-[210mm] mx-auto border-0 shadow-none leading-normal">
       {/* Official School Letterhead (Kop Surat Resmi Lengkap) */}
       <div className={`pb-3 mb-4 text-center ${getKopBorderClass()}`}>
         <div className="flex items-center justify-between gap-3 mb-1">
-          {/* Logo Sisi Kiri: Tut Wuri Handayani / Lambang Dinas */}
-          {showLeftLogo ? (
-            <div className="w-20 h-20 shrink-0 flex items-center justify-center">
-              {renderTutWuriLogo()}
-            </div>
-          ) : (
-            <div className="w-4 shrink-0" />
-          )}
+          {/* Logo Sisi Kiri */}
+          <div className="w-20 h-20 shrink-0 flex items-center justify-center">
+            {renderLeftSlot()}
+          </div>
 
           {/* Teks Identitas Kop Surat Resmi */}
           <div className="flex-1 text-center px-2">
@@ -711,14 +721,10 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
             </p>
           </div>
 
-          {/* Logo Sisi Kanan: Logo Sekolah yang di-Embed */}
-          {showRightLogo ? (
-            <div className="w-20 h-20 shrink-0 flex items-center justify-center">
-              {renderSchoolLogo()}
-            </div>
-          ) : (
-            <div className="w-4 shrink-0" />
-          )}
+          {/* Logo Sisi Kanan */}
+          <div className="w-20 h-20 shrink-0 flex items-center justify-center">
+            {renderRightSlot()}
+          </div>
         </div>
       </div>
 
