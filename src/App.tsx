@@ -294,12 +294,28 @@ export default function App() {
 
       const targetClass = classes.find((c) => c.id === sessionToSync.classId) || activeClass;
 
+      const materiText = (sessionToSync.materi || '').trim();
+      const kegiatanText = (sessionToSync.kegiatan || '').trim();
+      let combinedMateriKegiatan = '';
+      if (materiText && kegiatanText) {
+        combinedMateriKegiatan = `${materiText} — ${kegiatanText}`;
+      } else if (materiText) {
+        combinedMateriKegiatan = materiText;
+      } else if (kegiatanText) {
+        combinedMateriKegiatan = kegiatanText;
+      }
+
       if (existingIdx >= 0) {
         const next = [...prev];
+        const existing = next[existingIdx];
         next[existingIdx] = {
-          ...next[existingIdx],
+          ...existing,
           tanggal: sessionToSync.tanggal,
           mapel: sessionToSync.mapel,
+          jamPelajaran: sessionToSync.jamPelajaran || existing.jamPelajaran || '07.15 - 09.15 WIB',
+          materiKegiatan: combinedMateriKegiatan || existing.materiKegiatan,
+          materi: sessionToSync.materi || existing.materi,
+          kegiatan: sessionToSync.kegiatan || existing.kegiatan,
           absensiCatatan,
         };
         return next;
@@ -312,10 +328,13 @@ export default function App() {
           classId: sessionToSync.classId,
           className: targetClass.nama,
           pertemuanKe: targetPertemuanKe,
-          jamPelajaran: '07.00 - 09.30 WIB (Jam Ke 1-4)',
+          jamPelajaran: sessionToSync.jamPelajaran || '07.15 - 09.15 WIB',
           materiKegiatan:
+            combinedMateriKegiatan ||
             sessionToSync.catatan ||
             `Pembelajaran Tatap Muka & Praktikum Pertemuan Ke-${sessionToSync.pertemuanKe}`,
+          materi: sessionToSync.materi,
+          kegiatan: sessionToSync.kegiatan,
           absensiCatatan,
           semester: `${targetClass.tahunAjaran} (${targetClass.semester})`,
         };
@@ -425,33 +444,105 @@ export default function App() {
     showToast('Tersimpan di Cloud Supabase', 'Data berhasil disinkronisasi ke PostgreSQL dengan Row Level Security.');
   };
 
-  const handleCreateNewSession = () => {
+  const handleCreateNewSession = (customData?: {
+    pertemuanKe?: number;
+    tanggal?: string;
+    mapel?: string;
+    materi?: string;
+    kegiatan?: string;
+    jamPelajaran?: string;
+    catatan?: string;
+    setAllHadir?: boolean;
+  }) => {
     // Find next session number for current class
     const classSess = sessions.filter((s) => s.classId === activeClass.id);
-    const nextNumber = classSess.reduce((max, s) => Math.max(max, s.pertemuanKe), 0) + 1;
-    const today = new Date().toISOString().split('T')[0];
+    const nextNumber =
+      customData?.pertemuanKe ||
+      classSess.reduce((max, s) => Math.max(max, s.pertemuanKe), 0) + 1;
+    const today = customData?.tanggal || new Date().toISOString().split('T')[0];
+    const mapel = customData?.mapel || activeClass.mapel;
+    const materi = customData?.materi || '';
+    const kegiatan = customData?.kegiatan || '';
+    const jamPelajaran = customData?.jamPelajaran || '07.15 - 09.15 WIB';
+
     const newSession: AttendanceSession = {
-      id: `session-${activeClass.id}-${nextNumber}`,
+      id: `session-${activeClass.id}-${nextNumber}-${Date.now()}`,
       classId: activeClass.id,
       pertemuanKe: nextNumber,
       tanggal: today,
-      mapel: activeClass.mapel,
-      catatan: `Pertemuan Ke-${nextNumber} - Pembelajaran Tatap Muka & Praktikum`,
+      mapel,
+      materi,
+      kegiatan,
+      jamPelajaran,
+      catatan:
+        customData?.catatan ||
+        (materi ? `${materi} — ${kegiatan}` : `Pertemuan Ke-${nextNumber} - Pembelajaran Tatap Muka & Praktikum`),
       createdAt: new Date().toISOString(),
     };
 
-    setSessions([newSession, ...sessions]);
+    setSessions((prev) => [newSession, ...prev]);
     setActiveSession(newSession);
 
-    // User requested: "ketika menambah absen baru, buat absen kosong, semua hadir hanya ketika ditekan tombol semua hadir"
-    // Do NOT prefill records with 'H'! They start empty.
+    const classStudents = students.filter((s) => s.classId === activeClass.id);
 
-    // User requested: "sinkronkan data absen menuju agenda mengajar"
-    syncAttendanceSessionToJournal(newSession, attendanceRecords, students);
+    let recordsToSync = attendanceRecords;
+    if (customData?.setAllHadir) {
+      const allHadirForCurrent: AttendanceRecord[] = classStudents.map((std) => ({
+        id: `rec-${newSession.id}-${std.id}`,
+        sessionId: newSession.id,
+        studentId: std.id,
+        status: 'H',
+        keterangan: '',
+        updatedAt: new Date().toISOString(),
+      }));
+      recordsToSync = [...attendanceRecords, ...allHadirForCurrent];
+      setAttendanceRecords(recordsToSync);
+    }
+
+    // Otomatis sinkronkan data absen menuju agenda mengajar
+    syncAttendanceSessionToJournal(newSession, recordsToSync, students);
 
     showToast(
-      'Sesi Baru Dibuat (Absen Kosong)',
-      `Pertemuan Ke-${nextNumber} (${today}) siap diisi. Absen dimulai dalam keadaan kosong & disinkronkan ke Agenda.`
+      'Sesi Absen Baru & Agenda Mengajar Terbentuk',
+      `Pertemuan Ke-${nextNumber} (${today}) ${materi ? 'materi "' + materi + '"' : ''} otomatis tersinkronisasi ke Agenda Mengajar.`
+    );
+  };
+
+  const handleUpdateSession = (updatedSession: AttendanceSession) => {
+    setSessions((prev) =>
+      prev.map((s) => (s.id === updatedSession.id ? updatedSession : s))
+    );
+    if (activeSession.id === updatedSession.id) {
+      setActiveSession(updatedSession);
+    }
+    // Sinkronkan perubahan sesi absen ke Agenda Mengajar
+    syncAttendanceSessionToJournal(updatedSession, attendanceRecords, students);
+    showToast(
+      'Sesi Absen & Agenda Diperbarui',
+      `Data Pertemuan Ke-${updatedSession.pertemuanKe} (${updatedSession.tanggal}) berhasil disimpan dan disinkronkan ke Agenda Mengajar.`
+    );
+  };
+
+  const handleDeleteSession = (sessionId: string) => {
+    const classSess = sessions.filter((s) => s.classId === activeClass.id);
+    if (classSess.length <= 1) {
+      showToast('Perhatian', 'Minimal harus tersisa 1 sesi pertemuan pada rombel ini.');
+      return;
+    }
+    const targetSession = sessions.find((s) => s.id === sessionId);
+    const remaining = sessions.filter((s) => s.id !== sessionId);
+    setSessions(remaining);
+    setAttendanceRecords((prev) => prev.filter((r) => r.sessionId !== sessionId));
+
+    if (activeSession.id === sessionId) {
+      const remainingForClass = remaining.filter((s) => s.classId === activeClass.id);
+      if (remainingForClass.length > 0) {
+        setActiveSession(remainingForClass[0]);
+      }
+    }
+    showToast(
+      'Sesi Absen Dihapus',
+      `Pertemuan Ke-${targetSession?.pertemuanKe || ''} telah dihapus dari sistem.`
     );
   };
 
@@ -539,6 +630,19 @@ export default function App() {
     showToast('Agenda Mengajar Ditambahkan', `Pertemuan ${entry.pertemuanKe} kelas ${entry.className} tersimpan.`);
   };
 
+  const handleUpdateJournal = (updatedEntry: JournalEntry) => {
+    setJournals((prev) => prev.map((j) => (j.id === updatedEntry.id ? updatedEntry : j)));
+    showToast(
+      'Agenda Mengajar Diperbarui',
+      `Catatan pertemuan ${updatedEntry.pertemuanKe} (${updatedEntry.className}) berhasil disimpan.`
+    );
+  };
+
+  const handleDeleteJournal = (id: string) => {
+    setJournals((prev) => prev.filter((j) => j.id !== id));
+    showToast('Agenda Mengajar Dihapus', 'Catatan agenda telah dihapus dari buku jurnal.');
+  };
+
   // Handlers for Finances
   const handleAddTransaction = (tx: Omit<FinanceTransaction, 'id'>) => {
     const newTx: FinanceTransaction = {
@@ -556,14 +660,15 @@ export default function App() {
 
   // Handlers for Students
   const handleAddStudent = (newStd: Omit<Student, 'id' | 'noUrut'>) => {
-    const nextNo = students.length + 1;
+    const currentClassStudents = students.filter((s) => s.classId === activeClass.id);
+    const nextNo = currentClassStudents.length + 1;
     const student: Student = {
       ...newStd,
       id: `std-${Date.now()}`,
       noUrut: nextNo,
     };
     setStudents([...students, student]);
-    showToast('Murid Berhasil Ditambahkan', `${student.nama} terdaftar di kelas ${activeClass.nama}.`);
+    showToast('Murid Berhasil Ditambahkan', `${student.nama} terdaftar di kelas ${activeClass.nama} dengan nomor absen ${nextNo}.`);
   };
 
   const handleEditStudent = (updatedStudent: Student) => {
@@ -571,9 +676,35 @@ export default function App() {
     showToast('Data Murid Diperbarui', `Informasi ${updatedStudent.nama} berhasil diubah.`);
   };
 
+  // Sistem dalam absen: jika data siswa dihapus, nomor absen siswa setelahnya otomatis diganti (misal no 16 dihapus, no 17 menjadi 16)
   const handleDeleteStudent = (id: string) => {
-    setStudents((prev) => prev.filter((s) => s.id !== id));
-    showToast('Murid Dihapus', 'Data murid telah dihapus dari rombel.');
+    const studentToDelete = students.find((s) => s.id === id);
+    if (!studentToDelete) return;
+    const targetClassId = studentToDelete.classId;
+
+    setStudents((prev) => {
+      const otherStudents = prev.filter((s) => s.classId !== targetClassId);
+      const remainingThisClass = prev
+        .filter((s) => s.classId === targetClassId && s.id !== id)
+        .sort((a, b) => a.noUrut - b.noUrut);
+
+      // Otomatis ganti nomor absen setelahnya berurutan tanpa jeda
+      const reindexed = remainingThisClass.map((s, idx) => ({
+        ...s,
+        noUrut: idx + 1,
+      }));
+
+      return [...otherStudents, ...reindexed];
+    });
+
+    // Bersihkan riwayat absensi dan nilai murid yang dihapus
+    setAttendanceRecords((prev) => prev.filter((r) => r.studentId !== id));
+    setGrades((prev) => prev.filter((g) => g.studentId !== id));
+
+    showToast(
+      'Nomor Absen Diperbarui Otomatis',
+      `Murid ${studentToDelete.nama} (No. ${studentToDelete.noUrut}) dihapus. Nomor absen rombel setelahnya otomatis digeser maju berurutan (misal 17 jadi 16).`
+    );
   };
 
   // Batch Student Import (from Excel / Copas Langsung)
@@ -759,6 +890,9 @@ export default function App() {
             onSetAllHadir={handleSetAllHadir}
             onSaveToCloud={handleSaveToCloud}
             onCreateNewSession={handleCreateNewSession}
+            onUpdateSession={handleUpdateSession}
+            onDeleteSession={handleDeleteSession}
+            onDeleteStudent={handleDeleteStudent}
             onOpenParentLink={() => setIsParentPortalOpen(true)}
             onOpenWhatsAppModal={(targetStd) => {
               setTargetStudentWA(targetStd);
@@ -817,6 +951,8 @@ export default function App() {
             classes={classes}
             teacher={teacher}
             onAddJournal={handleAddJournal}
+            onUpdateJournal={handleUpdateJournal}
+            onDeleteJournal={handleDeleteJournal}
             onSaveToCloud={handleSaveToCloud}
             schoolName={schoolName}
             onSyncAttendance={handleSyncAllAttendanceToJournals}

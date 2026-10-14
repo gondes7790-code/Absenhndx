@@ -276,7 +276,7 @@ export const StudentManagementView: React.FC<StudentManagementViewProps> = ({
               {filteredStudents.map((student, idx) => (
                 <tr key={student.id} className="hover:bg-[#faf7ee]/60 transition-colors">
                   <td className="py-3 px-3 text-center text-slate-600 font-mono font-bold">
-                    {idx + 1}
+                    {student.noUrut || idx + 1}
                   </td>
                   <td className="py-3 px-4 font-mono font-bold text-slate-600">
                     {student.nisn}
@@ -305,9 +305,17 @@ export const StudentManagementView: React.FC<StudentManagementViewProps> = ({
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => onDeleteStudent(student.id)}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Hapus murid "${student.nama}" (Nomor Absen ${student.noUrut || idx + 1})? Nomor absen setelahnya akan otomatis diganti berurutan (misalnya nomor 17 menjadi 16).`
+                            )
+                          ) {
+                            onDeleteStudent(student.id);
+                          }
+                        }}
                         className="p-1.5 rounded-xl bg-[#fee2e2] hover:bg-[#fca5a5] text-rose-950 border border-slate-900 shadow-[1px_1px_0px_#1e293b] transition-all cursor-pointer"
-                        title="Hapus Siswa"
+                        title="Hapus Siswa (Nomor Absen Otomatis Diganti)"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>

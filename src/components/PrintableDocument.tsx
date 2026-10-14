@@ -223,7 +223,7 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
 
                   return (
                     <tr key={student.id} className="text-center even:bg-slate-50/50">
-                      <td className="border border-black py-1 px-2 font-mono">{idx + 1}</td>
+                      <td className="border border-black py-1 px-2 font-mono">{student.noUrut || idx + 1}</td>
                       <td className="border border-black py-1 px-2 font-mono">{student.nisn}</td>
                       <td className="border border-black py-1 px-3 text-left font-medium">
                         {student.nama}
@@ -333,7 +333,7 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
               <tbody>
                 {studentRecaps.map((item, idx) => (
                   <tr key={item.student.id} className="text-center even:bg-slate-50/50">
-                    <td className="border border-black py-1 px-1 font-mono">{idx + 1}</td>
+                    <td className="border border-black py-1 px-1 font-mono">{item.student.noUrut || idx + 1}</td>
                     <td className="border border-black py-1 px-2 font-mono">{item.student.nisn}</td>
                     <td className="border border-black py-1 px-3 text-left font-medium">
                       {item.student.nama}
@@ -442,7 +442,7 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
               <tbody>
                 {gradeList.map((item, idx) => (
                   <tr key={item.student.id} className="text-center even:bg-slate-50/50">
-                    <td className="border border-black py-1 px-1 font-mono">{idx + 1}</td>
+                    <td className="border border-black py-1 px-1 font-mono">{item.student.noUrut || idx + 1}</td>
                     <td className="border border-black py-1 px-1 font-mono">{item.student.nisn}</td>
                     <td className="border border-black py-1 px-2 text-left font-medium">
                       {item.student.nama}

@@ -18,6 +18,12 @@ import {
   ChevronDown,
   BookOpen,
   Sparkles,
+  Edit2,
+  Trash2,
+  X,
+  RotateCcw,
+  Clock,
+  Layers,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import {
@@ -41,7 +47,19 @@ interface AttendanceViewProps {
   onUpdateRecord: (studentId: string, status: AttendanceStatus, keterangan?: string) => void;
   onSetAllHadir: () => void;
   onSaveToCloud: () => void;
-  onCreateNewSession: () => void;
+  onCreateNewSession: (customData?: {
+    pertemuanKe?: number;
+    tanggal?: string;
+    mapel?: string;
+    materi?: string;
+    kegiatan?: string;
+    jamPelajaran?: string;
+    catatan?: string;
+    setAllHadir?: boolean;
+  }) => void;
+  onUpdateSession?: (session: AttendanceSession) => void;
+  onDeleteSession?: (sessionId: string) => void;
+  onDeleteStudent?: (studentId: string) => void;
   onOpenParentLink: () => void;
   onOpenWhatsAppModal: (targetStudent?: Student) => void;
   schoolName: string;
@@ -60,6 +78,9 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   onSetAllHadir,
   onSaveToCloud,
   onCreateNewSession,
+  onUpdateSession,
+  onDeleteSession,
+  onDeleteStudent,
   onOpenParentLink,
   onOpenWhatsAppModal,
   schoolName,
@@ -78,6 +99,35 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
 
+  // Modal states for Create Session & Manual Edit Session
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditSessionModalOpen, setIsEditSessionModalOpen] = useState(false);
+
+  // Create Session Form State
+  const nextSessionNumber = useMemo(() => {
+    const classSess = sessions.filter((s) => s.classId === activeClass.id);
+    return classSess.reduce((max, s) => Math.max(max, s.pertemuanKe), 0) + 1;
+  }, [sessions, activeClass.id]);
+
+  const [createPertemuan, setCreatePertemuan] = useState<number>(nextSessionNumber);
+  const [createTanggal, setCreateTanggal] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  );
+  const [createMapel, setCreateMapel] = useState<string>(activeClass.mapel);
+  const [createJam, setCreateJam] = useState<string>('07.15 - 09.15 WIB');
+  const [createMateri, setCreateMateri] = useState<string>('');
+  const [createKegiatan, setCreateKegiatan] = useState<string>('');
+  const [createStartMode, setCreateStartMode] = useState<'empty' | 'all_hadir'>('empty');
+
+  // Edit Session Form State
+  const [editPertemuan, setEditPertemuan] = useState<number>(1);
+  const [editTanggal, setEditTanggal] = useState<string>('');
+  const [editMapel, setEditMapel] = useState<string>('');
+  const [editJam, setEditJam] = useState<string>('');
+  const [editMateri, setEditMateri] = useState<string>('');
+  const [editKegiatan, setEditKegiatan] = useState<string>('');
+  const [editCatatan, setEditCatatan] = useState<string>('');
+
   // Map of studentId -> AttendanceRecord
   const recordsMap = useMemo(() => {
     const map = new Map<string, AttendanceRecord>();
@@ -89,7 +139,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     return map;
   }, [attendanceRecords, activeSession]);
 
-  // Attendance metrics calculation (handles newly created sessions starting empty / kosong)
+  // Attendance metrics calculation
   const metrics = useMemo(() => {
     let hadir = 0;
     let sakit = 0;
@@ -142,6 +192,69 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     return list;
   }, [students, searchQuery, sortMode]);
 
+  // Open Create Modal handler
+  const handleOpenCreateModal = () => {
+    setCreatePertemuan(nextSessionNumber);
+    setCreateTanggal(new Date().toISOString().split('T')[0]);
+    setCreateMapel(activeClass.mapel);
+    setCreateJam('07.15 - 09.15 WIB');
+    setCreateMateri('');
+    setCreateKegiatan('');
+    setCreateStartMode('empty');
+    setIsCreateModalOpen(true);
+  };
+
+  // Submit Create Session handler
+  const handleSubmitCreate = (e: React.FormEvent) => {
+    e.preventDefault();
+    onCreateNewSession({
+      pertemuanKe: createPertemuan,
+      tanggal: createTanggal,
+      mapel: createMapel,
+      materi: createMateri.trim(),
+      kegiatan: createKegiatan.trim(),
+      jamPelajaran: createJam.trim(),
+      setAllHadir: createStartMode === 'all_hadir',
+    });
+    setIsCreateModalOpen(false);
+  };
+
+  // Open Edit Session Modal handler
+  const handleOpenEditSessionModal = () => {
+    if (!activeSession) return;
+    setEditPertemuan(activeSession.pertemuanKe);
+    setEditTanggal(activeSession.tanggal);
+    setEditMapel(activeSession.mapel);
+    setEditJam(activeSession.jamPelajaran || '07.15 - 09.15 WIB');
+    setEditMateri(activeSession.materi || '');
+    setEditKegiatan(activeSession.kegiatan || '');
+    setEditCatatan(activeSession.catatan || '');
+    setIsEditSessionModalOpen(true);
+  };
+
+  // Submit Edit Session handler
+  const handleSubmitEditSession = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeSession || !onUpdateSession) return;
+
+    const updatedSession: AttendanceSession = {
+      ...activeSession,
+      pertemuanKe: editPertemuan,
+      tanggal: editTanggal,
+      mapel: editMapel,
+      jamPelajaran: editJam,
+      materi: editMateri.trim(),
+      kegiatan: editKegiatan.trim(),
+      catatan:
+        editMateri.trim() && editKegiatan.trim()
+          ? `${editMateri.trim()} — ${editKegiatan.trim()}`
+          : editMateri.trim() || editCatatan,
+    };
+
+    onUpdateSession(updatedSession);
+    setIsEditSessionModalOpen(false);
+  };
+
   // Generate WhatsApp report text
   const generateWhatsAppReport = () => {
     const absentList: string[] = [];
@@ -149,7 +262,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       const rec = recordsMap.get(s.id);
       if (rec && rec.status && rec.status !== 'H') {
         const ket = rec.keterangan ? ` (${rec.keterangan})` : '';
-        absentList.push(`• ${s.nama}: [${rec.status}]${ket}`);
+        absentList.push(`• No. ${s.noUrut} ${s.nama}: [${rec.status}]${ket}`);
       }
     });
 
@@ -157,6 +270,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
 🏫 *${schoolName}*
 📚 Kelas: ${activeClass.nama} | ${activeClass.mapel}
 📅 Tanggal: ${activeSession ? activeSession.tanggal : '-'} (Pertemuan Ke-${activeSession ? activeSession.pertemuanKe : '-'})
+📖 Materi: ${activeSession?.materi || 'Kurikulum Merdeka'}
 ━━━━━━━━━━━━━━━━━━
 📊 *Statistik Kehadiran:*
 • Total Siswa: ${students.length}
@@ -191,7 +305,7 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
     const rows = filteredStudents.map((s, idx) => {
       const rec = recordsMap.get(s.id);
       return [
-        idx + 1,
+        s.noUrut || idx + 1,
         `"${s.nisn}"`,
         `"${s.nama}"`,
         s.gender,
@@ -233,10 +347,10 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
           Belum ada sesi presensi untuk kelas ini.
         </p>
         <button
-          onClick={onCreateNewSession}
+          onClick={handleOpenCreateModal}
           className="px-4 py-2 rounded-2xl bg-[#6ee7b7] text-slate-950 font-black text-xs border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] cursor-pointer"
         >
-          Buat Pertemuan Pertama
+          Buat Pertemuan Pertama & Agenda
         </button>
       </div>
     );
@@ -244,12 +358,12 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
 
   return (
     <div className="space-y-5 sm:space-y-6">
-      {/* Top Header Card - Vintage Postmodern Neobrutalist (overflow-visible to prevent clipping dropdowns) */}
+      {/* Top Header Card - Vintage Postmodern Neobrutalist */}
       <div className="bg-[#fffdf8] rounded-3xl p-4 sm:p-6 border-2 border-slate-900 shadow-[4px_4px_0px_#1e293b] relative overflow-visible z-20">
         {/* Retro Corner Stamp with Fire */}
         <div className="absolute top-0 right-0 bg-[#dcfce7] border-b-2 border-l-2 border-slate-900 px-3 py-1 rounded-bl-2xl text-[10px] font-mono font-bold text-emerald-950 flex items-center gap-1 shadow-xs z-10">
           <Flame className="w-3 h-3 text-orange-600 fill-orange-500" />
-          <span>PRESENSI HARIAN</span>
+          <span>PRESENSI & AGENDA</span>
         </div>
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pt-2 sm:pt-0">
@@ -267,27 +381,27 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
               Buku Presensi & Kehadiran Murid
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 font-medium mt-0.5">
-              {schoolName} • Pencatatan Harian Realtime Terhubung Cloud & Agenda Mengajar
+              {schoolName} • Pencatatan Harian Terkoneksi Otomatis ke Agenda Mengajar
             </p>
           </div>
 
-          {/* Action Button Strip - Clean & No Dualism */}
+          {/* Action Button Strip */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
             <button
               onClick={onSaveToCloud}
               className="px-3.5 py-2 rounded-2xl bg-[#a7f3d0] hover:bg-[#6ee7b7] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-slate-950 text-xs sm:text-sm font-black flex items-center gap-2 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b] transition-all cursor-pointer"
             >
               <Cloud className="w-4 h-4 text-emerald-950" />
-              <span>Simpan ke Cloud</span>
+              <span>Simpan Cloud</span>
             </button>
 
             <button
-              onClick={onCreateNewSession}
+              onClick={handleOpenCreateModal}
               className="px-3.5 py-2 rounded-2xl bg-[#ede9fe] hover:bg-[#ddd6fe] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-indigo-950 text-xs sm:text-sm font-black flex items-center gap-2 border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b] transition-all cursor-pointer"
-              title="Tambah pertemuan baru dengan absen kosong"
+              title="Tambah pertemuan baru dengan isian materi & kegiatan yang otomatis tersinkron"
             >
               <Plus className="w-4 h-4 text-indigo-950" />
-              <span>Pertemuan Baru</span>
+              <span>Buat Absen Baru</span>
             </button>
 
             <button
@@ -308,7 +422,6 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
               <span>Excel</span>
             </button>
 
-            {/* Kertas Siap Cetak Button (Dokumen Standar Putih Bersih) */}
             <button
               onClick={() => setShowPrintModal(true)}
               className="px-3 py-2 rounded-2xl bg-[#fee2e2] hover:bg-[#fca5a5] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-rose-950 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer"
@@ -323,61 +436,73 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
         {/* Meeting Dropdown & Interactive Timeline Selector */}
         <div className="mt-4 pt-4 border-t-2 border-slate-100 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            <div className="relative">
-              <button
-                onClick={() => setSessionDropdownOpen(!sessionDropdownOpen)}
-                className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#faf7ee] hover:bg-[#f5eedc] border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] text-xs sm:text-sm font-black text-slate-900 transition-all cursor-pointer"
-              >
-                <Calendar className="w-4 h-4 text-emerald-800" />
-                <span>
-                  Pertemuan Ke-{activeSession.pertemuanKe} ({activeSession.tanggal})
-                </span>
-                <span className="text-xs bg-slate-900 text-white px-2 py-0.5 rounded-full ml-1 font-mono">
-                  {sessions.length} Sesi <ChevronDown className="w-3 h-3 inline-block ml-0.5" />
-                </span>
-              </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Meeting Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setSessionDropdownOpen(!sessionDropdownOpen)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#faf7ee] hover:bg-[#f5eedc] border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] text-xs sm:text-sm font-black text-slate-900 transition-all cursor-pointer"
+                >
+                  <Calendar className="w-4 h-4 text-emerald-800" />
+                  <span>
+                    Pertemuan Ke-{activeSession.pertemuanKe} ({activeSession.tanggal})
+                  </span>
+                  <span className="text-xs bg-slate-900 text-white px-2 py-0.5 rounded-full ml-1 font-mono">
+                    {sessions.length} Sesi <ChevronDown className="w-3 h-3 inline-block ml-0.5" />
+                  </span>
+                </button>
 
-              {/* Dropdown Menu - Unclipped with high z-index */}
-              {sessionDropdownOpen && (
-                <div className="absolute left-0 mt-2 w-72 sm:w-80 bg-white rounded-3xl shadow-[6px_6px_0px_#1e293b] border-2 border-slate-900 py-2 z-50 max-h-72 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
-                  <div className="px-3.5 py-1.5 text-[11px] font-black text-slate-500 uppercase tracking-wider border-b border-slate-100 flex items-center justify-between">
-                    <span>DAFTAR SESI PERTEMUAN</span>
-                    <span className="font-mono">{sessions.length} Sesi</span>
+                {sessionDropdownOpen && (
+                  <div className="absolute left-0 mt-2 w-72 sm:w-80 bg-white rounded-3xl shadow-[6px_6px_0px_#1e293b] border-2 border-slate-900 py-2 z-50 max-h-72 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+                    <div className="px-3.5 py-1.5 text-[11px] font-black text-slate-500 uppercase tracking-wider border-b border-slate-100 flex items-center justify-between">
+                      <span>DAFTAR SESI PERTEMUAN</span>
+                      <span className="font-mono">{sessions.length} Sesi</span>
+                    </div>
+                    <div className="p-1.5 space-y-1">
+                      {sessions.map((s) => (
+                        <button
+                          key={s.id}
+                          onClick={() => {
+                            onSelectSession(s);
+                            setSessionDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer ${
+                            s.id === activeSession.id
+                              ? 'bg-[#dcfce7] border-2 border-slate-900 text-slate-950 font-black shadow-[2px_2px_0px_#1e293b]'
+                              : 'hover:bg-[#faf7ee] text-slate-800 font-bold'
+                          }`}
+                        >
+                          <div>
+                            <p className="font-bold">Pertemuan Ke-{s.pertemuanKe}</p>
+                            <p className="text-[10px] text-slate-500">
+                              {s.tanggal} • {s.materi || s.mapel}
+                            </p>
+                          </div>
+                          {s.id === activeSession.id && <Check className="w-4 h-4 text-emerald-700" />}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div className="p-1.5 space-y-1">
-                    {sessions.map((s) => (
-                      <button
-                        key={s.id}
-                        onClick={() => {
-                          onSelectSession(s);
-                          setSessionDropdownOpen(false);
-                        }}
-                        className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer ${
-                          s.id === activeSession.id
-                            ? 'bg-[#dcfce7] border-2 border-slate-900 text-slate-950 font-black shadow-[2px_2px_0px_#1e293b]'
-                            : 'hover:bg-[#faf7ee] text-slate-800 font-bold'
-                        }`}
-                      >
-                        <div>
-                          <p className="font-bold">Pertemuan Ke-{s.pertemuanKe}</p>
-                          <p className="text-[10px] text-slate-500">
-                            {s.tanggal} • {s.mapel}
-                          </p>
-                        </div>
-                        {s.id === activeSession.id && <Check className="w-4 h-4 text-emerald-700" />}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
+
+              {/* Edit Manual Sesi Absen Button (Access for already inputted attendance) */}
+              <button
+                onClick={handleOpenEditSessionModal}
+                className="px-3.5 py-2 rounded-2xl bg-[#e0f2fe] hover:bg-[#bae6fd] border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] text-xs font-black text-sky-950 flex items-center gap-1.5 transition-all cursor-pointer"
+                title="Edit Manual Tanggal, Materi, dan Catatan Pertemuan yang Sudah Diinput"
+              >
+                <Edit2 className="w-3.5 h-3.5 text-sky-900" />
+                <span>Edit Manual Sesi & Materi</span>
+              </button>
             </div>
 
             <span className="text-[11px] font-medium text-slate-500">
-              Pilih sesi untuk melihat atau mengedit daftar hadir tanggal terkait.
+              Pilih atau edit sesi untuk memperbarui materi dan catatan agenda.
             </span>
           </div>
 
-          {/* Horizontal Meeting Pills Timeline so meetings are immediately visible and clickable */}
+          {/* Horizontal Meeting Pills Timeline */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5">
             <span className="text-[10px] font-black uppercase text-slate-500 shrink-0 font-mono mr-1">
               Sesi:
@@ -403,15 +528,20 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
             })}
           </div>
 
-          {/* Dedicated Pratinjau Pertemuan Banner (ensures preview below meeting is clear & synchronized) */}
+          {/* Pratinjau Pertemuan & Materi Banner */}
           <div className="bg-[#f0fdf4] border-2 border-emerald-900/30 rounded-2xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="font-black text-emerald-950 bg-white px-2 py-0.5 rounded-lg border border-emerald-900/20 shadow-xs">
-                Pratinjau Pertemuan Ke-{activeSession.pertemuanKe}
+                Pertemuan Ke-{activeSession.pertemuanKe}
               </span>
               <span className="text-slate-700 font-medium">
                 📅 {activeSession.tanggal} • 📚 {activeSession.mapel}
               </span>
+              {activeSession.materi && (
+                <span className="font-bold text-emerald-900 bg-emerald-100/70 px-2 py-0.5 rounded border border-emerald-300">
+                  Materi: {activeSession.materi}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2 text-emerald-900 font-bold text-[11px]">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
@@ -444,6 +574,13 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
             <p className="text-xs text-emerald-900 font-bold mt-0.5 truncate">
               {activeSession.mapel}
             </p>
+            {activeSession.materi && (
+              <p className="text-xs text-slate-700 font-medium mt-1.5 bg-white/70 p-2 rounded-xl border border-emerald-900/20 line-clamp-2">
+                <span className="font-black text-emerald-950">Materi: </span>
+                {activeSession.materi}
+                {activeSession.kegiatan ? ` (${activeSession.kegiatan})` : ''}
+              </p>
+            )}
           </div>
 
           <div className="flex items-center gap-2 mt-4 pt-3 border-t-2 border-emerald-300">
@@ -456,122 +593,66 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
               <span>Set Semua Hadir</span>
             </button>
             <button
-              onClick={handleCopyReport}
-              className="flex-1 py-2 px-3 rounded-2xl bg-white hover:bg-[#faf7ee] active:translate-x-[1px] active:translate-y-[1px] text-slate-900 text-xs font-bold flex items-center justify-center gap-1.5 transition-all border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] cursor-pointer"
+              onClick={handleOpenEditSessionModal}
+              className="py-2 px-3 rounded-2xl bg-white hover:bg-[#faf7ee] active:translate-x-[1px] active:translate-y-[1px] text-slate-900 text-xs font-bold flex items-center justify-center gap-1.5 transition-all border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] cursor-pointer"
+              title="Edit manual sesi & materi"
             >
-              <Copy className="w-3.5 h-3.5 text-slate-800" />
-              <span>{copyFeedback ? 'Tersalin!' : 'Salin Laporan WA'}</span>
+              <Edit2 className="w-3.5 h-3.5 text-sky-900" />
+              <span>Edit Sesi</span>
             </button>
           </div>
         </div>
 
-        {/* Card 2: Percentage Progress in Pastel Teal */}
-        <div className="md:col-span-3 bg-[#ccfbf1] border-2 border-slate-900 rounded-3xl p-4 sm:p-5 shadow-[4px_4px_0px_#1e293b] flex flex-col justify-between">
-          <div>
-            <span className="text-[10px] font-mono font-black text-teal-950 tracking-wider uppercase bg-white border border-slate-900 px-2 py-0.5 rounded-md shadow-[1px_1px_0px_#1e293b]">
-              PERSENTASE HADIR
+        {/* Card 2: Attendance Distribution */}
+        <div className="md:col-span-7 bg-[#fffdf8] border-2 border-slate-900 rounded-3xl p-4 sm:p-5 shadow-[4px_4px_0px_#1e293b] flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-mono font-black text-slate-700 uppercase tracking-wider">
+              DISTRIBUSI KEHADIRAN
             </span>
-            <div className="flex items-baseline gap-2 mt-2">
-              <span className="text-3xl sm:text-4xl font-black text-teal-950 tracking-tight font-mono">
-                {metrics.percentage}%
-              </span>
-              <span className="text-xs font-bold text-teal-800">
-                ({metrics.hadir}/{metrics.total} Murid)
-              </span>
+            <span className="text-xs font-bold text-slate-600 font-mono">
+              Total: {students.length} Siswa
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 my-3">
+            <div className="bg-[#dcfce7] border-2 border-slate-900 rounded-2xl p-2 text-center shadow-[1.5px_1.5px_0px_#1e293b]">
+              <span className="text-[10px] font-black text-emerald-900">HADIR</span>
+              <p className="text-xl font-black text-emerald-950 font-mono">{metrics.hadir}</p>
             </div>
-            {metrics.belumDiisi > 0 && (
-              <span className="text-[11px] font-black text-amber-900 bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-900/30 inline-block mt-1">
-                {metrics.belumDiisi} Siswa Belum Diabsen
-              </span>
-            )}
-          </div>
-
-          <div className="mt-4">
-            <div className="w-full bg-white rounded-full h-3.5 overflow-hidden p-0.5 border-2 border-slate-900 shadow-[1.5px_1.5px_0px_#1e293b]">
-              <div
-                className="bg-[#0d9488] h-full rounded-full transition-all duration-500"
-                style={{ width: `${metrics.percentage}%` }}
-              />
+            <div className="bg-[#fef9c3] border-2 border-slate-900 rounded-2xl p-2 text-center shadow-[1.5px_1.5px_0px_#1e293b]">
+              <span className="text-[10px] font-black text-amber-900">SAKIT</span>
+              <p className="text-xl font-black text-amber-950 font-mono">{metrics.sakit}</p>
             </div>
-            <p className="text-[11px] font-bold text-teal-900 mt-2 text-right">
-              Target Ketercapaian: &gt; 90%
-            </p>
-          </div>
-        </div>
-
-        {/* Card 3: 5 Colorful Pastel Neobrutalist Bars (H, S, I, A, D) */}
-        <div className="md:col-span-4 bg-white border-2 border-slate-900 rounded-3xl p-3 sm:p-4 shadow-[4px_4px_0px_#1e293b] flex items-stretch gap-1.5 sm:gap-2">
-          {/* Hadir */}
-          <div className="flex-1 bg-[#dcfce7] border-2 border-slate-900 rounded-2xl p-2 flex flex-col items-center justify-center text-center shadow-[2px_2px_0px_#1e293b]">
-            <span className="text-xl sm:text-2xl font-black text-emerald-950 font-mono">
-              {metrics.hadir}
-            </span>
-            <span className="text-[10px] sm:text-xs font-black text-emerald-900 mt-0.5">Hadir</span>
-          </div>
-
-          {/* Sakit */}
-          <div className="flex-1 bg-[#fef9c3] border-2 border-slate-900 rounded-2xl p-2 flex flex-col items-center justify-center text-center shadow-[2px_2px_0px_#1e293b]">
-            <span className="text-xl sm:text-2xl font-black text-amber-950 font-mono">
-              {metrics.sakit}
-            </span>
-            <span className="text-[10px] sm:text-xs font-black text-amber-900 mt-0.5">Sakit</span>
-          </div>
-
-          {/* Izin */}
-          <div className="flex-1 bg-[#ffedd5] border-2 border-slate-900 rounded-2xl p-2 flex flex-col items-center justify-center text-center shadow-[2px_2px_0px_#1e293b]">
-            <span className="text-xl sm:text-2xl font-black text-orange-950 font-mono">
-              {metrics.izin}
-            </span>
-            <span className="text-[10px] sm:text-xs font-black text-orange-900 mt-0.5">Izin</span>
-          </div>
-
-          {/* Alfa */}
-          <div className="flex-1 bg-[#fee2e2] border-2 border-slate-900 rounded-2xl p-2 flex flex-col items-center justify-center text-center shadow-[2px_2px_0px_#1e293b]">
-            <span className="text-xl sm:text-2xl font-black text-rose-950 font-mono">
-              {metrics.alpa}
-            </span>
-            <span className="text-[10px] sm:text-xs font-black text-rose-900 mt-0.5">Alfa</span>
-          </div>
-
-          {/* Dispen */}
-          <div className="flex-1 bg-[#ede9fe] border-2 border-slate-900 rounded-2xl p-2 flex flex-col items-center justify-center text-center shadow-[2px_2px_0px_#1e293b]">
-            <span className="text-xl sm:text-2xl font-black text-indigo-950 font-mono">
-              {metrics.dispen}
-            </span>
-            <span className="text-[10px] sm:text-xs font-black text-indigo-900 mt-0.5">Dispen</span>
-          </div>
-        </div>
-      </div>
-
-      {/* WhatsApp Parent Notification Strip */}
-      <div className="bg-[#faf7ee] border-2 border-slate-900 rounded-3xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-[3px_3px_0px_#1e293b]">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-[#dcfce7] border-2 border-slate-900 text-emerald-950 flex items-center justify-center shrink-0 shadow-[2px_2px_0px_#1e293b]">
-            <MessageCircle className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="text-sm font-black text-slate-900">
-                Pratinjau Teks WhatsApp Laporan Orang Tua
-              </h4>
-              <span className="text-[10px] font-mono font-bold bg-[#dcfce7] border border-slate-900 text-emerald-950 px-2 py-0.2 rounded-md">
-                AUTO-SYNC
-              </span>
+            <div className="bg-[#ffedd5] border-2 border-slate-900 rounded-2xl p-2 text-center shadow-[1.5px_1.5px_0px_#1e293b]">
+              <span className="text-[10px] font-black text-orange-900">IZIN</span>
+              <p className="text-xl font-black text-orange-950 font-mono">{metrics.izin}</p>
             </div>
-            <p className="text-xs text-slate-600 mt-0.5 font-medium">
-              Format etika kesopanan Indonesia terstruktur. Otomatis diperbarui saat status absensi dipilih.
-            </p>
+            <div className="bg-[#fee2e2] border-2 border-slate-900 rounded-2xl p-2 text-center shadow-[1.5px_1.5px_0px_#1e293b]">
+              <span className="text-[10px] font-black text-rose-900">ALPA</span>
+              <p className="text-xl font-black text-rose-950 font-mono">{metrics.alpa}</p>
+            </div>
+            <div className="bg-[#ede9fe] border-2 border-slate-900 rounded-2xl p-2 text-center shadow-[1.5px_1.5px_0px_#1e293b]">
+              <span className="text-[10px] font-black text-indigo-900">DISPEN</span>
+              <p className="text-xl font-black text-indigo-950 font-mono">{metrics.dispen}</p>
+            </div>
+            <div className="bg-slate-100 border-2 border-slate-900 rounded-2xl p-2 text-center shadow-[1.5px_1.5px_0px_#1e293b]">
+              <span className="text-[10px] font-black text-slate-700">KOSONG</span>
+              <p className="text-xl font-black text-slate-900 font-mono">{metrics.belumDiisi}</p>
+            </div>
           </div>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => onOpenWhatsAppModal()}
-            className="px-3.5 py-1.5 rounded-xl bg-[#6ee7b7] hover:bg-[#34d399] border-2 border-slate-900 text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-[2.5px_2.5px_0px_#1e293b] active:translate-x-[1px] active:translate-y-[1px] cursor-pointer transition-all"
-          >
-            <Send className="w-3.5 h-3.5" />
-            <span>Kirim WA & Japri</span>
-          </button>
+          <div className="flex items-center justify-between text-xs pt-2 border-t-2 border-slate-100">
+            <span className="font-bold text-slate-700">
+              Persentase Hadir: <span className="font-black text-emerald-700 font-mono">{metrics.percentage}%</span>
+            </span>
+            <button
+              onClick={handleCopyReport}
+              className="text-[11px] font-bold text-slate-700 hover:text-slate-950 flex items-center gap-1 cursor-pointer"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              <span>{copyFeedback ? 'Tersalin!' : 'Salin Teks WA'}</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -579,9 +660,14 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
       <div className="bg-white border-2 border-slate-900 rounded-3xl shadow-[4px_4px_0px_#1e293b] overflow-hidden">
         {/* Table Top Controls */}
         <div className="p-4 border-b-2 border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#fffdf8]">
-          <h3 className="text-base font-black text-slate-900">
-            Daftar Kehadiran Murid ({filteredStudents.length} Siswa)
-          </h3>
+          <div>
+            <h3 className="text-base font-black text-slate-900">
+              Daftar Kehadiran Murid ({filteredStudents.length} Siswa)
+            </h3>
+            <p className="text-[11px] text-slate-500 font-medium">
+              Nomor urut absen otomatis bergeser berurutan jika ada data siswa yang dihapus.
+            </p>
+          </div>
 
           <div className="flex items-center gap-2">
             <div className="relative flex-1 sm:w-64">
@@ -591,7 +677,7 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
                 placeholder="Cari murid atau NISN..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 rounded-2xl bg-[#faf7ee] border-2 border-slate-900 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:shadow-[2px_2px_0px_#0d9488] transition-all placeholder:text-slate-400"
+                className="w-full pl-9 pr-3 py-1.5 rounded-2xl bg-[#faf7ee] border-2 border-slate-900 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white transition-all placeholder:text-slate-400"
               />
             </div>
 
@@ -640,20 +726,20 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
                 <th className="py-3 px-3 w-14 text-center">L/P</th>
                 <th className="py-3 px-4 min-w-[240px] text-center">STATUS KEHADIRAN (H/S/I/A/D)</th>
                 <th className="py-3 px-4 min-w-[220px]">KETERANGAN / ALASAN</th>
-                <th className="py-3 px-3 w-24 text-center">WA ORTU</th>
+                <th className="py-3 px-3 w-28 text-center">AKSI</th>
               </tr>
             </thead>
             <tbody className="divide-y-2 divide-slate-100">
               {filteredStudents.map((student, idx) => {
                 const record = recordsMap.get(student.id);
-                // When status is undefined or empty, it is empty (belum diisi)
                 const currentStatus: AttendanceStatus | '' = record?.status || '';
                 const currentKet = record?.keterangan || '';
+                const displayNo = student.noUrut || idx + 1;
 
                 return (
                   <tr key={student.id} className="hover:bg-[#faf7ee]/60 transition-colors group">
                     <td className="py-3 px-3 text-center text-slate-600 font-mono font-bold">
-                      {idx + 1}
+                      {displayNo}
                     </td>
                     <td className="py-3 px-4">
                       <div className="font-black text-slate-900 group-hover:text-emerald-800 transition-colors flex items-center gap-1.5">
@@ -674,7 +760,7 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
                       </span>
                     </td>
                     <td className="py-3 px-4 text-center">
-                      {/* Interactive H S I A D Toggle Buttons */}
+                      {/* H S I A D Toggle Buttons */}
                       <div className="inline-flex items-center gap-1 sm:gap-1.5 p-1 bg-[#faf7ee] rounded-2xl border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b]">
                         {/* H */}
                         <button
@@ -752,18 +838,37 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
                             onUpdateRecord(student.id, currentStatus, e.target.value);
                           }
                         }}
-                        className="w-full px-3 py-1.5 text-xs rounded-xl border-2 border-slate-900 bg-[#faf7ee] text-slate-900 font-bold focus:bg-white focus:outline-none focus:shadow-[2px_2px_0px_#0d9488] transition-all placeholder:text-slate-400"
+                        className="w-full px-3 py-1.5 text-xs rounded-xl border-2 border-slate-900 bg-[#faf7ee] text-slate-900 font-bold focus:bg-white focus:outline-none transition-all placeholder:text-slate-400"
                       />
                     </td>
                     <td className="py-3 px-3 text-center">
-                      <button
-                        onClick={() => onOpenWhatsAppModal(student)}
-                        className="px-2.5 py-1.5 rounded-xl bg-[#dcfce7] hover:bg-[#bbf7d0] text-emerald-950 border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] text-xs font-black flex items-center gap-1 mx-auto transition-all cursor-pointer active:translate-x-[1px] active:translate-y-[1px]"
-                        title="Kirim pesan WA ke Wali Murid"
-                      >
-                        <MessageCircle className="w-3.5 h-3.5" />
-                        <span>WA</span>
-                      </button>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          onClick={() => onOpenWhatsAppModal(student)}
+                          className="px-2 py-1.5 rounded-xl bg-[#dcfce7] hover:bg-[#bbf7d0] text-emerald-950 border border-slate-900 shadow-[1px_1px_0px_#1e293b] text-xs font-black flex items-center gap-1 transition-all cursor-pointer active:translate-x-[1px] active:translate-y-[1px]"
+                          title="Kirim pesan WA ke Wali Murid"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          <span>WA</span>
+                        </button>
+                        {onDeleteStudent && (
+                          <button
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  `Hapus murid "${student.nama}" (Nomor Absen ${displayNo}) dari kelas? Nomor absen setelahnya akan otomatis diganti berurutan (misalnya nomor 17 menjadi 16).`
+                                )
+                              ) {
+                                onDeleteStudent(student.id);
+                              }
+                            }}
+                            className="p-1.5 rounded-xl bg-[#fee2e2] hover:bg-[#fca5a5] text-rose-950 border border-slate-900 shadow-[1px_1px_0px_#1e293b] transition-all cursor-pointer active:translate-x-[1px] active:translate-y-[1px]"
+                            title="Hapus Siswa (Nomor Absen Otomatis Diganti)"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -773,7 +878,384 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
         </div>
       </div>
 
-      {/* Formal Printable Document Component (Modal View & Print Target) */}
+      {/* Modal: Buat Absen Baru (Lengkap dengan Materi yang Diajarkan & Kegiatan Pembelajaran yang otomatis sinkron ke Agenda Mengajar) */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs">
+          <div className="w-full max-w-lg bg-white border-3 border-slate-900 rounded-3xl p-6 shadow-[6px_6px_0px_#1e293b] relative animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b-2 border-slate-100 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-xl bg-[#ede9fe] border border-slate-900 text-indigo-950">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    Buat Sesi Absen Baru & Agenda Mengajar
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Otomatis sinkron ke Agenda Mengajar termasuk materi, kegiatan, dan kehadiran
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsCreateModalOpen(false)}
+                className="p-1.5 rounded-xl bg-[#fee2e2] border border-slate-900 text-rose-900 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitCreate} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">
+                    Pertemuan Ke- *
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    required
+                    value={createPertemuan}
+                    onChange={(e) => setCreatePertemuan(parseInt(e.target.value) || 1)}
+                    className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-mono font-bold focus:bg-white focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">
+                    Tanggal Pertemuan *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={createTanggal}
+                    onChange={(e) => setCreateTanggal(e.target.value)}
+                    className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-mono font-bold focus:bg-white focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">
+                    Mata Pelajaran
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={createMapel}
+                    onChange={(e) => setCreateMapel(e.target.value)}
+                    className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">
+                    Jam Tatap Muka
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={createJam}
+                    onChange={(e) => setCreateJam(e.target.value)}
+                    className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none"
+                    placeholder="Contoh: 07.15 - 09.15 WIB"
+                  />
+                </div>
+              </div>
+
+              {/* Materi yang Diajarkan */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-slate-800">
+                    Materi yang Diajarkan (Kurikulum Merdeka) *
+                  </label>
+                  <span className="text-[10px] font-bold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                    Masuk Agenda Mengajar
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={createMateri}
+                  onChange={(e) => setCreateMateri(e.target.value)}
+                  className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none placeholder:text-slate-400"
+                  placeholder="Contoh: Teks Prosedur Manual & Kosakata Teknik Otomotif"
+                />
+                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  <span className="text-[10px] text-slate-500 font-bold">Saran Cepat:</span>
+                  <button
+                    type="button"
+                    onClick={() => setCreateMateri('Teks Prosedur Manual & Kosakata Teknik Otomotif')}
+                    className="text-[10px] bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-lg border border-slate-300 font-medium"
+                  >
+                    Teks Prosedur Manual
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCreateMateri('Perbaikan & Pemeriksaan Sistem Kelistrikan')}
+                    className="text-[10px] bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-lg border border-slate-300 font-medium"
+                  >
+                    Sistem Kelistrikan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCreateMateri('K3LH & Budaya Kerja Industri 5R')}
+                    className="text-[10px] bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-lg border border-slate-300 font-medium"
+                  >
+                    K3LH & Budaya Kerja
+                  </button>
+                </div>
+              </div>
+
+              {/* Kegiatan Pembelajaran */}
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Kegiatan Pembelajaran & Praktikum *
+                </label>
+                <textarea
+                  rows={2}
+                  required
+                  value={createKegiatan}
+                  onChange={(e) => setCreateKegiatan(e.target.value)}
+                  className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] focus:bg-white focus:outline-none resize-none font-medium placeholder:text-slate-400"
+                  placeholder="Contoh: Demonstrasi instruktur, bedah SOP, dan praktik kelompok di bengkel kerja..."
+                />
+                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                  <span className="text-[10px] text-slate-500 font-bold">Contoh Cepat:</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCreateKegiatan(
+                        'Demonstrasi instruktur, bedah manual book, dan simulasi praktik kelompok'
+                      )
+                    }
+                    className="text-[10px] bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-lg border border-slate-300 font-medium"
+                  >
+                    Demonstrasi & Praktik
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCreateKegiatan(
+                        'Diskusi kelompok pemecahan studi kasus, presentasi, dan asesmen formatif'
+                      )
+                    }
+                    className="text-[10px] bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-lg border border-slate-300 font-medium"
+                  >
+                    Diskusi & Presentasi
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Kehadiran Awal */}
+              <div className="bg-[#faf7ee] p-3 rounded-2xl border-2 border-slate-900">
+                <label className="block font-bold text-slate-800 mb-1.5">
+                  Pengaturan Awal Status Presensi:
+                </label>
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800">
+                    <input
+                      type="radio"
+                      name="startMode"
+                      value="empty"
+                      checked={createStartMode === 'empty'}
+                      onChange={() => setCreateStartMode('empty')}
+                      className="accent-emerald-700"
+                    />
+                    <span>
+                      Absen Kosong (Belum Diisi — Sesuai permintaan, tombol "Semua Hadir" ditekan nanti jika perlu)
+                    </span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800">
+                    <input
+                      type="radio"
+                      name="startMode"
+                      value="all_hadir"
+                      checked={createStartMode === 'all_hadir'}
+                      onChange={() => setCreateStartMode('all_hadir')}
+                      className="accent-emerald-700"
+                    />
+                    <span>Semua Hadir Langsung (Otomatis 100% Hadir)</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="mt-5 pt-3 border-t-2 border-slate-100 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-[#f1f5f9] border-2 border-slate-900 font-bold text-slate-700 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-[#a7f3d0] hover:bg-[#6ee7b7] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] font-black text-slate-950 cursor-pointer flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-4 h-4 text-emerald-950" />
+                  <span>Buat & Sinkronkan ke Agenda</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Manual Sesi Absen yang Sudah Diinput */}
+      {isEditSessionModalOpen && activeSession && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs">
+          <div className="w-full max-w-lg bg-white border-3 border-slate-900 rounded-3xl p-6 shadow-[6px_6px_0px_#1e293b] relative animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b-2 border-slate-100 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-xl bg-[#e0f2fe] border border-slate-900 text-sky-950">
+                  <Edit2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    Edit Manual Sesi Absen & Agenda Mengajar
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Edit data pertemuan yang sudah diinput & perbarui otomatis ke Agenda Mengajar
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsEditSessionModalOpen(false)}
+                className="p-1.5 rounded-xl bg-[#fee2e2] border border-slate-900 text-rose-900 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitEditSession} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">
+                    Pertemuan Ke- *
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    required
+                    value={editPertemuan}
+                    onChange={(e) => setEditPertemuan(parseInt(e.target.value) || 1)}
+                    className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-mono font-bold focus:bg-white focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">
+                    Tanggal Pertemuan *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={editTanggal}
+                    onChange={(e) => setEditTanggal(e.target.value)}
+                    className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-mono font-bold focus:bg-white focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">
+                    Mata Pelajaran
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editMapel}
+                    onChange={(e) => setEditMapel(e.target.value)}
+                    className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">
+                    Jam Tatap Muka
+                  </label>
+                  <input
+                    type="text"
+                    value={editJam}
+                    onChange={(e) => setEditJam(e.target.value)}
+                    className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none"
+                    placeholder="Contoh: 07.15 - 09.15 WIB"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Materi yang Diajarkan *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editMateri}
+                  onChange={(e) => setEditMateri(e.target.value)}
+                  className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none"
+                  placeholder="Uraikan materi pembelajaran..."
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Kegiatan Pembelajaran & Praktikum
+                </label>
+                <textarea
+                  rows={2}
+                  value={editKegiatan}
+                  onChange={(e) => setEditKegiatan(e.target.value)}
+                  className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] focus:bg-white focus:outline-none resize-none font-medium"
+                  placeholder="Uraikan metode, diskusi, atau praktikum..."
+                />
+              </div>
+
+              <div className="mt-5 pt-3 border-t-2 border-slate-100 flex items-center justify-between">
+                {onDeleteSession && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Hapus sesi pertemuan Ke-${activeSession.pertemuanKe} (${activeSession.tanggal}) beserta riwayat absensinya?`
+                        )
+                      ) {
+                        onDeleteSession(activeSession.id);
+                        setIsEditSessionModalOpen(false);
+                      }
+                    }}
+                    className="px-3 py-2 rounded-xl bg-[#fee2e2] hover:bg-[#fca5a5] text-rose-950 border-2 border-slate-900 font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Hapus Sesi</span>
+                  </button>
+                )}
+
+                <div className="flex gap-2 ml-auto">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditSessionModalOpen(false)}
+                    className="px-4 py-2 rounded-xl bg-[#f1f5f9] border-2 border-slate-900 font-bold text-slate-700 cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-[#a7f3d0] hover:bg-[#6ee7b7] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] font-black text-slate-950 cursor-pointer flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-950" />
+                    <span>Simpan & Sinkronkan</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Formal Printable Document Component */}
       <PrintableDocument
         type="attendance"
         isOpen={showPrintModal}

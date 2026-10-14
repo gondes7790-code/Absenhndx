@@ -16,6 +16,9 @@ import {
   Flame,
   Printer,
   RefreshCw,
+  Edit2,
+  Trash2,
+  Sparkles,
 } from 'lucide-react';
 import { JournalEntry, ClassRoom, TeacherProfile, PrintConfig } from '../types';
 import { PrintableDocument } from './PrintableDocument';
@@ -25,6 +28,8 @@ interface JournalViewProps {
   classes: ClassRoom[];
   teacher: TeacherProfile;
   onAddJournal: (entry: Omit<JournalEntry, 'id'>) => void;
+  onUpdateJournal?: (entry: JournalEntry) => void;
+  onDeleteJournal?: (id: string) => void;
   onSaveToCloud: () => void;
   schoolName: string;
   onSyncAttendance?: () => void;
@@ -36,6 +41,8 @@ export const JournalView: React.FC<JournalViewProps> = ({
   classes,
   teacher,
   onAddJournal,
+  onUpdateJournal,
+  onDeleteJournal,
   onSaveToCloud,
   schoolName,
   onSyncAttendance,
@@ -45,18 +52,32 @@ export const JournalView: React.FC<JournalViewProps> = ({
   const [filterMonth, setFilterMonth] = useState('Semua');
   const [filterSemester, setFilterSemester] = useState('Semua');
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
 
   // New entry form state
   const [newTanggal, setNewTanggal] = useState(new Date().toISOString().split('T')[0]);
   const [newClassId, setNewClassId] = useState(classes[0]?.id || 'class-1');
-  const [newMapel, setNewMapel] = useState('Bahasa Inggris & Kejuruan');
+  const [newMapel, setNewMapel] = useState(classes[0]?.mapel || 'Bahasa Inggris & Kejuruan');
   const [newPertemuan, setNewPertemuan] = useState('Ke-1');
   const [newJam, setNewJam] = useState('07:15 - 09:15 WIB');
   const [newMateri, setNewMateri] = useState('');
+  const [newKegiatan, setNewKegiatan] = useState('');
   const [newCatatanAbsen, setNewCatatanAbsen] = useState('');
+
+  // Edit existing entry state
+  const [editingJournal, setEditingJournal] = useState<JournalEntry | null>(null);
+  const [editTanggal, setEditTanggal] = useState('');
+  const [editClassId, setEditClassId] = useState('');
+  const [editClassName, setEditClassName] = useState('');
+  const [editMapel, setEditMapel] = useState('');
+  const [editPertemuan, setEditPertemuan] = useState('');
+  const [editJam, setEditJam] = useState('');
+  const [editMateri, setEditMateri] = useState('');
+  const [editKegiatan, setEditKegiatan] = useState('');
+  const [editCatatanAbsen, setEditCatatanAbsen] = useState('');
+  const [editSemester, setEditSemester] = useState('');
 
   // Filtered journals
   const filteredJournals = useMemo(() => {
@@ -79,6 +100,9 @@ export const JournalView: React.FC<JournalViewProps> = ({
 
     const targetClass = classes.find((c) => c.id === newClassId);
     const className = targetClass?.nama || 'X TO 4';
+    const combinedMateriKegiatan = newKegiatan.trim()
+      ? `${newMateri.trim()} — ${newKegiatan.trim()}`
+      : newMateri.trim();
 
     onAddJournal({
       tanggal: newTanggal,
@@ -88,14 +112,73 @@ export const JournalView: React.FC<JournalViewProps> = ({
       className,
       pertemuanKe: newPertemuan,
       jamPelajaran: newJam,
-      materiKegiatan: newMateri,
-      absensiCatatan: newCatatanAbsen || 'Nihil / Seluruh siswa hadir tertib.',
-      semester: '2026/2027 (Ganjil)',
+      materiKegiatan: combinedMateriKegiatan,
+      materi: newMateri.trim(),
+      kegiatan: newKegiatan.trim(),
+      absensiCatatan: newCatatanAbsen.trim() || 'Nihil / Seluruh siswa hadir tertib.',
+      semester: `${targetClass?.tahunAjaran || '2026/2027'} (${targetClass?.semester || 'Ganjil'})`,
     });
 
     setIsModalOpen(false);
     setNewMateri('');
+    setNewKegiatan('');
     setNewCatatanAbsen('');
+  };
+
+  const handleOpenEdit = (j: JournalEntry) => {
+    setEditingJournal(j);
+    setEditTanggal(j.tanggal);
+    setEditClassId(j.classId);
+    setEditClassName(j.className);
+    setEditMapel(j.mapel);
+    setEditPertemuan(j.pertemuanKe);
+    setEditJam(j.jamPelajaran);
+
+    if (j.materi && j.kegiatan) {
+      setEditMateri(j.materi);
+      setEditKegiatan(j.kegiatan);
+    } else if (j.materiKegiatan.includes(' — ')) {
+      const parts = j.materiKegiatan.split(' — ');
+      setEditMateri(parts[0] || '');
+      setEditKegiatan(parts.slice(1).join(' — ') || '');
+    } else {
+      setEditMateri(j.materiKegiatan);
+      setEditKegiatan('');
+    }
+
+    setEditCatatanAbsen(j.absensiCatatan || '');
+    setEditSemester(j.semester || '2026/2027 (Ganjil)');
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingJournal || !onUpdateJournal) return;
+
+    const targetClass = classes.find((c) => c.id === editClassId);
+    const className = targetClass?.nama || editClassName;
+    const combinedMateriKegiatan = editKegiatan.trim()
+      ? `${editMateri.trim()} — ${editKegiatan.trim()}`
+      : editMateri.trim();
+
+    const updated: JournalEntry = {
+      ...editingJournal,
+      tanggal: editTanggal,
+      classId: editClassId,
+      className,
+      mapel: editMapel,
+      pertemuanKe: editPertemuan,
+      jamPelajaran: editJam,
+      materiKegiatan: combinedMateriKegiatan,
+      materi: editMateri.trim(),
+      kegiatan: editKegiatan.trim(),
+      absensiCatatan: editCatatanAbsen.trim(),
+      semester: editSemester,
+    };
+
+    onUpdateJournal(updated);
+    setIsEditModalOpen(false);
+    setEditingJournal(null);
   };
 
   const handleExportCSV = () => {
@@ -135,7 +218,7 @@ export const JournalView: React.FC<JournalViewProps> = ({
           <div>
             <div className="flex items-center gap-2 text-xs font-black text-slate-600 mb-1.5 flex-wrap">
               <span className="bg-[#fef9c3] text-amber-950 px-2.5 py-0.5 rounded-full border-2 border-slate-900 font-mono text-[11px] shadow-[1.5px_1.5px_0px_#1e293b]">
-                Semua Rombel
+                {filterClass === 'Semua' ? 'Semua Rombel' : filterClass}
               </span>
               <span>•</span>
               <span className="font-bold text-slate-700">T.A. 2026/2027 (Ganjil)</span>
@@ -148,7 +231,7 @@ export const JournalView: React.FC<JournalViewProps> = ({
             </p>
           </div>
 
-          {/* Action Button Strip - Streamlined without dualism */}
+          {/* Action Button Strip */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
             {onSyncAttendance && (
               <button
@@ -221,22 +304,22 @@ export const JournalView: React.FC<JournalViewProps> = ({
 
           <div className="bg-[#dcfce7] rounded-2xl p-3 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b]">
             <span className="text-[10px] font-mono font-black text-emerald-950 uppercase tracking-wider">
-              RATA-RATA HADIR
+              SINKRONISASI PRESENSI
             </span>
             <p className="text-2xl font-black text-emerald-950 font-mono mt-0.5">
-              93%
+              100%
             </p>
-            <span className="text-[10px] font-bold text-emerald-800">kehadiran siswa</span>
+            <span className="text-[10px] font-bold text-emerald-800">terkoneksi otomatis</span>
           </div>
 
           <div className="bg-[#ffedd5] rounded-2xl p-3 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b]">
             <span className="text-[10px] font-mono font-black text-orange-950 uppercase tracking-wider">
-              TAHUN AJARAN
+              EDIT MANUAL
             </span>
             <p className="text-base font-black text-slate-950 mt-1 truncate">
-              2026/2027 (Ganjil)
+              Tersedia Lengkap
             </p>
-            <span className="text-[10px] font-bold text-orange-800">Semester Berjalan</span>
+            <span className="text-[10px] font-bold text-orange-800">Akses Edit Bebas</span>
           </div>
         </div>
 
@@ -314,7 +397,7 @@ export const JournalView: React.FC<JournalViewProps> = ({
             Daftar Agenda Pembelajaran Terjadwal ({filteredJournals.length} Pertemuan)
           </h3>
           <span className="text-xs font-mono font-bold bg-[#dcfce7] border border-slate-900 px-2.5 py-0.5 rounded-full text-emerald-950 shadow-[1px_1px_0px_#1e293b]">
-            POSTGRES SYNCED
+            EDIT MANUAL AKTIF
           </span>
         </div>
 
@@ -328,11 +411,12 @@ export const JournalView: React.FC<JournalViewProps> = ({
                 <th className="py-3 px-3 w-28">JAM KBM</th>
                 <th className="py-3 px-4 min-w-[280px]">MATERI & KEGIATAN TP MERDEKA</th>
                 <th className="py-3 px-4 min-w-[200px]">CATATAN PRESENSI SISWA</th>
+                <th className="py-3 px-3 w-24 text-center">AKSI EDIT</th>
               </tr>
             </thead>
             <tbody className="divide-y-2 divide-slate-100">
               {filteredJournals.map((j, idx) => (
-                <tr key={j.id} className="hover:bg-[#faf7ee]/60 transition-colors">
+                <tr key={j.id} className="hover:bg-[#faf7ee]/60 transition-colors group">
                   <td className="py-3 px-3 text-center text-slate-600 font-mono font-bold">
                     {idx + 1}
                   </td>
@@ -354,6 +438,30 @@ export const JournalView: React.FC<JournalViewProps> = ({
                   <td className="py-3 px-4 text-slate-600 italic">
                     {j.absensiCatatan}
                   </td>
+                  <td className="py-3 px-3 text-center">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <button
+                        onClick={() => handleOpenEdit(j)}
+                        className="p-1.5 rounded-xl bg-[#e0f2fe] hover:bg-[#bae6fd] text-sky-950 border border-slate-900 shadow-[1px_1px_0px_#1e293b] active:translate-x-[1px] active:translate-y-[1px] transition-all cursor-pointer"
+                        title="Edit Manual Agenda Mengajar"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      {onDeleteJournal && (
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`Hapus catatan agenda pertemuan ${j.pertemuanKe} kelas ${j.className}?`)) {
+                              onDeleteJournal(j.id);
+                            }
+                          }}
+                          className="p-1.5 rounded-xl bg-[#fee2e2] hover:bg-[#fca5a5] text-rose-950 border border-slate-900 shadow-[1px_1px_0px_#1e293b] active:translate-x-[1px] active:translate-y-[1px] transition-all cursor-pointer"
+                          title="Hapus Agenda"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -364,11 +472,21 @@ export const JournalView: React.FC<JournalViewProps> = ({
       {/* Modal: Catat Agenda Baru */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs">
-          <div className="w-full max-w-lg bg-white border-3 border-slate-900 rounded-3xl p-6 shadow-[6px_6px_0px_#1e293b] relative animate-in zoom-in-95 duration-150">
+          <div className="w-full max-w-lg bg-white border-3 border-slate-900 rounded-3xl p-6 shadow-[6px_6px_0px_#1e293b] relative animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b-2 border-slate-100 mb-4">
-              <h3 className="text-base font-black text-slate-900">
-                Tambah Catatan Agenda KBM Baru
-              </h3>
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-xl bg-[#ede9fe] border border-slate-900 text-indigo-950">
+                  <BookOpen className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    Tambah Catatan Agenda KBM Baru
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Kolom isian materi & kegiatan pembelajaran
+                  </p>
+                </div>
+              </div>
               <button
                 onClick={() => setIsModalOpen(false)}
                 className="p-1.5 rounded-xl bg-[#fee2e2] border border-slate-900 text-rose-900 cursor-pointer"
@@ -381,7 +499,7 @@ export const JournalView: React.FC<JournalViewProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-slate-800 mb-1">
-                    Tanggal Pertemuan
+                    Tanggal Pertemuan *
                   </label>
                   <input
                     type="date"
@@ -394,11 +512,15 @@ export const JournalView: React.FC<JournalViewProps> = ({
 
                 <div>
                   <label className="block font-bold text-slate-800 mb-1">
-                    Pilih Kelas
+                    Pilih Kelas *
                   </label>
                   <select
                     value={newClassId}
-                    onChange={(e) => setNewClassId(e.target.value)}
+                    onChange={(e) => {
+                      setNewClassId(e.target.value);
+                      const target = classes.find((c) => c.id === e.target.value);
+                      if (target) setNewMapel(target.mapel);
+                    }}
                     className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none"
                   >
                     {classes.map((c) => (
@@ -411,7 +533,7 @@ export const JournalView: React.FC<JournalViewProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-slate-800 mb-1">
-                    Pertemuan Ke-
+                    Pertemuan Ke- *
                   </label>
                   <input
                     type="text"
@@ -425,7 +547,7 @@ export const JournalView: React.FC<JournalViewProps> = ({
 
                 <div>
                   <label className="block font-bold text-slate-800 mb-1">
-                    Jam Tatap Muka
+                    Jam Tatap Muka *
                   </label>
                   <input
                     type="text"
@@ -440,28 +562,53 @@ export const JournalView: React.FC<JournalViewProps> = ({
 
               <div>
                 <label className="block font-bold text-slate-800 mb-1">
-                  Materi & Dinamika Kegiatan KBM (Kurikulum Merdeka) *
+                  Mata Pelajaran
                 </label>
-                <textarea
-                  rows={3}
-                  required
-                  value={newMateri}
-                  onChange={(e) => setNewMateri(e.target.value)}
-                  className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] focus:bg-white focus:outline-none resize-none font-medium"
-                  placeholder="Uraikan TP, asesmen formatif, atau topik praktik yang dilaksanakan..."
+                <input
+                  type="text"
+                  value={newMapel}
+                  onChange={(e) => setNewMapel(e.target.value)}
+                  className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none"
                 />
               </div>
 
               <div>
                 <label className="block font-bold text-slate-800 mb-1">
-                  Catatan Siswa Tidak Hadir / Dinamika Kelas
+                  Materi yang Diajarkan *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newMateri}
+                  onChange={(e) => setNewMateri(e.target.value)}
+                  className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none"
+                  placeholder="Contoh: Prosedur Keselamatan Kerja & Pengoperasian Alat Praktik"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Kegiatan Pembelajaran & Praktikum
+                </label>
+                <textarea
+                  rows={2}
+                  value={newKegiatan}
+                  onChange={(e) => setNewKegiatan(e.target.value)}
+                  className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] focus:bg-white focus:outline-none resize-none font-medium"
+                  placeholder="Contoh: Demonstrasi interaktif, simulasi praktik kelompok, dan evaluasi formatif mandiri..."
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Catatan Siswa / Kehadiran
                 </label>
                 <input
                   type="text"
                   value={newCatatanAbsen}
                   onChange={(e) => setNewCatatanAbsen(e.target.value)}
                   className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] focus:bg-white focus:outline-none font-medium"
-                  placeholder="Contoh: 1 Siswa Izin (Rehan Ardiansyah)"
+                  placeholder="Contoh: Hadir lengkap 100% atau 1 siswa izin"
                 />
               </div>
 
@@ -475,10 +622,196 @@ export const JournalView: React.FC<JournalViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#a7f3d0] hover:bg-[#6ee7b7] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] font-black text-slate-950 cursor-pointer"
+                  className="px-5 py-2 rounded-xl bg-[#a7f3d0] hover:bg-[#6ee7b7] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] font-black text-slate-950 cursor-pointer flex items-center gap-1.5"
                 >
-                  Simpan Agenda
+                  <Plus className="w-4 h-4" />
+                  <span>Simpan Agenda</span>
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Manual Agenda Mengajar yang Sudah Diinput */}
+      {isEditModalOpen && editingJournal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs">
+          <div className="w-full max-w-lg bg-white border-3 border-slate-900 rounded-3xl p-6 shadow-[6px_6px_0px_#1e293b] relative animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b-2 border-slate-100 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-xl bg-[#e0f2fe] border border-slate-900 text-sky-950">
+                  <Edit2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    Edit Manual Agenda Mengajar
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Ubah materi, kegiatan, jam atau tanggal agenda yang sudah tersimpan
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="p-1.5 rounded-xl bg-[#fee2e2] border border-slate-900 text-rose-900 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">
+                    Tanggal Pertemuan *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={editTanggal}
+                    onChange={(e) => setEditTanggal(e.target.value)}
+                    className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-mono font-bold focus:bg-white focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">
+                    Pilih Kelas
+                  </label>
+                  <select
+                    value={editClassId}
+                    onChange={(e) => {
+                      setEditClassId(e.target.value);
+                      const target = classes.find((c) => c.id === e.target.value);
+                      if (target) {
+                        setEditClassName(target.nama);
+                        setEditMapel(target.mapel);
+                      }
+                    }}
+                    className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none"
+                  >
+                    {classes.map((c) => (
+                      <option key={c.id} value={c.id}>{c.nama}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">
+                    Pertemuan Ke- *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editPertemuan}
+                    onChange={(e) => setEditPertemuan(e.target.value)}
+                    className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none"
+                    placeholder="Contoh: Ke-1"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">
+                    Jam Tatap Muka *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editJam}
+                    onChange={(e) => setEditJam(e.target.value)}
+                    className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none"
+                    placeholder="Contoh: 07:15 - 09:15 WIB"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Mata Pelajaran
+                </label>
+                <input
+                  type="text"
+                  value={editMapel}
+                  onChange={(e) => setEditMapel(e.target.value)}
+                  className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Materi yang Diajarkan *
+                </label>
+                <textarea
+                  rows={2}
+                  required
+                  value={editMateri}
+                  onChange={(e) => setEditMateri(e.target.value)}
+                  className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none resize-none"
+                  placeholder="Uraikan materi atau capaian TP..."
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Kegiatan Pembelajaran & Praktikum
+                </label>
+                <textarea
+                  rows={2}
+                  value={editKegiatan}
+                  onChange={(e) => setEditKegiatan(e.target.value)}
+                  className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] focus:bg-white focus:outline-none resize-none font-medium"
+                  placeholder="Aktivitas siswa, metode, dan refleksi..."
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Catatan Presensi Siswa / Keterangan Kehadiran
+                </label>
+                <input
+                  type="text"
+                  value={editCatatanAbsen}
+                  onChange={(e) => setEditCatatanAbsen(e.target.value)}
+                  className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] focus:bg-white focus:outline-none font-medium"
+                  placeholder="Contoh: Hadir lengkap 100% atau rincian siswa sakit/izin"
+                />
+              </div>
+
+              <div className="mt-5 pt-3 border-t-2 border-slate-100 flex items-center justify-between">
+                {onDeleteJournal && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm('Hapus agenda mengajar ini?')) {
+                        onDeleteJournal(editingJournal.id);
+                        setIsEditModalOpen(false);
+                      }
+                    }}
+                    className="px-3 py-2 rounded-xl bg-[#fee2e2] hover:bg-[#fca5a5] text-rose-950 border-2 border-slate-900 font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Hapus</span>
+                  </button>
+                )}
+
+                <div className="flex gap-2 ml-auto">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditModalOpen(false)}
+                    className="px-4 py-2 rounded-xl bg-[#f1f5f9] border-2 border-slate-900 font-bold text-slate-700 cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-[#a7f3d0] hover:bg-[#6ee7b7] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] font-black text-slate-950 cursor-pointer flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-950" />
+                    <span>Simpan Perubahan</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>

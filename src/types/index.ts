@@ -29,6 +29,9 @@ export interface AttendanceSession {
   pertemuanKe: number;
   tanggal: string; // YYYY-MM-DD
   mapel: string;
+  materi?: string;
+  kegiatan?: string;
+  jamPelajaran?: string;
   catatan?: string;
   createdAt: string;
 }
@@ -63,6 +66,8 @@ export interface JournalEntry {
   pertemuanKe: string;
   jamPelajaran: string;
   materiKegiatan: string;
+  materi?: string;
+  kegiatan?: string;
   absensiCatatan: string;
   semester: string;
 }

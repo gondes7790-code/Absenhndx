@@ -390,7 +390,7 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
               {filteredRecaps.map((item, idx) => (
                 <tr key={item.student.id} className="hover:bg-[#faf7ee]/60 transition-colors">
                   <td className="py-3 px-3 text-center text-slate-600 font-mono font-bold">
-                    {idx + 1}
+                    {item.student.noUrut || idx + 1}
                   </td>
                   <td className="py-3 px-3 font-mono font-medium text-slate-500">
                     {item.student.nisn}
