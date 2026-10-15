@@ -10,24 +10,31 @@ import {
   X,
   Code,
   Lock,
+  RefreshCw,
+  AlertCircle,
 } from 'lucide-react';
 import { SUPABASE_SQL_SCHEMA, getStoredSupabaseConfig, saveStoredSupabaseConfig, SupabaseConfig } from '../services/supabaseService';
+import { resetSupabaseClient, testSupabaseConnection } from '../lib/supabase';
 
 interface SupabaseModalProps {
   isOpen: boolean;
   onClose: () => void;
   onDownloadBackup: () => void;
+  onConfigUpdated?: () => void;
 }
 
 export const SupabaseModal: React.FC<SupabaseModalProps> = ({
   isOpen,
   onClose,
   onDownloadBackup,
+  onConfigUpdated,
 }) => {
   const [config, setConfig] = useState<SupabaseConfig>(getStoredSupabaseConfig());
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'schema' | 'config'>('schema');
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   if (!isOpen) return null;
 
@@ -37,11 +44,38 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSaveConfig = (e: React.FormEvent) => {
+  const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     saveStoredSupabaseConfig(config);
+    resetSupabaseClient();
     setSaveSuccess(true);
+    onConfigUpdated?.();
     setTimeout(() => setSaveSuccess(false), 2500);
+
+    // Automatically run test connection
+    handleTestConnection();
+  };
+
+  const handleTestConnection = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+    try {
+      // Save current state first to test the typed values
+      saveStoredSupabaseConfig(config);
+      resetSupabaseClient();
+      const res = await testSupabaseConnection();
+      setTestResult(res);
+      if (res.success) {
+        onConfigUpdated?.();
+      }
+    } catch (err: any) {
+      setTestResult({
+        success: false,
+        message: err?.message || 'Gagal menguji koneksi.',
+      });
+    } finally {
+      setIsTesting(false);
+    }
   };
 
   return (
@@ -172,13 +206,37 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
                 />
               </div>
 
-              <div className="pt-2 flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-500">
-                  Status: Terhubung via RLS Adapter PostgreSQL
-                </span>
+              {testResult && (
+                <div
+                  className={`p-3.5 rounded-2xl border-2 border-slate-900 text-xs font-bold flex items-start gap-2.5 shadow-[2px_2px_0px_#1e293b] ${
+                    testResult.success
+                      ? 'bg-[#dcfce7] text-emerald-950'
+                      : 'bg-[#fee2e2] text-rose-950'
+                  }`}
+                >
+                  {testResult.success ? (
+                    <Check className="w-4 h-4 text-emerald-800 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-rose-800 shrink-0 mt-0.5" />
+                  )}
+                  <span className="leading-relaxed">{testResult.message}</span>
+                </div>
+              )}
+
+              <div className="pt-2 flex flex-wrap items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={handleTestConnection}
+                  disabled={isTesting}
+                  className="px-4 py-2.5 rounded-2xl bg-[#e0f2fe] hover:bg-[#bae6fd] border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] font-black text-slate-900 cursor-pointer flex items-center gap-1.5 active:translate-x-[1px] active:translate-y-[1px] disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isTesting ? 'animate-spin' : ''}`} />
+                  <span>{isTesting ? 'Menguji Koneksi...' : 'Uji Koneksi (Test Connection)'}</span>
+                </button>
+
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-2xl bg-[#a7f3d0] hover:bg-[#6ee7b7] border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] font-black text-slate-950 cursor-pointer"
+                  className="px-5 py-2.5 rounded-2xl bg-[#a7f3d0] hover:bg-[#6ee7b7] border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] font-black text-slate-950 cursor-pointer active:translate-x-[1px] active:translate-y-[1px]"
                 >
                   Simpan Kredensial
                 </button>

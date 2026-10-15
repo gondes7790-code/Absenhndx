@@ -144,6 +144,8 @@
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
+    page-break-before: avoid !important;
+    break-before: avoid !important;
   }
 
   #print-root .printable-sheet,
@@ -163,6 +165,8 @@
     border: none !important;
     box-shadow: none !important;
     font-family: 'Times New Roman', Times, Georgia, serif !important;
+    page-break-before: avoid !important;
+    break-before: avoid !important;
   }
 
   /* Hide interactive web chrome, banners, buttons, sidebars, navigations */

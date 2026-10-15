@@ -11,12 +11,12 @@ export const GARUDA_LOGO_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w
 
 export const DEFAULT_PRINT_CONFIG: PrintConfig = {
   dinasHeader: 'PEMERINTAH DAERAH PROVINSI • DINAS PENDIDIKAN',
-  dinasSubHeader: 'CABANG DINAS PENDIDIKAN WILAYAH SATUAN PENDIDIKAN MENENGAH KEJURUAN',
-  schoolName: 'SMK MERDEKA INDONESIA',
+  dinasSubHeader: 'CABANG DINAS PENDIDIKAN WILAYAH SATUAN PENDIDIKAN',
+  schoolName: 'SEKOLAH MERDEKA INDONESIA',
   unitSubHeader: 'SISTEM MANAJEMEN PRESENSI & ASESMEN KURIKULUM MERDEKA',
-  address: 'Jl. Merdeka Belajar No. 45, Kompleks Pendidikan Kejuruan Terpadu',
+  address: 'Jl. Merdeka Belajar No. 45, Kompleks Pendidikan Terpadu',
   phone: 'Telp. (021) 7890123 / Fax. (021) 7890124',
-  emailWeb: 'info@smkmerdeka.sch.id • https://hadir.app',
+  emailWeb: 'info@sekolahmerdeka.sch.id • https://hadir.app',
   logoEmbedCode: TUT_WURI_LOGO_SVG,
   logoPosition: 'right',
   showTutWuriLogo: true,

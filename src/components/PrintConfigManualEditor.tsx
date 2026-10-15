@@ -268,7 +268,7 @@ export const PrintConfigManualEditor: React.FC<PrintConfigManualEditorProps> = (
                 required
                 value={formData.schoolName}
                 onChange={(e) => handleInputChange('schoolName', e.target.value)}
-                placeholder="Contoh: SMK MERDEKA INDONESIA"
+                placeholder="Contoh: SMA / SMK / SMP MERDEKA INDONESIA"
                 className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-slate-900 bg-[#fef9c3] text-sm font-black text-slate-900 focus:bg-white focus:outline-none focus:shadow-[3px_3px_0px_#0d9488]"
               />
             </div>

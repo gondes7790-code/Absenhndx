@@ -424,15 +424,17 @@ export const JournalView: React.FC<JournalViewProps> = ({
                     {j.tanggal}
                   </td>
                   <td className="py-3 px-3 min-w-[150px] max-w-[200px]">
-                    <span className="font-black text-slate-900 block truncate" title={j.className}>
-                      {j.className}
-                    </span>
-                    <span
-                      className="inline-block mt-1 text-[10px] font-bold text-emerald-950 bg-[#dcfce7] px-2 py-0.5 rounded-md border border-slate-900 max-w-full truncate align-middle shadow-[0.5px_0.5px_0px_#1e293b]"
-                      title={j.pertemuanKe}
-                    >
-                      {j.pertemuanKe}
-                    </span>
+                    <div className="w-full max-w-[185px] overflow-hidden">
+                      <span className="font-black text-slate-900 block truncate" title={j.className}>
+                        {j.className}
+                      </span>
+                      <span
+                        className="inline-block mt-1 text-[10px] font-bold text-emerald-950 bg-[#dcfce7] px-2 py-0.5 rounded-md border border-slate-900 max-w-full truncate align-middle shadow-[0.5px_0.5px_0px_#1e293b]"
+                        title={j.pertemuanKe}
+                      >
+                        {j.pertemuanKe}
+                      </span>
+                    </div>
                   </td>
                   <td className="py-3 px-3 text-slate-600 font-mono font-medium">
                     {j.jamPelajaran}

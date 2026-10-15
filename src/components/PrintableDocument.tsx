@@ -848,6 +848,6 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
     );
   }
 
-  // When modal is not open, paperSheet remains portaled so Ctrl+P directly prints page 1
-  return printTarget ? createPortal(paperSheet, printTarget) : null;
+  // When modal is not open, do not render or portal anything (prevents accumulation of blank/duplicate pages in #print-root)
+  return null;
 };

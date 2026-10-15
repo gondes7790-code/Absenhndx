@@ -36,7 +36,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
   students,
   finances,
   teacher,
-  schoolName = 'SMK Merdeka Indonesia',
+  schoolName = 'Sekolah Merdeka Indonesia',
   printConfig,
   onAddTransaction,
   onDeleteTransaction,

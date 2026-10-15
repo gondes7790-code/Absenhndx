@@ -138,12 +138,12 @@ export default function App() {
   });
 
   const [printConfig, setPrintConfig] = useState<PrintConfig>(() =>
-    getSavedPrintConfig('SMK Merdeka Indonesia')
+    getSavedPrintConfig('Sekolah Merdeka Indonesia')
   );
 
   const [schoolName, setSchoolName] = useState<string>(() => {
-    const savedCfg = getSavedPrintConfig('SMK Merdeka Indonesia');
-    return savedCfg.schoolName || 'SMK Merdeka Indonesia';
+    const savedCfg = getSavedPrintConfig('Sekolah Merdeka Indonesia');
+    return savedCfg.schoolName || 'Sekolah Merdeka Indonesia';
   });
 
   // Navigation & Modals
@@ -823,8 +823,15 @@ export default function App() {
   if (!isAuthenticated) {
     return (
       <LoginView
-        onLogin={handleLogin}
-        defaultTeacher={teacher}
+        onLoginSuccess={(user, profile) => {
+          setIsAuthenticated(true);
+          if (profile) setTeacher(profile);
+          showToast('Selamat Datang!', `Berhasil masuk ke Ruang Guru (${user.email})`);
+        }}
+        onDemoLogin={() => {
+          setIsAuthenticated(true);
+          showToast('Mode Uji Coba Demo', 'Masuk sebagai Guru Pengajar Akun Demo.');
+        }}
         schoolName={schoolName}
       />
     );
