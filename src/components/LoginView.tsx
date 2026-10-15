@@ -31,8 +31,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleQuickDemoFill = () => {
-    setEmail('demo@guru.sekolah.belajar.id');
-    setPassword('demo12345');
     setErrorMessage('');
     onDemoLogin();
   };
@@ -44,12 +42,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
     const cleanEmail = email.trim();
     if (!cleanEmail || !password.trim()) {
       setErrorMessage('Harap isi email dan kata sandi Anda.');
-      return;
-    }
-
-    // Special check for demo dummy account
-    if (cleanEmail === 'demo@guru.sekolah.belajar.id') {
-      onDemoLogin();
       return;
     }
 
@@ -230,10 +222,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 <KeyRound className="w-4 h-4 text-sky-800 shrink-0" />
                 <div>
                   <span className="text-[10px] font-black text-sky-950 block">
-                    Masuk Akun Uji Coba Demo (Lokal & Offline)
+                    Masuk Mode Uji Coba Demo (Lokal & Offline)
                   </span>
-                  <span className="text-[10px] text-sky-800 font-mono">
-                    demo@guru.sekolah.belajar.id
+                  <span className="text-[10px] text-sky-800 font-medium">
+                    Uji coba aplikasi mandiri tanpa memanggil Supabase Cloud
                   </span>
                 </div>
               </div>

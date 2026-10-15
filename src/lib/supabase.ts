@@ -18,10 +18,12 @@ export function getSupabase(): SupabaseClient {
 
   // Ensure valid URL or fallback
   let validUrl = cfg.url?.trim() || '';
-  if (!validUrl.startsWith('http://') && !validUrl.startsWith('https://')) {
+  if (!validUrl) {
+    validUrl = 'https://placeholder-project.supabase.co';
+  } else if (!validUrl.startsWith('http://') && !validUrl.startsWith('https://')) {
     validUrl = 'https://' + validUrl;
   }
-  const validKey = cfg.anonKey?.trim() || 'dummy-anon-key';
+  const validKey = cfg.anonKey?.trim() || 'placeholder-anon-key';
 
   try {
     cachedClient = createClient(validUrl, validKey, {

@@ -203,18 +203,30 @@ export interface SupabaseConfig {
 
 const STORAGE_KEY_CONFIG = 'hndx_supabase_config_v1';
 
+// Read from import.meta.env as primary configuration
+export const ENV_SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined) || '';
+export const ENV_SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) || '';
+
 export function getStoredSupabaseConfig(): SupabaseConfig {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_CONFIG);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        url: parsed.url || ENV_SUPABASE_URL,
+        anonKey: parsed.anonKey || ENV_SUPABASE_ANON_KEY,
+        isConnected: Boolean(parsed.isConnected),
+        lastSynced: parsed.lastSynced || '',
+      };
+    }
   } catch {
     // fallback
   }
   return {
-    url: 'https://qycg3sjdavucipi.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.merdeka-cloud-rls-token-2026',
-    isConnected: true,
-    lastSynced: new Date().toLocaleTimeString('id-ID'),
+    url: ENV_SUPABASE_URL,
+    anonKey: ENV_SUPABASE_ANON_KEY,
+    isConnected: false,
+    lastSynced: '',
   };
 }
 

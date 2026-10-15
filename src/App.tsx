@@ -47,18 +47,42 @@ import { downloadJsonBackup } from './services/supabaseService';
 import { CheckCircle2, Flame, ShieldCheck } from 'lucide-react';
 import { PublicPortalView, PublicPortalType } from './components/PublicPortalView';
 
+import { useAuth } from './contexts/AuthContext';
+import { fetchProfile, updateProfile } from './services/profileService';
+import { fetchClasses, createClass, updateClass, deleteClass } from './services/classService';
+import {
+  fetchStudents,
+  createStudent,
+  createStudentsBatch,
+  updateStudent,
+  deleteStudent,
+} from './services/studentService';
+import {
+  fetchAttendanceSessions,
+  createAttendanceSession,
+  updateAttendanceSession,
+  deleteAttendanceSession,
+  fetchAttendanceRecords,
+  upsertAttendanceRecord,
+  upsertAttendanceRecordsBatch,
+} from './services/attendanceService';
+import { fetchGrades, upsertGrade } from './services/gradeService';
+import { fetchJournals, createJournal, updateJournal, deleteJournal } from './services/journalService';
+import { fetchFinances, createFinance, deleteFinance } from './services/financeService';
+
 const STORAGE_KEY_PREFIX = 'hndx_merdeka_app_v2';
 
 export default function App() {
-  // Authentication State
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_auth`);
-      return saved !== null ? JSON.parse(saved) : true;
-    } catch {
-      return true;
-    }
-  });
+  // Authentication State from Context (Session & User ID)
+  const {
+    user,
+    userId,
+    isAuthenticated,
+    isDemoMode,
+    setDemoMode,
+    signOut,
+    isLoading: isAuthLoading,
+  } = useAuth();
 
   // Global States with local persistence fallback
   const [classes, setClasses] = useState<ClassRoom[]>(() => {
@@ -211,10 +235,9 @@ export default function App() {
     }, 3200);
   };
 
-  // Sync state to LocalStorage
+  // Sync business data to LocalStorage (as cache / offline backup)
   useEffect(() => {
     try {
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}_auth`, JSON.stringify(isAuthenticated));
       localStorage.setItem(`${STORAGE_KEY_PREFIX}_classes`, JSON.stringify(classes));
       localStorage.setItem(`${STORAGE_KEY_PREFIX}_students`, JSON.stringify(students));
       localStorage.setItem(`${STORAGE_KEY_PREFIX}_sessions`, JSON.stringify(sessions));
@@ -226,16 +249,90 @@ export default function App() {
     } catch (e) {
       console.warn('Storage sync issue', e);
     }
-  }, [isAuthenticated, classes, students, sessions, attendanceRecords, grades, journals, finances, teacher]);
+  }, [classes, students, sessions, attendanceRecords, grades, journals, finances, teacher]);
+
+  // Fetch data from Supabase when user is logged in (NOT demo mode)
+  useEffect(() => {
+    if (isDemoMode || !userId) return;
+
+    let isMounted = true;
+    const loadSupabaseData = async () => {
+      try {
+        const [
+          dbProfile,
+          dbClasses,
+          dbStudents,
+          dbSessions,
+          dbRecords,
+          dbGrades,
+          dbJournals,
+          dbFinances,
+        ] = await Promise.all([
+          fetchProfile(userId),
+          fetchClasses(userId),
+          fetchStudents(userId),
+          fetchAttendanceSessions(userId),
+          fetchAttendanceRecords(),
+          fetchGrades(userId),
+          fetchJournals(userId),
+          fetchFinances(userId),
+        ]);
+
+        if (!isMounted) return;
+
+        if (dbProfile) {
+          setTeacher(dbProfile);
+          if (dbProfile.school) setSchoolName(dbProfile.school);
+        }
+
+        if (dbClasses && dbClasses.length > 0) {
+          setClasses(dbClasses);
+          setActiveClass(dbClasses[0]);
+        }
+
+        if (dbStudents && dbStudents.length > 0) {
+          setStudents(dbStudents);
+        }
+
+        if (dbSessions && dbSessions.length > 0) {
+          setSessions(dbSessions);
+          setActiveSession(dbSessions[0]);
+        }
+
+        if (dbRecords && dbRecords.length > 0) {
+          setAttendanceRecords(dbRecords);
+        }
+
+        if (dbGrades && dbGrades.length > 0) {
+          setGrades(dbGrades);
+        }
+
+        if (dbJournals && dbJournals.length > 0) {
+          setJournals(dbJournals);
+        }
+
+        if (dbFinances && dbFinances.length > 0) {
+          setFinances(dbFinances);
+        }
+      } catch (err) {
+        console.warn('[App] Error loading Supabase data:', err);
+      }
+    };
+
+    loadSupabaseData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [userId, isDemoMode]);
 
   // Auth Handlers
-  const handleLogin = (email: string, _pass: string) => {
-    setIsAuthenticated(true);
-    showToast('Selamat Datang!', `Berhasil masuk ke Ruang Guru (${email})`);
-  };
-
-  const handleLogout = () => {
-    setIsAuthenticated(false);
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (err) {
+      console.warn('Logout error:', err);
+    }
     setActiveTab('presensi');
     showToast('Sesi Berakhir', 'Anda telah keluar dari akun pendidik secara aman.');
   };
@@ -321,7 +418,7 @@ export default function App() {
         return next;
       } else {
         const newEntry: JournalEntry = {
-          id: `jrn-sync-${sessionToSync.id}`,
+          id: crypto.randomUUID(),
           tanggal: sessionToSync.tanggal,
           pendidik: teacher.name,
           mapel: sessionToSync.mapel,
@@ -361,7 +458,7 @@ export default function App() {
     } else {
       const today = new Date().toISOString().split('T')[0];
       const defaultSess: AttendanceSession = {
-        id: `session-${cls.id}-1`,
+        id: crypto.randomUUID(),
         classId: cls.id,
         pertemuanKe: 1,
         tanggal: today,
@@ -371,6 +468,9 @@ export default function App() {
       };
       setSessions((prev) => [defaultSess, ...prev]);
       setActiveSession(defaultSess);
+      if (!isDemoMode && userId) {
+        createAttendanceSession(userId, defaultSess);
+      }
     }
   };
 
@@ -382,26 +482,30 @@ export default function App() {
       );
 
       let next: AttendanceRecord[];
+      let targetRecord: AttendanceRecord;
       if (existingIdx >= 0) {
         next = [...prev];
-        next[existingIdx] = {
+        targetRecord = {
           ...next[existingIdx],
           status,
           keterangan,
           updatedAt: new Date().toISOString(),
         };
+        next[existingIdx] = targetRecord;
       } else {
-        next = [
-          ...prev,
-          {
-            id: `rec-${activeSession.id}-${studentId}`,
-            sessionId: activeSession.id,
-            studentId,
-            status,
-            keterangan,
-            updatedAt: new Date().toISOString(),
-          },
-        ];
+        targetRecord = {
+          id: crypto.randomUUID(),
+          sessionId: activeSession.id,
+          studentId,
+          status,
+          keterangan,
+          updatedAt: new Date().toISOString(),
+        };
+        next = [...prev, targetRecord];
+      }
+
+      if (!isDemoMode && userId) {
+        upsertAttendanceRecord(targetRecord);
       }
 
       // Sync to journal automatically
@@ -421,13 +525,17 @@ export default function App() {
       );
 
       const allHadirForCurrent: AttendanceRecord[] = classStudents.map((std) => ({
-        id: `rec-${activeSession.id}-${std.id}`,
+        id: crypto.randomUUID(),
         sessionId: activeSession.id,
         studentId: std.id,
         status: 'H',
         keterangan: '',
         updatedAt: new Date().toISOString(),
       }));
+
+      if (!isDemoMode && userId) {
+        upsertAttendanceRecordsBatch(allHadirForCurrent);
+      }
 
       const updated = [...filteredOther, ...allHadirForCurrent];
       syncAttendanceSessionToJournal(activeSession, updated, students);
@@ -466,7 +574,7 @@ export default function App() {
     const jamPelajaran = customData?.jamPelajaran || '07.15 - 09.15 WIB';
 
     const newSession: AttendanceSession = {
-      id: `session-${activeClass.id}-${nextNumber}-${Date.now()}`,
+      id: crypto.randomUUID(),
       classId: activeClass.id,
       pertemuanKe: nextNumber,
       tanggal: today,
@@ -482,13 +590,16 @@ export default function App() {
 
     setSessions((prev) => [newSession, ...prev]);
     setActiveSession(newSession);
+    if (!isDemoMode && userId) {
+      createAttendanceSession(userId, newSession);
+    }
 
     const classStudents = students.filter((s) => s.classId === activeClass.id);
 
     let recordsToSync = attendanceRecords;
     if (customData?.setAllHadir) {
       const allHadirForCurrent: AttendanceRecord[] = classStudents.map((std) => ({
-        id: `rec-${newSession.id}-${std.id}`,
+        id: crypto.randomUUID(),
         sessionId: newSession.id,
         studentId: std.id,
         status: 'H',
@@ -497,6 +608,9 @@ export default function App() {
       }));
       recordsToSync = [...attendanceRecords, ...allHadirForCurrent];
       setAttendanceRecords(recordsToSync);
+      if (!isDemoMode && userId) {
+        upsertAttendanceRecordsBatch(allHadirForCurrent);
+      }
     }
 
     // Otomatis sinkronkan data absen menuju agenda mengajar
@@ -514,6 +628,9 @@ export default function App() {
     );
     if (activeSession.id === updatedSession.id) {
       setActiveSession(updatedSession);
+    }
+    if (!isDemoMode && userId) {
+      updateAttendanceSession(updatedSession);
     }
     // Sinkronkan perubahan sesi absen ke Agenda Mengajar
     syncAttendanceSessionToJournal(updatedSession, attendanceRecords, students);
@@ -533,6 +650,9 @@ export default function App() {
     const remaining = sessions.filter((s) => s.id !== sessionId);
     setSessions(remaining);
     setAttendanceRecords((prev) => prev.filter((r) => r.sessionId !== sessionId));
+    if (!isDemoMode && userId) {
+      deleteAttendanceSession(sessionId);
+    }
 
     if (activeSession.id === sessionId) {
       const remainingForClass = remaining.filter((s) => s.classId === activeClass.id);
@@ -550,32 +670,38 @@ export default function App() {
   const handleUpdateGrade = (studentId: string, updatedGrade: Partial<GradeRecord>) => {
     setGrades((prev) => {
       const idx = prev.findIndex((g) => g.studentId === studentId);
+      let targetGrade: GradeRecord;
+      let next: GradeRecord[];
       if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = { ...next[idx], ...updatedGrade };
-        return next;
+        next = [...prev];
+        targetGrade = { ...next[idx], ...updatedGrade, updatedAt: new Date().toISOString() };
+        next[idx] = targetGrade;
       } else {
-        return [
-          ...prev,
-          {
-            id: `grade-${studentId}`,
-            studentId,
-            classId: activeClass.id,
-            formatif: updatedGrade.formatif || Array(activeClass.formatifCount).fill(null),
-            sts: updatedGrade.sts ?? null,
-            sas: updatedGrade.sas ?? null,
-            deskripsi: updatedGrade.deskripsi || '',
-            updatedAt: new Date().toISOString(),
-            ...updatedGrade,
-          },
-        ];
+        targetGrade = {
+          id: crypto.randomUUID(),
+          studentId,
+          classId: activeClass.id,
+          formatif: updatedGrade.formatif || Array(activeClass.formatifCount).fill(null),
+          sts: updatedGrade.sts ?? null,
+          sas: updatedGrade.sas ?? null,
+          deskripsi: updatedGrade.deskripsi || '',
+          updatedAt: new Date().toISOString(),
+          ...updatedGrade,
+        };
+        next = [...prev, targetGrade];
       }
+
+      if (!isDemoMode && userId) {
+        upsertGrade(userId, targetGrade);
+      }
+
+      return next;
     });
   };
 
   const handleGenerateAllDescriptions = () => {
     setGrades((prev) => {
-      return prev.map((g) => {
+      const updatedList = prev.map((g) => {
         const validF = (g.formatif || []).filter((v): v is number => v !== null && !isNaN(v));
         const avg = validF.length > 0 ? validF.reduce((a, b) => a + b, 0) / validF.length : 75;
         const student = students.find((s) => s.id === g.studentId);
@@ -590,12 +716,19 @@ export default function App() {
           deskripsi = `${name} perlu bimbingan dan pendampingan intensif (remedial) dalam memahami konsep dasar dan keselamatan kerja bengkel.`;
         }
 
-        return {
+        const updated = {
           ...g,
           deskripsi,
           updatedAt: new Date().toISOString(),
         };
+
+        if (!isDemoMode && userId) {
+          upsertGrade(userId, updated);
+        }
+
+        return updated;
       });
+      return updatedList;
     });
 
     showToast('Deskripsi Merdeka Dibuat Otomatis', 'Catatan capaian kompetensi berhasil digenerate untuk seluruh murid.');
@@ -606,11 +739,15 @@ export default function App() {
       return prev.map((g) => {
         const autoDesc = descriptionsMap.get(g.studentId);
         if (autoDesc) {
-          return {
+          const updated = {
             ...g,
             deskripsi: autoDesc,
             updatedAt: new Date().toISOString(),
           };
+          if (!isDemoMode && userId) {
+            upsertGrade(userId, updated);
+          }
+          return updated;
         }
         return g;
       });
@@ -624,14 +761,20 @@ export default function App() {
   const handleAddJournal = (entry: Omit<JournalEntry, 'id'>) => {
     const newEntry: JournalEntry = {
       ...entry,
-      id: `jrn-${Date.now()}`,
+      id: crypto.randomUUID(),
     };
     setJournals([newEntry, ...journals]);
+    if (!isDemoMode && userId) {
+      createJournal(userId, newEntry);
+    }
     showToast('Agenda Mengajar Ditambahkan', `Pertemuan ${entry.pertemuanKe} kelas ${entry.className} tersimpan.`);
   };
 
   const handleUpdateJournal = (updatedEntry: JournalEntry) => {
     setJournals((prev) => prev.map((j) => (j.id === updatedEntry.id ? updatedEntry : j)));
+    if (!isDemoMode && userId) {
+      updateJournal(updatedEntry);
+    }
     showToast(
       'Agenda Mengajar Diperbarui',
       `Catatan pertemuan ${updatedEntry.pertemuanKe} (${updatedEntry.className}) berhasil disimpan.`
@@ -640,6 +783,9 @@ export default function App() {
 
   const handleDeleteJournal = (id: string) => {
     setJournals((prev) => prev.filter((j) => j.id !== id));
+    if (!isDemoMode && userId) {
+      deleteJournal(id);
+    }
     showToast('Agenda Mengajar Dihapus', 'Catatan agenda telah dihapus dari buku jurnal.');
   };
 
@@ -647,14 +793,20 @@ export default function App() {
   const handleAddTransaction = (tx: Omit<FinanceTransaction, 'id'>) => {
     const newTx: FinanceTransaction = {
       ...tx,
-      id: `fin-${Date.now()}`,
+      id: crypto.randomUUID(),
     };
     setFinances([newTx, ...finances]);
+    if (!isDemoMode && userId) {
+      createFinance(userId, newTx);
+    }
     showToast('Transaksi Dicatat', `${tx.tipe} Rp ${tx.nominal.toLocaleString('id-ID')} masuk ke pembukuan.`);
   };
 
   const handleDeleteTransaction = (id: string) => {
     setFinances((prev) => prev.filter((t) => t.id !== id));
+    if (!isDemoMode && userId) {
+      deleteFinance(id);
+    }
     showToast('Transaksi Dihapus', 'Data pembukuan berhasil disesuaikan.');
   };
 
@@ -664,19 +816,25 @@ export default function App() {
     const nextNo = currentClassStudents.length + 1;
     const student: Student = {
       ...newStd,
-      id: `std-${Date.now()}`,
+      id: crypto.randomUUID(),
       noUrut: nextNo,
     };
     setStudents([...students, student]);
+    if (!isDemoMode && userId) {
+      createStudent(userId, student);
+    }
     showToast('Murid Berhasil Ditambahkan', `${student.nama} terdaftar di kelas ${activeClass.nama} dengan nomor absen ${nextNo}.`);
   };
 
   const handleEditStudent = (updatedStudent: Student) => {
     setStudents((prev) => prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s)));
+    if (!isDemoMode && userId) {
+      updateStudent(updatedStudent);
+    }
     showToast('Data Murid Diperbarui', `Informasi ${updatedStudent.nama} berhasil diubah.`);
   };
 
-  // Sistem dalam absen: jika data siswa dihapus, nomor absen siswa setelahnya otomatis diganti (misal no 16 dihapus, no 17 menjadi 16)
+  // Sistem dalam absen: jika data siswa dihapus, nomor absen siswa setelahnya otomatis diganti
   const handleDeleteStudent = (id: string) => {
     const studentToDelete = students.find((s) => s.id === id);
     if (!studentToDelete) return;
@@ -688,7 +846,6 @@ export default function App() {
         .filter((s) => s.classId === targetClassId && s.id !== id)
         .sort((a, b) => a.noUrut - b.noUrut);
 
-      // Otomatis ganti nomor absen setelahnya berurutan tanpa jeda
       const reindexed = remainingThisClass.map((s, idx) => ({
         ...s,
         noUrut: idx + 1,
@@ -697,9 +854,11 @@ export default function App() {
       return [...otherStudents, ...reindexed];
     });
 
-    // Bersihkan riwayat absensi dan nilai murid yang dihapus
     setAttendanceRecords((prev) => prev.filter((r) => r.studentId !== id));
     setGrades((prev) => prev.filter((g) => g.studentId !== id));
+    if (!isDemoMode && userId) {
+      deleteStudent(id);
+    }
 
     showToast(
       'Nomor Absen Diperbarui Otomatis',
@@ -718,11 +877,14 @@ export default function App() {
       const otherClassStudents = students.filter((s) => s.classId !== activeClass.id);
       const formatted: Student[] = newStds.map((s, idx) => ({
         ...s,
-        id: `std-${Date.now()}-${idx}`,
+        id: crypto.randomUUID(),
         classId: activeClass.id,
         noUrut: idx + 1,
       }));
       setStudents([...otherClassStudents, ...formatted]);
+      if (!isDemoMode && userId) {
+        createStudentsBatch(userId, formatted);
+      }
       showToast(
         'Impor Selesai (Ganti Data)',
         `${formatted.length} murid berhasil didaftarkan di kelas ${activeClass.nama}.`
@@ -732,11 +894,14 @@ export default function App() {
       const startNo = currentClassStudents.length;
       const formatted: Student[] = newStds.map((s, idx) => ({
         ...s,
-        id: `std-${Date.now()}-${idx}`,
+        id: crypto.randomUUID(),
         classId: activeClass.id,
         noUrut: startNo + idx + 1,
       }));
       setStudents([...students, ...formatted]);
+      if (!isDemoMode && userId) {
+        createStudentsBatch(userId, formatted);
+      }
       showToast(
         'Impor Selesai (Tambahkan)',
         `${formatted.length} murid baru berhasil ditambahkan ke kelas ${activeClass.nama}.`
@@ -748,11 +913,14 @@ export default function App() {
   const handleAddClass = (newCls: Omit<ClassRoom, 'id'>) => {
     const newClassRoom: ClassRoom = {
       ...newCls,
-      id: `class-${Date.now()}`,
+      id: crypto.randomUUID(),
     };
     const nextClasses = [...classes, newClassRoom];
     setClasses(nextClasses);
     setActiveClass(newClassRoom);
+    if (!isDemoMode && userId) {
+      createClass(userId, newClassRoom);
+    }
     showToast('Rombel Berhasil Ditambahkan', `Kelas ${newClassRoom.nama} siap digunakan.`);
   };
 
@@ -761,6 +929,9 @@ export default function App() {
     setClasses(nextClasses);
     if (activeClass.id === updatedCls.id) {
       setActiveClass(updatedCls);
+    }
+    if (!isDemoMode && userId) {
+      updateClass(updatedCls);
     }
     showToast('Rombel Diperbarui', `Informasi kelas ${updatedCls.nama} berhasil disimpan.`);
   };
@@ -775,6 +946,9 @@ export default function App() {
     setClasses(remaining);
     if (activeClass.id === classId) {
       setActiveClass(remaining[0]);
+    }
+    if (!isDemoMode && userId) {
+      deleteClass(classId);
     }
     showToast('Rombel Dihapus', `Kelas ${target?.nama || ''} telah dihapus.`);
   };
@@ -796,8 +970,55 @@ export default function App() {
     showToast('Backup JSON Berhasil Diunduh', 'Seluruh database berhasil diekspor secara aman.');
   };
 
-  const handleRefreshData = () => {
-    showToast('Data Telah Disinkronkan', 'Memuat data terbaru dari Supabase PostgreSQL Cloud.');
+  const handleRefreshData = async () => {
+    if (isDemoMode || !userId) {
+      showToast('Mode Uji Coba Demo', 'Aplikasi saat ini berjalan dalam mode lokal & offline.');
+      return;
+    }
+    showToast('Menyinkronkan...', 'Memuat data terbaru dari Supabase PostgreSQL Cloud.');
+    try {
+      const [
+        dbProfile,
+        dbClasses,
+        dbStudents,
+        dbSessions,
+        dbRecords,
+        dbGrades,
+        dbJournals,
+        dbFinances,
+      ] = await Promise.all([
+        fetchProfile(userId),
+        fetchClasses(userId),
+        fetchStudents(userId),
+        fetchAttendanceSessions(userId),
+        fetchAttendanceRecords(),
+        fetchGrades(userId),
+        fetchJournals(userId),
+        fetchFinances(userId),
+      ]);
+
+      if (dbProfile) {
+        setTeacher(dbProfile);
+        if (dbProfile.school) setSchoolName(dbProfile.school);
+      }
+      if (dbClasses && dbClasses.length > 0) {
+        setClasses(dbClasses);
+        setActiveClass((prev) => dbClasses.find((c) => c.id === prev.id) || dbClasses[0]);
+      }
+      if (dbStudents && dbStudents.length > 0) setStudents(dbStudents);
+      if (dbSessions && dbSessions.length > 0) {
+        setSessions(dbSessions);
+        setActiveSession((prev) => dbSessions.find((s) => s.id === prev.id) || dbSessions[0]);
+      }
+      if (dbRecords && dbRecords.length > 0) setAttendanceRecords(dbRecords);
+      if (dbGrades && dbGrades.length > 0) setGrades(dbGrades);
+      if (dbJournals && dbJournals.length > 0) setJournals(dbJournals);
+      if (dbFinances && dbFinances.length > 0) setFinances(dbFinances);
+
+      showToast('Data Telah Disinkronkan', 'Data berhasil diperbarui dari Supabase Cloud.');
+    } catch (err: any) {
+      showToast('Info Sinkronisasi', err?.message || 'Data lokal tetap aktif.');
+    }
   };
 
   // 1. PUBLIC PORTAL VIEW (Strictly Read-Only without Edit Access / Login Locked)
@@ -819,18 +1040,34 @@ export default function App() {
     );
   }
 
-  // 2. If user is not authenticated, show the clean vintage postmodernism login view
+  // 2. Loading state while verifying Supabase session
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-[#faf7ee]">
+        <div className="bg-white border-3 border-slate-900 rounded-3xl p-8 shadow-[6px_6px_0px_#1e293b] flex flex-col items-center gap-4 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-[#6ee7b7] border-2 border-slate-900 flex items-center justify-center shadow-[2px_2px_0px_#1e293b]">
+            <div className="w-6 h-6 border-3 border-slate-900 border-t-transparent rounded-full animate-spin" />
+          </div>
+          <div>
+            <h3 className="font-black text-slate-900 text-sm">Memeriksa Sesi Masuk...</h3>
+            <p className="text-xs text-slate-500 mt-1 font-medium">Menghubungkan ke Supabase Cloud</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. If user is not authenticated, show the clean vintage postmodernism login view
   if (!isAuthenticated) {
     return (
       <LoginView
         onLoginSuccess={(user, profile) => {
-          setIsAuthenticated(true);
           if (profile) setTeacher(profile);
           showToast('Selamat Datang!', `Berhasil masuk ke Ruang Guru (${user.email})`);
         }}
         onDemoLogin={() => {
-          setIsAuthenticated(true);
-          showToast('Mode Uji Coba Demo', 'Masuk sebagai Guru Pengajar Akun Demo.');
+          setDemoMode(true);
+          showToast('Mode Uji Coba Demo', 'Masuk sebagai Guru Pengajar Akun Demo (Lokal & Offline).');
         }}
         schoolName={schoolName}
       />
@@ -839,6 +1076,13 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#faf7ee] font-sans selection:bg-[#6ee7b7] selection:text-slate-950">
+      {/* Demo Mode Notice Banner */}
+      {isDemoMode && (
+        <div className="bg-[#fef9c3] border-b-2 border-slate-900 px-4 py-2 text-center text-xs font-black text-amber-950 flex items-center justify-center gap-2 shadow-xs">
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+          <span>Mode Demo Offline: Berjalan menggunakan data lokal mandiri dan tidak mengirim data ke Supabase Cloud.</span>
+        </div>
+      )}
       {/* Toast floating notification - Vintage Neobrutalist */}
       {toastMessage && (
         <div className="fixed top-4 right-4 z-50 bg-[#ffffff] text-slate-900 px-4 py-3 rounded-2xl shadow-[4px_4px_0px_#1e293b] border-2 border-slate-900 flex items-start gap-3 animate-in slide-in-from-top duration-200">

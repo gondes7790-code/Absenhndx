@@ -38,6 +38,29 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
 
   if (!isOpen) return null;
 
+  const isServiceRole = (token: string): boolean => {
+    try {
+      const parts = token.trim().split('.');
+      if (parts.length >= 2) {
+        let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        while (base64.length % 4) {
+          base64 += '=';
+        }
+        const jsonStr = decodeURIComponent(
+          atob(base64)
+            .split('')
+            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        );
+        const payload = JSON.parse(jsonStr);
+        return payload?.role === 'service_role';
+      }
+    } catch {
+      // not decodable as standard JWT
+    }
+    return false;
+  };
+
   const handleCopy = () => {
     navigator.clipboard.writeText(SUPABASE_SQL_SCHEMA);
     setCopied(true);
@@ -46,6 +69,15 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
 
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isServiceRole(config.anonKey)) {
+      setTestResult({
+        success: false,
+        message:
+          '⚠️ Peringatan Keamanan: Key yang dimasukkan adalah service_role key! Service role key memiliki hak superadmin dan dilarang digunakan di browser client. Gunakan Supabase anon public key.',
+      });
+      return;
+    }
+
     saveStoredSupabaseConfig(config);
     resetSupabaseClient();
     setSaveSuccess(true);
@@ -57,6 +89,15 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
   };
 
   const handleTestConnection = async () => {
+    if (isServiceRole(config.anonKey)) {
+      setTestResult({
+        success: false,
+        message:
+          '⚠️ Peringatan Keamanan: Key yang dimasukkan adalah service_role key! Service role key memiliki akses superadmin yang membahayakan aplikasi jika dipakai di frontend. Gunakan anon public key.',
+      });
+      return;
+    }
+
     setIsTesting(true);
     setTestResult(null);
     try {
@@ -202,8 +243,18 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
                   value={config.anonKey}
                   onChange={(e) => setConfig({ ...config, anonKey: e.target.value })}
                   placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-                  className="w-full px-3.5 py-2.5 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-mono font-bold text-slate-900 focus:bg-white focus:outline-none"
+                  className={`w-full px-3.5 py-2.5 rounded-2xl border-2 font-mono font-bold text-slate-900 focus:outline-none ${
+                    isServiceRole(config.anonKey)
+                      ? 'border-rose-600 bg-rose-50 text-rose-950'
+                      : 'border-slate-900 bg-[#faf7ee] focus:bg-white'
+                  }`}
                 />
+                {isServiceRole(config.anonKey) && (
+                  <p className="mt-1.5 text-[11px] font-bold text-rose-600 flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>Ditolak: Terdeteksi role &quot;service_role&quot;. Wajib gunakan Supabase anon public key!</span>
+                  </p>
+                )}
               </div>
 
               {testResult && (

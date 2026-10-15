@@ -1,4 +1,13 @@
-import { Student, ClassRoom, AttendanceSession, AttendanceRecord, GradeRecord, JournalEntry, FinanceTransaction, TeacherProfile } from '../types';
+import {
+  Student,
+  ClassRoom,
+  AttendanceSession,
+  AttendanceRecord,
+  GradeRecord,
+  JournalEntry,
+  FinanceTransaction,
+  TeacherProfile,
+} from '../types';
 
 export const initialTeacher: TeacherProfile = {
   name: 'Hendra Setiawan, S. Pd.',
@@ -12,9 +21,17 @@ export const initialTeacher: TeacherProfile = {
   bio: 'Pendidik Produktif Kejuruan & Koordinator Kurikulum Merdeka. Berdedikasi dalam implementasi asesmen formatif adaptif dan presensi presisi.',
 };
 
+export const INITIAL_CLASS_IDS = {
+  class1: 'e7b0a82b-6c47-4952-b883-7c87c92b0e01',
+  class2: 'f1c4e9d2-3a58-4b71-9c60-8d9e1f2a3b02',
+  class3: 'a2b3c4d5-e6f7-48a9-b0c1-d2e3f4a5b603',
+  class4: 'b3c4d5e6-f7a8-49b0-c1d2-e3f4a5b6c704',
+  class5: 'c4d5e6f7-a8b9-40c1-d2e3-f4a5b6c7d805',
+};
+
 export const initialClasses: ClassRoom[] = [
   {
-    id: 'class-1',
+    id: INITIAL_CLASS_IDS.class1,
     nama: 'X TO 4 - Absen Harian',
     tingkat: 'X',
     jurusan: 'Teknik Otomotif',
@@ -25,7 +42,7 @@ export const initialClasses: ClassRoom[] = [
     formatifCount: 5,
   },
   {
-    id: 'class-2',
+    id: INITIAL_CLASS_IDS.class2,
     nama: 'XII TJAT 1',
     tingkat: 'XII',
     jurusan: 'Teknik Jaringan Akses Telekomunikasi',
@@ -36,7 +53,7 @@ export const initialClasses: ClassRoom[] = [
     formatifCount: 5,
   },
   {
-    id: 'class-3',
+    id: INITIAL_CLASS_IDS.class3,
     nama: 'XII TKJ 1',
     tingkat: 'XII',
     jurusan: 'Teknik Komputer dan Jaringan',
@@ -47,7 +64,7 @@ export const initialClasses: ClassRoom[] = [
     formatifCount: 5,
   },
   {
-    id: 'class-4',
+    id: INITIAL_CLASS_IDS.class4,
     nama: 'XII TJAT 2',
     tingkat: 'XII',
     jurusan: 'Teknik Jaringan Akses Telekomunikasi',
@@ -58,7 +75,7 @@ export const initialClasses: ClassRoom[] = [
     formatifCount: 5,
   },
   {
-    id: 'class-5',
+    id: INITIAL_CLASS_IDS.class5,
     nama: 'XII TKJ 3',
     tingkat: 'XII',
     jurusan: 'Teknik Komputer dan Jaringan',
@@ -70,46 +87,100 @@ export const initialClasses: ClassRoom[] = [
   },
 ];
 
-export const initialStudents: Student[] = [
-  { id: 'std-1', nisn: '0081234001', noUrut: 1, nama: 'ADHITYA WAHYU PRADANA', gender: 'L', classId: 'class-1', kontakOrtu: '628123456701', catatan: 'Aktif, tertib, disiplin di bengkel' },
-  { id: 'std-2', nisn: '0081234002', noUrut: 2, nama: 'AHMAD ARIF FEBRIAN', gender: 'L', classId: 'class-1', kontakOrtu: '628123456702', catatan: 'Kehadiran konsisten 100%' },
-  { id: 'std-3', nisn: '0081234003', noUrut: 3, nama: 'AHMAD REZA SAPUTRA', gender: 'L', classId: 'class-1', kontakOrtu: '628123456703', catatan: 'Perlu peningkatan motivasi belajar mandiri' },
-  { id: 'std-4', nisn: '0081234004', noUrut: 4, nama: 'AKHMAD NAUFAL FIRMANDHA', gender: 'L', classId: 'class-1', kontakOrtu: '628123456704', catatan: 'Bagus dalam praktik mesin 2-tak' },
-  { id: 'std-5', nisn: '0081234005', noUrut: 5, nama: 'ALWAN PERMANA NURRAKHMAN', gender: 'L', classId: 'class-1', kontakOrtu: '628123456705', catatan: 'Sering izin keperluan keluarga' },
-  { id: 'std-6', nisn: '0081234006', noUrut: 6, nama: 'ANDHIKA PRATAMA', gender: 'L', classId: 'class-1', kontakOrtu: '628123456706', catatan: 'Bagus di tes teori otomotif' },
-  { id: 'std-7', nisn: '0081234007', noUrut: 7, nama: 'ARDIAN INDRA MAULANA', gender: 'L', classId: 'class-1', kontakOrtu: '628123456707', catatan: 'Sakit flu musiman' },
-  { id: 'std-8', nisn: '0081234008', noUrut: 8, nama: 'ATA AUFA ARZY APRIYANTO', gender: 'L', classId: 'class-1', kontakOrtu: '628123456708', catatan: 'Ketua kelompok diskusi' },
-  { id: 'std-9', nisn: '0081234009', noUrut: 9, nama: 'BIMA RADITYA', gender: 'L', classId: 'class-1', kontakOrtu: '628123456709', catatan: 'Cekatan dalam pemeliharaan kelistrikan' },
-  { id: 'std-10', nisn: '0081234010', noUrut: 10, nama: 'DANIYAL ARFA ABRISAM', gender: 'L', classId: 'class-1', kontakOrtu: '628123456710', catatan: 'Kerap membantu teman yang kesulitan' },
-  { id: 'std-11', nisn: '0081234011', noUrut: 11, nama: 'DHAVIN AZKHER MUKHARAM', gender: 'L', classId: 'class-1', kontakOrtu: '628123456711', catatan: 'Perlu bimbingan pemahaman konseptual' },
-  { id: 'std-12', nisn: '0081234012', noUrut: 12, nama: 'DUWI KHOIRUL ROZAK', gender: 'L', classId: 'class-1', kontakOrtu: '628123456712', catatan: 'Perlu dorongan aktif bertanya' },
-  { id: 'std-13', nisn: '0081234013', noUrut: 13, nama: 'ENGGAR RADITYA PRATAMA', gender: 'L', classId: 'class-1', kontakOrtu: '628123456713', catatan: 'Perhatian fokus pada proyek bengkel' },
-  { id: 'std-14', nisn: '0081234014', noUrut: 14, nama: 'FAIZA KHOIRUL FAHMI', gender: 'L', classId: 'class-1', kontakOrtu: '628123456714', catatan: 'Tertib administrasi tugas' },
-  { id: 'std-15', nisn: '0081234015', noUrut: 15, nama: 'FURQON NURJATI', gender: 'L', classId: 'class-1', kontakOrtu: '628123456715', catatan: 'Cepat dalam merangkai sirkuit' },
-  { id: 'std-16', nisn: '0081234016', noUrut: 16, nama: 'HAMZAH FANSURI', gender: 'L', classId: 'class-1', kontakOrtu: '628123456716', catatan: 'Kemampuan analisis logis baik' },
-  { id: 'std-17', nisn: '0081234017', noUrut: 17, nama: 'IMUNG SEPTIANTO', gender: 'L', classId: 'class-1', kontakOrtu: '628123456717', catatan: 'Disiplin waktu dan kehadiran' },
-  { id: 'std-18', nisn: '0081234018', noUrut: 18, nama: 'KHAMDAN NI\'AMILLAH', gender: 'L', classId: 'class-1', kontakOrtu: '628123456718', catatan: 'Aktif mengajukan pertanyaan kritis' },
-  { id: 'std-19', nisn: '0081234019', noUrut: 19, nama: 'M. ALIF ZANDIANSYAH', gender: 'L', classId: 'class-1', kontakOrtu: '628123456719', catatan: 'Sangat teliti dalam pembacaan jangka sorong' },
-  { id: 'std-20', nisn: '0081234020', noUrut: 20, nama: 'MOHAMMAD RIFKI', gender: 'L', classId: 'class-1', kontakOrtu: '628123456720', catatan: 'Kehadiran stabil, nilai memuaskan' },
-  { id: 'std-21', nisn: '0081234021', noUrut: 21, nama: 'MUHAMMAD FARHAN', gender: 'L', classId: 'class-1', kontakOrtu: '628123456721', catatan: 'Penguasaan materi dasar tuntas' },
-  { id: 'std-22', nisn: '0081234022', noUrut: 22, nama: 'MUHAMMAD ILHAM', gender: 'L', classId: 'class-1', kontakOrtu: '628123456722', catatan: 'Rapi dalam laporan portofolio kerja' },
-  { id: 'std-23', nisn: '0081234023', noUrut: 23, nama: 'MUHAMMAD NUR RIZKI', gender: 'L', classId: 'class-1', kontakOrtu: '628123456723', catatan: 'Senang bereksperimen dengan tuning mesin' },
-  { id: 'std-24', nisn: '0081234024', noUrut: 24, nama: 'NAUVAL DAFFA AL-KAUTSAR', gender: 'L', classId: 'class-1', kontakOrtu: '628123456724', catatan: 'Kemampuan komunikasi kelompok unggul' },
-  { id: 'std-25', nisn: '0081234025', noUrut: 25, nama: 'RADITYA BAGAS KURNIAWAN', gender: 'L', classId: 'class-1', kontakOrtu: '628123456725', catatan: 'Konsisten menyelesaikan tugas tepat waktu' },
-  { id: 'std-26', nisn: '0081234026', noUrut: 26, nama: 'RANGGA ADITYA PRANATA', gender: 'L', classId: 'class-1', kontakOrtu: '628123456726', catatan: 'Semangat belajar tinggi' },
-  { id: 'std-27', nisn: '0081234027', noUrut: 27, nama: 'REVALDO SAPUTRA', gender: 'L', classId: 'class-1', kontakOrtu: '628123456727', catatan: 'Perlu pengawasan saat jam praktik mandiri' },
-  { id: 'std-28', nisn: '0081234028', noUrut: 28, nama: 'RIFKI SETIAWAN', gender: 'L', classId: 'class-1', kontakOrtu: '628123456728', catatan: 'Tuntas pada seluruh sumatif' },
-  { id: 'std-29', nisn: '0081234029', noUrut: 29, nama: 'RIZKY RAMADHAN', gender: 'L', classId: 'class-1', kontakOrtu: '628123456729', catatan: 'Hadir tepat waktu setiap sesi' },
-  { id: 'std-30', nisn: '0081234030', noUrut: 30, nama: 'SATRIA BAGUS PAMUNGKAS', gender: 'L', classId: 'class-1', kontakOrtu: '628123456730', catatan: 'Performa uji kompetensi baik' },
-  { id: 'std-31', nisn: '0081234031', noUrut: 31, nama: 'SEPTIAN DWI CAHYO', gender: 'L', classId: 'class-1', kontakOrtu: '628123456731', catatan: 'Aktif berkolaborasi dalam tim' },
-  { id: 'std-32', nisn: '0081234032', noUrut: 32, nama: 'TEGAR PRATAMA YUDA', gender: 'L', classId: 'class-1', kontakOrtu: '628123456732', catatan: 'Keterampilan mekanik presisi tinggi' },
-  { id: 'std-33', nisn: '0081234033', noUrut: 33, nama: 'YUDA PRATAMA KUSUMA', gender: 'L', classId: 'class-1', kontakOrtu: '628123456733', catatan: 'Sangat teliti dalam keselamatan K3' },
+export const INITIAL_STUDENT_IDS: string[] = [
+  '20000000-0000-4000-8000-000000000001',
+  '20000000-0000-4000-8000-000000000002',
+  '20000000-0000-4000-8000-000000000003',
+  '20000000-0000-4000-8000-000000000004',
+  '20000000-0000-4000-8000-000000000005',
+  '20000000-0000-4000-8000-000000000006',
+  '20000000-0000-4000-8000-000000000007',
+  '20000000-0000-4000-8000-000000000008',
+  '20000000-0000-4000-8000-000000000009',
+  '20000000-0000-4000-8000-000000000010',
+  '20000000-0000-4000-8000-000000000011',
+  '20000000-0000-4000-8000-000000000012',
+  '20000000-0000-4000-8000-000000000013',
+  '20000000-0000-4000-8000-000000000014',
+  '20000000-0000-4000-8000-000000000015',
+  '20000000-0000-4000-8000-000000000016',
+  '20000000-0000-4000-8000-000000000017',
+  '20000000-0000-4000-8000-000000000018',
+  '20000000-0000-4000-8000-000000000019',
+  '20000000-0000-4000-8000-000000000020',
+  '20000000-0000-4000-8000-000000000021',
+  '20000000-0000-4000-8000-000000000022',
+  '20000000-0000-4000-8000-000000000023',
+  '20000000-0000-4000-8000-000000000024',
+  '20000000-0000-4000-8000-000000000025',
+  '20000000-0000-4000-8000-000000000026',
+  '20000000-0000-4000-8000-000000000027',
+  '20000000-0000-4000-8000-000000000028',
+  '20000000-0000-4000-8000-000000000029',
+  '20000000-0000-4000-8000-000000000030',
+  '20000000-0000-4000-8000-000000000031',
+  '20000000-0000-4000-8000-000000000032',
+  '20000000-0000-4000-8000-000000000033',
 ];
+
+const RAW_STUDENT_NAMES: { nama: string; nisn: string; kontakOrtu: string; catatan: string }[] = [
+  { nama: 'ADHITYA WAHYU PRADANA', nisn: '0081234001', kontakOrtu: '628123456701', catatan: 'Aktif, tertib, disiplin di bengkel' },
+  { nama: 'AHMAD ARIF FEBRIAN', nisn: '0081234002', kontakOrtu: '628123456702', catatan: 'Kehadiran konsisten 100%' },
+  { nama: 'AHMAD REZA SAPUTRA', nisn: '0081234003', kontakOrtu: '628123456703', catatan: 'Perlu peningkatan motivasi belajar mandiri' },
+  { nama: 'AKHMAD NAUFAL FIRMANDHA', nisn: '0081234004', kontakOrtu: '628123456704', catatan: 'Bagus dalam praktik mesin 2-tak' },
+  { nama: 'ALWAN PERMANA NURRAKHMAN', nisn: '0081234005', kontakOrtu: '628123456705', catatan: 'Sering izin keperluan keluarga' },
+  { nama: 'ANDHIKA PRATAMA', nisn: '0081234006', kontakOrtu: '628123456706', catatan: 'Bagus di tes teori otomotif' },
+  { nama: 'ARDIAN INDRA MAULANA', nisn: '0081234007', kontakOrtu: '628123456707', catatan: 'Sakit flu musiman' },
+  { nama: 'ATA AUFA ARZY APRIYANTO', nisn: '0081234008', kontakOrtu: '628123456708', catatan: 'Ketua kelompok diskusi' },
+  { nama: 'BIMA RADITYA', nisn: '0081234009', kontakOrtu: '628123456709', catatan: 'Cekatan dalam pemeliharaan kelistrikan' },
+  { nama: 'DANIYAL ARFA ABRISAM', nisn: '0081234010', kontakOrtu: '628123456710', catatan: 'Kerap membantu teman yang kesulitan' },
+  { nama: 'DHAVIN AZKHER MUKHARAM', nisn: '0081234011', kontakOrtu: '628123456711', catatan: 'Perlu bimbingan pemahaman konseptual' },
+  { nama: 'DUWI KHOIRUL ROZAK', nisn: '0081234012', kontakOrtu: '628123456712', catatan: 'Perlu dorongan aktif bertanya' },
+  { nama: 'ENGGAR RADITYA PRATAMA', nisn: '0081234013', kontakOrtu: '628123456713', catatan: 'Perhatian fokus pada proyek bengkel' },
+  { nama: 'FAIZA KHOIRUL FAHMI', nisn: '0081234014', kontakOrtu: '628123456714', catatan: 'Tertib administrasi tugas' },
+  { nama: 'FURQON NURJATI', nisn: '0081234015', kontakOrtu: '628123456715', catatan: 'Cepat dalam merangkai sirkuit' },
+  { nama: 'HAMZAH FANSURI', nisn: '0081234016', kontakOrtu: '628123456716', catatan: 'Kemampuan analisis logis baik' },
+  { nama: 'IMUNG SEPTIANTO', nisn: '0081234017', kontakOrtu: '628123456717', catatan: 'Disiplin waktu dan kehadiran' },
+  { nama: 'KHAMDAN NI\'AMILLAH', nisn: '0081234018', kontakOrtu: '628123456718', catatan: 'Aktif mengajukan pertanyaan kritis' },
+  { nama: 'M. ALIF ZANDIANSYAH', nisn: '0081234019', kontakOrtu: '628123456719', catatan: 'Sangat teliti dalam pembacaan jangka sorong' },
+  { nama: 'MOHAMMAD RIFKI', nisn: '0081234020', kontakOrtu: '628123456720', catatan: 'Kehadiran stabil, nilai memuaskan' },
+  { nama: 'MUHAMMAD FARHAN', nisn: '0081234021', kontakOrtu: '628123456721', catatan: 'Penguasaan materi dasar tuntas' },
+  { nama: 'MUHAMMAD ILHAM', nisn: '0081234022', kontakOrtu: '628123456722', catatan: 'Rapi dalam laporan portofolio kerja' },
+  { nama: 'MUHAMMAD NUR RIZKI', nisn: '0081234023', kontakOrtu: '628123456723', catatan: 'Senang bereksperimen dengan tuning mesin' },
+  { nama: 'NAUVAL DAFFA AL-KAUTSAR', nisn: '0081234024', kontakOrtu: '628123456724', catatan: 'Kemampuan komunikasi kelompok unggul' },
+  { nama: 'RADITYA BAGAS KURNIAWAN', nisn: '0081234025', kontakOrtu: '628123456725', catatan: 'Konsisten menyelesaikan tugas tepat waktu' },
+  { nama: 'RANGGA ADITYA PRANATA', nisn: '0081234026', kontakOrtu: '628123456726', catatan: 'Semangat belajar tinggi' },
+  { nama: 'REVALDO SAPUTRA', nisn: '0081234027', kontakOrtu: '628123456727', catatan: 'Perlu pengawasan saat jam praktik mandiri' },
+  { nama: 'RIFKI SETIAWAN', nisn: '0081234028', kontakOrtu: '628123456728', catatan: 'Tuntas pada seluruh sumatif' },
+  { nama: 'RIZKY RAMADHAN', nisn: '0081234029', kontakOrtu: '628123456729', catatan: 'Hadir tepat waktu setiap sesi' },
+  { nama: 'SATRIA BAGUS PAMUNGKAS', nisn: '0081234030', kontakOrtu: '628123456730', catatan: 'Performa uji kompetensi baik' },
+  { nama: 'SEPTIAN DWI CAHYO', nisn: '0081234031', kontakOrtu: '628123456731', catatan: 'Aktif berkolaborasi dalam tim' },
+  { nama: 'TEGAR PRATAMA YUDA', nisn: '0081234032', kontakOrtu: '628123456732', catatan: 'Keterampilan mekanik presisi tinggi' },
+  { nama: 'YUDA PRATAMA KUSUMA', nisn: '0081234033', kontakOrtu: '628123456733', catatan: 'Sangat teliti dalam keselamatan K3' },
+];
+
+export const initialStudents: Student[] = RAW_STUDENT_NAMES.map((s, idx) => ({
+  id: INITIAL_STUDENT_IDS[idx],
+  nisn: s.nisn,
+  noUrut: idx + 1,
+  nama: s.nama,
+  gender: 'L',
+  classId: INITIAL_CLASS_IDS.class1,
+  kontakOrtu: s.kontakOrtu,
+  catatan: s.catatan,
+}));
+
+export const INITIAL_SESSION_IDS = {
+  session44: '30000000-0000-4000-8000-000000000044',
+  session43: '30000000-0000-4000-8000-000000000043',
+  session42: '30000000-0000-4000-8000-000000000042',
+  session41: '30000000-0000-4000-8000-000000000041',
+};
 
 export const initialSessions: AttendanceSession[] = [
   {
-    id: 'session-44',
-    classId: 'class-1',
+    id: INITIAL_SESSION_IDS.session44,
+    classId: INITIAL_CLASS_IDS.class1,
     pertemuanKe: 44,
     tanggal: '2026-10-12',
     mapel: 'Absen Harian & Pemeliharaan Sistem',
@@ -117,8 +188,8 @@ export const initialSessions: AttendanceSession[] = [
     createdAt: '2026-10-12T07:00:00Z',
   },
   {
-    id: 'session-43',
-    classId: 'class-1',
+    id: INITIAL_SESSION_IDS.session43,
+    classId: INITIAL_CLASS_IDS.class1,
     pertemuanKe: 43,
     tanggal: '2026-10-10',
     mapel: 'Sistem Injeksi Otomotif',
@@ -126,8 +197,8 @@ export const initialSessions: AttendanceSession[] = [
     createdAt: '2026-10-10T07:00:00Z',
   },
   {
-    id: 'session-42',
-    classId: 'class-1',
+    id: INITIAL_SESSION_IDS.session42,
+    classId: INITIAL_CLASS_IDS.class1,
     pertemuanKe: 42,
     tanggal: '2026-10-08',
     mapel: 'Kelistrikan Bodi',
@@ -135,8 +206,8 @@ export const initialSessions: AttendanceSession[] = [
     createdAt: '2026-10-08T07:00:00Z',
   },
   {
-    id: 'session-41',
-    classId: 'class-1',
+    id: INITIAL_SESSION_IDS.session41,
+    classId: INITIAL_CLASS_IDS.class1,
     pertemuanKe: 41,
     tanggal: '2026-10-05',
     mapel: 'Sistem Rem ABS',
@@ -145,26 +216,26 @@ export const initialSessions: AttendanceSession[] = [
   },
 ];
 
-// Generate attendance records for session 44:
-// 30 Hadir, 1 Sakit (Ardian Indra Maulana), 1 Izin (Alwan Permana), 1 Alfa (Akhmad Naufal / std-4), 0 Dispen
-export const initialAttendanceRecords: AttendanceRecord[] = initialStudents.map((std) => {
+// Generate attendance records for session 44 with full UUID format
+export const initialAttendanceRecords: AttendanceRecord[] = initialStudents.map((std, idx) => {
   let status: 'H' | 'S' | 'I' | 'A' | 'D' = 'H';
   let keterangan = '';
 
-  if (std.id === 'std-5') {
+  if (std.id === INITIAL_STUDENT_IDS[4]) {
     status = 'I';
     keterangan = 'Izin ada keperluan keluarga di luar kota';
-  } else if (std.id === 'std-7') {
+  } else if (std.id === INITIAL_STUDENT_IDS[6]) {
     status = 'S';
     keterangan = 'Sakit flu demam (surat dokter terlampir)';
-  } else if (std.id === 'std-4') {
+  } else if (std.id === INITIAL_STUDENT_IDS[3]) {
     status = 'A';
     keterangan = 'Tanpa keterangan resmi';
   }
 
+  const hexSuffix = String(idx + 1).padStart(12, '0');
   return {
-    id: `rec-44-${std.id}`,
-    sessionId: 'session-44',
+    id: `40000000-0044-4000-8000-${hexSuffix}`,
+    sessionId: INITIAL_SESSION_IDS.session44,
     studentId: std.id,
     status,
     keterangan,
@@ -172,9 +243,8 @@ export const initialAttendanceRecords: AttendanceRecord[] = initialStudents.map(
   };
 });
 
-// Initial grades reflecting Kurikulum Merdeka
+// Initial grades reflecting Kurikulum Merdeka with full UUID format
 export const initialGrades: GradeRecord[] = initialStudents.map((std, idx) => {
-  // Give realistic sample grades
   let formatif: (number | null)[] = [85, 88, 90, 84, 86];
   let sts: number | null = 86;
   let sas: number | null = 88;
@@ -213,7 +283,6 @@ export const initialGrades: GradeRecord[] = initialStudents.map((std, idx) => {
     sas = 82;
   }
 
-  // Calculate descriptive feedback based on Kurikulum Merdeka standards
   const avg = formatif.filter((v): v is number => v !== null).reduce((a, b) => a + b, 0) / (formatif.length || 1);
   let deskripsi = '';
   if (avg >= 85) {
@@ -224,10 +293,11 @@ export const initialGrades: GradeRecord[] = initialStudents.map((std, idx) => {
     deskripsi = `Perlu bimbingan dan pendampingan intensif (remedial) dalam pemahaman konseptual dan praktik kerja TP 1 - TP 5.`;
   }
 
+  const hexSuffix = String(idx + 1).padStart(12, '0');
   return {
-    id: `grade-${std.id}`,
+    id: `50000000-0000-4000-8000-${hexSuffix}`,
     studentId: std.id,
-    classId: 'class-1',
+    classId: INITIAL_CLASS_IDS.class1,
     formatif,
     sts,
     sas,
@@ -238,11 +308,11 @@ export const initialGrades: GradeRecord[] = initialStudents.map((std, idx) => {
 
 export const initialJournals: JournalEntry[] = [
   {
-    id: 'jrn-1',
+    id: '60000000-0000-4000-8000-000000000001',
     tanggal: '2026-10-12',
     pendidik: 'Hendra Setiawan, S. Pd.',
     mapel: 'Bahasa Inggris',
-    classId: 'class-2',
+    classId: INITIAL_CLASS_IDS.class2,
     className: 'XII TJAT 1',
     pertemuanKe: 'Ke-10',
     jamPelajaran: '13:00 - 13:40 WIB',
@@ -251,11 +321,11 @@ export const initialJournals: JournalEntry[] = [
     semester: 'Ganjil',
   },
   {
-    id: 'jrn-2',
+    id: '60000000-0000-4000-8000-000000000002',
     tanggal: '2026-10-12',
     pendidik: 'Hendra Setiawan, S. Pd.',
     mapel: 'Bahasa Inggris',
-    classId: 'class-2',
+    classId: INITIAL_CLASS_IDS.class2,
     className: 'XII TJAT 1',
     pertemuanKe: 'Ke-1 - 4',
     jamPelajaran: '07:15 - 09:15 WIB',
@@ -264,11 +334,11 @@ export const initialJournals: JournalEntry[] = [
     semester: 'Ganjil',
   },
   {
-    id: 'jrn-3',
+    id: '60000000-0000-4000-8000-000000000003',
     tanggal: '2026-10-12',
     pendidik: 'Hendra Setiawan, S. Pd.',
     mapel: 'Bahasa Inggris',
-    classId: 'class-5',
+    classId: INITIAL_CLASS_IDS.class5,
     className: 'XII TKJ 3',
     pertemuanKe: 'Ke-5 - 6',
     jamPelajaran: '09:30 - 10:30 WIB',
@@ -277,11 +347,11 @@ export const initialJournals: JournalEntry[] = [
     semester: 'Ganjil',
   },
   {
-    id: 'jrn-4',
+    id: '60000000-0000-4000-8000-000000000004',
     tanggal: '2026-10-12',
     pendidik: 'Hendra Setiawan, S. Pd.',
     mapel: 'Bahasa Inggris',
-    classId: 'class-3',
+    classId: INITIAL_CLASS_IDS.class3,
     className: 'XII TKJ 1',
     pertemuanKe: 'Ke-7 - 8',
     jamPelajaran: '10:30 - 11:30 WIB',
@@ -290,11 +360,11 @@ export const initialJournals: JournalEntry[] = [
     semester: 'Ganjil',
   },
   {
-    id: 'jrn-5',
+    id: '60000000-0000-4000-8000-000000000005',
     tanggal: '2026-10-08',
     pendidik: 'Hendra Setiawan, S. Pd.',
     mapel: 'Bahasa Inggris',
-    classId: 'class-4',
+    classId: INITIAL_CLASS_IDS.class4,
     className: 'XII TJAT 2',
     pertemuanKe: 'Ke-1 - 4',
     jamPelajaran: '07:15 - 09:15 WIB',
@@ -306,9 +376,9 @@ export const initialJournals: JournalEntry[] = [
 
 export const initialFinances: FinanceTransaction[] = [
   {
-    id: 'fin-1',
+    id: '70000000-0000-4000-8000-000000000001',
     tanggal: '2026-10-12',
-    classId: 'class-1',
+    classId: INITIAL_CLASS_IDS.class1,
     tipe: 'Pemasukan',
     kategori: 'Kas Kelas',
     keterangan: 'Total Kas Kelas Iuran Rutin Mingguan',
@@ -316,15 +386,15 @@ export const initialFinances: FinanceTransaction[] = [
     pencatat: 'Hendra Setiawan, S. Pd.',
   },
   {
-    id: 'fin-2',
+    id: '70000000-0000-4000-8000-000000000002',
     tanggal: '2026-10-12',
-    classId: 'class-1',
+    classId: INITIAL_CLASS_IDS.class1,
     tipe: 'Pemasukan',
     kategori: 'Tabungan Siswa',
     keterangan: 'Tabungan Mandiri Siswa (Setoran Kolektif)',
     nominal: 15000,
     pencatat: 'Hendra Setiawan, S. Pd.',
-    studentId: 'std-1',
+    studentId: INITIAL_STUDENT_IDS[0],
     studentName: 'ADHITYA WAHYU PRADANA',
   },
 ];

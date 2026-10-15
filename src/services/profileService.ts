@@ -44,3 +44,6 @@ export async function upsertProfile(userId: string, profile: TeacherProfile): Pr
   }
   return true;
 }
+
+export const updateProfile = upsertProfile;
+
