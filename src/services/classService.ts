@@ -24,6 +24,7 @@ export async function fetchClasses(userId: string): Promise<ClassRoom[]> {
     mapel: row.mapel,
     kkm: Number(row.kkm) || 75,
     formatifCount: Number(row.formatif_count) || 5,
+    tpTitles: (row.tp_titles as Record<number, string>) || {},
   }));
 }
 
@@ -44,6 +45,7 @@ export async function createClass(userId: string, cls: Omit<ClassRoom, 'id'> & {
       mapel: cls.mapel,
       kkm: cls.kkm,
       formatif_count: cls.formatifCount,
+      tp_titles: cls.tpTitles || {},
     })
     .select()
     .single();
@@ -63,6 +65,7 @@ export async function createClass(userId: string, cls: Omit<ClassRoom, 'id'> & {
     mapel: data.mapel,
     kkm: Number(data.kkm),
     formatifCount: Number(data.formatif_count),
+    tpTitles: (data.tp_titles as Record<number, string>) || {},
   };
 }
 
@@ -79,6 +82,7 @@ export async function updateClass(cls: ClassRoom): Promise<boolean> {
       mapel: cls.mapel,
       kkm: cls.kkm,
       formatif_count: cls.formatifCount,
+      tp_titles: cls.tpTitles || {},
     })
     .eq('id', cls.id);
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Cloud,
   Sliders,
@@ -54,14 +54,15 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   const [editingTpTitle, setEditingTpTitle] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
   const [currentKkm, setCurrentKkm] = useState<number>(activeClass.kkm || 75);
-  const [tpTitles, setTpTitles] = useState<Record<number, string>>(() => {
-    try {
-      const saved = localStorage.getItem(`hndx_tp_titles_${activeClass.id}`);
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
+  const [tpTitles, setTpTitles] = useState<Record<number, string>>(
+    () => activeClass.tpTitles || {}
+  );
+
+  useEffect(() => {
+    setTpTitles(activeClass.tpTitles || {});
+    setFormatifColumns(activeClass.formatifCount || 5);
+    setCurrentKkm(activeClass.kkm || 75);
+  }, [activeClass.id, activeClass.tpTitles, activeClass.formatifCount, activeClass.kkm]);
 
   // Map studentId -> GradeRecord
   const gradesMap = useMemo(() => {
@@ -647,16 +648,12 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  try {
-                    localStorage.setItem(`hndx_tp_titles_${activeClass.id}`, JSON.stringify(tpTitles));
-                  } catch (e) {
-                    console.warn(e);
-                  }
                   if (onUpdateClass) {
                     onUpdateClass({
                       ...activeClass,
                       formatifCount: formatifColumns,
                       kkm: currentKkm,
+                      tpTitles,
                     });
                   }
                   setEditingTpTitle(false);

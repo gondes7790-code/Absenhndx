@@ -60,7 +60,7 @@ export const JournalView: React.FC<JournalViewProps> = ({
   const [newTanggal, setNewTanggal] = useState(new Date().toISOString().split('T')[0]);
   const [newClassId, setNewClassId] = useState(classes[0]?.id || 'class-1');
   const [newMapel, setNewMapel] = useState(classes[0]?.mapel || 'Bahasa Inggris & Kejuruan');
-  const [newPertemuan, setNewPertemuan] = useState('Ke-1');
+  const [newPertemuan, setNewPertemuan] = useState<number>(1);
   const [newJam, setNewJam] = useState('07:15 - 09:15 WIB');
   const [newMateri, setNewMateri] = useState('');
   const [newKegiatan, setNewKegiatan] = useState('');
@@ -72,7 +72,7 @@ export const JournalView: React.FC<JournalViewProps> = ({
   const [editClassId, setEditClassId] = useState('');
   const [editClassName, setEditClassName] = useState('');
   const [editMapel, setEditMapel] = useState('');
-  const [editPertemuan, setEditPertemuan] = useState('');
+  const [editPertemuan, setEditPertemuan] = useState<number>(1);
   const [editJam, setEditJam] = useState('');
   const [editMateri, setEditMateri] = useState('');
   const [editKegiatan, setEditKegiatan] = useState('');
@@ -88,7 +88,8 @@ export const JournalView: React.FC<JournalViewProps> = ({
         searchQuery.trim() === '' ||
         j.materiKegiatan.toLowerCase().includes(searchQuery.toLowerCase()) ||
         j.className.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        j.pertemuanKe.toLowerCase().includes(searchQuery.toLowerCase());
+        String(j.pertemuanKe).toLowerCase().includes(searchQuery.toLowerCase()) ||
+        `ke-${j.pertemuanKe}`.toLowerCase().includes(searchQuery.toLowerCase());
 
       return matchClass && matchSemester && matchSearch;
     });
@@ -110,7 +111,7 @@ export const JournalView: React.FC<JournalViewProps> = ({
       mapel: newMapel,
       classId: newClassId,
       className,
-      pertemuanKe: newPertemuan,
+      pertemuanKe: Number(newPertemuan) || 1,
       jamPelajaran: newJam,
       materiKegiatan: combinedMateriKegiatan,
       materi: newMateri.trim(),
@@ -131,7 +132,7 @@ export const JournalView: React.FC<JournalViewProps> = ({
     setEditClassId(j.classId);
     setEditClassName(j.className);
     setEditMapel(j.mapel);
-    setEditPertemuan(j.pertemuanKe);
+    setEditPertemuan(Number(j.pertemuanKe) || 1);
     setEditJam(j.jamPelajaran);
 
     if (j.materi && j.kegiatan) {
@@ -167,7 +168,7 @@ export const JournalView: React.FC<JournalViewProps> = ({
       classId: editClassId,
       className,
       mapel: editMapel,
-      pertemuanKe: editPertemuan,
+      pertemuanKe: Number(editPertemuan) || 1,
       jamPelajaran: editJam,
       materiKegiatan: combinedMateriKegiatan,
       materi: editMateri.trim(),
@@ -430,9 +431,9 @@ export const JournalView: React.FC<JournalViewProps> = ({
                       </span>
                       <span
                         className="inline-block mt-1 text-[10px] font-bold text-emerald-950 bg-[#dcfce7] px-2 py-0.5 rounded-md border border-slate-900 max-w-full truncate align-middle shadow-[0.5px_0.5px_0px_#1e293b]"
-                        title={j.pertemuanKe}
+                        title={`Pertemuan Ke-${j.pertemuanKe}`}
                       >
-                        {j.pertemuanKe}
+                        Ke-{j.pertemuanKe}
                       </span>
                     </div>
                   </td>
@@ -457,7 +458,7 @@ export const JournalView: React.FC<JournalViewProps> = ({
                       {onDeleteJournal && (
                         <button
                           onClick={() => {
-                            if (window.confirm(`Hapus catatan agenda pertemuan ${j.pertemuanKe} kelas ${j.className}?`)) {
+                            if (window.confirm(`Hapus catatan agenda pertemuan Ke-${j.pertemuanKe} kelas ${j.className}?`)) {
                               onDeleteJournal(j.id);
                             }
                           }}
@@ -543,12 +544,13 @@ export const JournalView: React.FC<JournalViewProps> = ({
                     Pertemuan Ke- *
                   </label>
                   <input
-                    type="text"
+                    type="number"
+                    min={1}
                     required
                     value={newPertemuan}
-                    onChange={(e) => setNewPertemuan(e.target.value)}
+                    onChange={(e) => setNewPertemuan(Math.max(1, parseInt(e.target.value) || 1))}
                     className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none"
-                    placeholder="Contoh: Ke-1"
+                    placeholder="Contoh: 1"
                   />
                 </div>
 
@@ -710,12 +712,13 @@ export const JournalView: React.FC<JournalViewProps> = ({
                     Pertemuan Ke- *
                   </label>
                   <input
-                    type="text"
+                    type="number"
+                    min={1}
                     required
                     value={editPertemuan}
-                    onChange={(e) => setEditPertemuan(e.target.value)}
+                    onChange={(e) => setEditPertemuan(Math.max(1, parseInt(e.target.value) || 1))}
                     className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none"
-                    placeholder="Contoh: Ke-1"
+                    placeholder="Contoh: 1"
                   />
                 </div>
 

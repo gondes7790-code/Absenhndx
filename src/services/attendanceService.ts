@@ -15,12 +15,15 @@ export async function fetchAttendanceSessions(userId: string): Promise<Attendanc
   }
 
   return (data || []).map((row) => {
-    // Parse possible combined materi/kegiatan from catatan_kegiatan
-    let materi = '';
-    let kegiatan = '';
-    if (row.catatan_kegiatan) {
+    let materi = row.materi || '';
+    let kegiatan = row.kegiatan || '';
+    if (!materi && row.catatan_kegiatan) {
       if (row.catatan_kegiatan.includes('||')) {
         const parts = row.catatan_kegiatan.split('||');
+        materi = parts[0]?.trim() || '';
+        kegiatan = parts[1]?.trim() || '';
+      } else if (row.catatan_kegiatan.includes(' — ')) {
+        const parts = row.catatan_kegiatan.split(' — ');
         materi = parts[0]?.trim() || '';
         kegiatan = parts[1]?.trim() || '';
       } else {
@@ -36,17 +39,23 @@ export async function fetchAttendanceSessions(userId: string): Promise<Attendanc
       mapel: row.mapel || '',
       materi,
       kegiatan,
-      catatan: row.catatan_kegiatan,
+      jamPelajaran: row.jam_pelajaran || '',
+      catatan: row.catatan_kegiatan || (materi ? `${materi} — ${kegiatan}` : ''),
       createdAt: row.created_at || new Date().toISOString(),
     };
   });
 }
 
-export async function fetchAttendanceRecords(): Promise<AttendanceRecord[]> {
+export async function fetchAttendanceRecords(sessionIds: string[] = []): Promise<AttendanceRecord[]> {
+  if (!sessionIds || sessionIds.length === 0) {
+    return [];
+  }
+
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('attendance_records')
-    .select('*');
+    .select('*')
+    .in('session_id', sessionIds);
 
   if (error) {
     console.error('[attendanceService] fetchAttendanceRecords error:', error);
@@ -70,9 +79,10 @@ export async function createAttendanceSession(
   const supabase = getSupabase();
   const id = session.id || crypto.randomUUID();
 
-  const combinedCatatan = session.kegiatan
-    ? `${session.materi || ''} || ${session.kegiatan}`
-    : session.materi || session.catatan || '';
+  const materi = session.materi || '';
+  const kegiatan = session.kegiatan || '';
+  const jamPelajaran = session.jamPelajaran || '07:15 - 09:15 WIB';
+  const catatanKegiatan = materi && kegiatan ? `${materi} — ${kegiatan}` : materi || session.catatan || '';
 
   const { data, error } = await supabase
     .from('attendance_sessions')
@@ -80,10 +90,13 @@ export async function createAttendanceSession(
       id,
       user_id: userId,
       class_id: session.classId,
-      pertemuan_ke: session.pertemuanKe,
+      pertemuan_ke: Number(session.pertemuanKe) || 1,
       tanggal: session.tanggal,
       mapel: session.mapel,
-      catatan_kegiatan: combinedCatatan,
+      jam_pelajaran: jamPelajaran,
+      materi,
+      kegiatan,
+      catatan_kegiatan: catatanKegiatan,
     })
     .select()
     .single();
@@ -99,25 +112,31 @@ export async function createAttendanceSession(
     pertemuanKe: Number(data.pertemuan_ke),
     tanggal: data.tanggal,
     mapel: data.mapel,
-    materi: session.materi,
-    kegiatan: session.kegiatan,
+    materi: data.materi || session.materi,
+    kegiatan: data.kegiatan || session.kegiatan,
+    jamPelajaran: data.jam_pelajaran || jamPelajaran,
+    catatan: data.catatan_kegiatan || catatanKegiatan,
     createdAt: data.created_at,
   };
 }
 
 export async function updateAttendanceSession(session: AttendanceSession): Promise<boolean> {
   const supabase = getSupabase();
-  const combinedCatatan = session.kegiatan
-    ? `${session.materi || ''} || ${session.kegiatan}`
-    : session.materi || session.catatan || '';
+  const materi = session.materi || '';
+  const kegiatan = session.kegiatan || '';
+  const jamPelajaran = session.jamPelajaran || '';
+  const catatanKegiatan = materi && kegiatan ? `${materi} — ${kegiatan}` : materi || session.catatan || '';
 
   const { error } = await supabase
     .from('attendance_sessions')
     .update({
-      pertemuan_ke: session.pertemuanKe,
+      pertemuan_ke: Number(session.pertemuanKe) || 1,
       tanggal: session.tanggal,
       mapel: session.mapel,
-      catatan_kegiatan: combinedCatatan,
+      jam_pelajaran: jamPelajaran,
+      materi,
+      kegiatan,
+      catatan_kegiatan: catatanKegiatan,
     })
     .eq('id', session.id);
 

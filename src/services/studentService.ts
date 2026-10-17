@@ -117,28 +117,30 @@ export async function updateStudent(std: Student): Promise<boolean> {
   return true;
 }
 
-export async function updateStudentsBatch(students: Student[]): Promise<boolean> {
+export async function updateStudentsBatch(students: Student[], userId?: string): Promise<boolean> {
+  if (!students || students.length === 0) return true;
   const supabase = getSupabase();
-  // Update each student in parallel
-  const promises = students.map((std) =>
-    supabase
-      .from('students')
-      .update({
-        no_urut: std.noUrut,
-        nama: std.nama,
-        nisn: std.nisn,
-        gender: std.gender,
-        kontak_ortu: std.kontakOrtu,
-      })
-      .eq('id', std.id)
-  );
+  const rows = students.map((std) => ({
+    id: std.id,
+    ...(userId ? { user_id: userId } : {}),
+    class_id: std.classId,
+    no_urut: std.noUrut,
+    nama: std.nama,
+    nisn: std.nisn,
+    gender: std.gender,
+    kontak_ortu: std.kontakOrtu,
+    catatan: std.catatan || '',
+  }));
 
-  const results = await Promise.all(promises);
-  const hasError = results.some((r) => r.error);
-  if (hasError) {
-    console.error('[studentService] updateStudentsBatch error in some rows');
+  const { error } = await supabase
+    .from('students')
+    .upsert(rows, { onConflict: 'id' });
+
+  if (error) {
+    console.error('[studentService] updateStudentsBatch error:', error);
+    return false;
   }
-  return !hasError;
+  return true;
 }
 
 export async function deleteStudent(studentId: string): Promise<boolean> {

@@ -55,6 +55,7 @@ import {
   createStudent,
   createStudentsBatch,
   updateStudent,
+  updateStudentsBatch,
   deleteStudent,
 } from './services/studentService';
 import {
@@ -263,7 +264,6 @@ export default function App() {
           dbClasses,
           dbStudents,
           dbSessions,
-          dbRecords,
           dbGrades,
           dbJournals,
           dbFinances,
@@ -272,11 +272,16 @@ export default function App() {
           fetchClasses(userId),
           fetchStudents(userId),
           fetchAttendanceSessions(userId),
-          fetchAttendanceRecords(),
           fetchGrades(userId),
           fetchJournals(userId),
           fetchFinances(userId),
         ]);
+
+        if (!isMounted) return;
+
+        // Filter attendance records by teacher's session IDs (never select whole table)
+        const sessionIds = (dbSessions || []).map((s) => s.id);
+        const dbRecords = sessionIds.length > 0 ? await fetchAttendanceRecords(sessionIds) : [];
 
         if (!isMounted) return;
 
@@ -285,37 +290,42 @@ export default function App() {
           if (dbProfile.school) setSchoolName(dbProfile.school);
         }
 
-        if (dbClasses && dbClasses.length > 0) {
+        if (dbClasses) {
           setClasses(dbClasses);
-          setActiveClass(dbClasses[0]);
+          if (dbClasses.length > 0) {
+            setActiveClass((prev) => dbClasses.find((c) => c.id === prev.id) || dbClasses[0]);
+          }
         }
 
-        if (dbStudents && dbStudents.length > 0) {
+        if (dbStudents) {
           setStudents(dbStudents);
         }
 
-        if (dbSessions && dbSessions.length > 0) {
+        if (dbSessions) {
           setSessions(dbSessions);
-          setActiveSession(dbSessions[0]);
+          if (dbSessions.length > 0) {
+            setActiveSession((prev) => dbSessions.find((s) => s.id === prev.id) || dbSessions[0]);
+          }
         }
 
-        if (dbRecords && dbRecords.length > 0) {
+        if (dbRecords) {
           setAttendanceRecords(dbRecords);
         }
 
-        if (dbGrades && dbGrades.length > 0) {
+        if (dbGrades) {
           setGrades(dbGrades);
         }
 
-        if (dbJournals && dbJournals.length > 0) {
+        if (dbJournals) {
           setJournals(dbJournals);
         }
 
-        if (dbFinances && dbFinances.length > 0) {
+        if (dbFinances) {
           setFinances(dbFinances);
         }
       } catch (err) {
         console.warn('[App] Error loading Supabase data:', err);
+        showToast('Gagal Memuat Data Cloud', 'Terjadi kendala saat mengambil data dari Supabase.');
       }
     };
 
@@ -384,9 +394,9 @@ export default function App() {
     }
 
     setJournals((prev) => {
-      const targetPertemuanKe = `Ke-${sessionToSync.pertemuanKe}`;
+      const targetPertemuanKe = Number(sessionToSync.pertemuanKe) || 1;
       const existingIdx = prev.findIndex(
-        (j) => j.classId === sessionToSync.classId && j.pertemuanKe === targetPertemuanKe
+        (j) => j.classId === sessionToSync.classId && Number(j.pertemuanKe) === targetPertemuanKe
       );
 
       const targetClass = classes.find((c) => c.id === sessionToSync.classId) || activeClass;
@@ -405,7 +415,7 @@ export default function App() {
       if (existingIdx >= 0) {
         const next = [...prev];
         const existing = next[existingIdx];
-        next[existingIdx] = {
+        const updatedJournal: JournalEntry = {
           ...existing,
           tanggal: sessionToSync.tanggal,
           mapel: sessionToSync.mapel,
@@ -415,6 +425,10 @@ export default function App() {
           kegiatan: sessionToSync.kegiatan || existing.kegiatan,
           absensiCatatan,
         };
+        next[existingIdx] = updatedJournal;
+        if (!isDemoMode && userId) {
+          updateJournal(updatedJournal);
+        }
         return next;
       } else {
         const newEntry: JournalEntry = {
@@ -435,6 +449,9 @@ export default function App() {
           absensiCatatan,
           semester: `${targetClass.tahunAjaran} (${targetClass.semester})`,
         };
+        if (!isDemoMode && userId) {
+          createJournal(userId, newEntry);
+        }
         return [newEntry, ...prev];
       }
     });
@@ -450,7 +467,7 @@ export default function App() {
     );
   };
 
-  const handleSelectClass = (cls: ClassRoom) => {
+  const handleSelectClass = async (cls: ClassRoom) => {
     setActiveClass(cls);
     const classSess = sessions.filter((s) => s.classId === cls.id);
     if (classSess.length > 0) {
@@ -463,84 +480,104 @@ export default function App() {
         pertemuanKe: 1,
         tanggal: today,
         mapel: cls.mapel,
-        catatan: 'Pertemuan Ke-1 Pembelajaran Tatap Muka',
+        jamPelajaran: '07:15 - 09:15 WIB',
+        materi: 'Pertemuan Ke-1 Pembelajaran Tatap Muka',
+        kegiatan: 'Pengantar & Kontrak Belajar',
+        catatan: 'Pertemuan Ke-1 Pembelajaran Tatap Muka — Pengantar & Kontrak Belajar',
         createdAt: new Date().toISOString(),
       };
-      setSessions((prev) => [defaultSess, ...prev]);
-      setActiveSession(defaultSess);
       if (!isDemoMode && userId) {
-        createAttendanceSession(userId, defaultSess);
+        const created = await createAttendanceSession(userId, defaultSess);
+        if (created) {
+          setSessions((prev) => [created, ...prev]);
+          setActiveSession(created);
+        } else {
+          showToast('Peringatan Sesi', 'Sesi dibuat secara lokal, gagal menyimpan ke Supabase.');
+          setSessions((prev) => [defaultSess, ...prev]);
+          setActiveSession(defaultSess);
+        }
+      } else {
+        setSessions((prev) => [defaultSess, ...prev]);
+        setActiveSession(defaultSess);
       }
     }
   };
 
   // Handlers for Attendance
-  const handleUpdateAttendanceRecord = (studentId: string, status: AttendanceStatus, keterangan = '') => {
-    setAttendanceRecords((prev) => {
-      const existingIdx = prev.findIndex(
-        (r) => r.sessionId === activeSession.id && r.studentId === studentId
-      );
+  const handleUpdateAttendanceRecord = async (
+    studentId: string,
+    status: AttendanceStatus,
+    keterangan = ''
+  ) => {
+    const existingIdx = attendanceRecords.findIndex(
+      (r) => r.sessionId === activeSession.id && r.studentId === studentId
+    );
 
-      let next: AttendanceRecord[];
-      let targetRecord: AttendanceRecord;
-      if (existingIdx >= 0) {
-        next = [...prev];
-        targetRecord = {
-          ...next[existingIdx],
-          status,
-          keterangan,
-          updatedAt: new Date().toISOString(),
-        };
-        next[existingIdx] = targetRecord;
-      } else {
-        targetRecord = {
-          id: crypto.randomUUID(),
-          sessionId: activeSession.id,
-          studentId,
-          status,
-          keterangan,
-          updatedAt: new Date().toISOString(),
-        };
-        next = [...prev, targetRecord];
+    let targetRecord: AttendanceRecord;
+    if (existingIdx >= 0) {
+      targetRecord = {
+        ...attendanceRecords[existingIdx],
+        status,
+        keterangan,
+        updatedAt: new Date().toISOString(),
+      };
+    } else {
+      targetRecord = {
+        id: crypto.randomUUID(),
+        sessionId: activeSession.id,
+        studentId,
+        status,
+        keterangan,
+        updatedAt: new Date().toISOString(),
+      };
+    }
+
+    if (!isDemoMode && userId) {
+      const saved = await upsertAttendanceRecord(targetRecord);
+      if (!saved) {
+        showToast('Gagal Menyimpan Presensi', 'Tidak dapat memperbarui presensi murid ke Supabase.');
+        return;
       }
+      targetRecord = saved;
+    }
 
-      if (!isDemoMode && userId) {
-        upsertAttendanceRecord(targetRecord);
-      }
+    const next =
+      existingIdx >= 0
+        ? attendanceRecords.map((r, i) => (i === existingIdx ? targetRecord : r))
+        : [...attendanceRecords, targetRecord];
 
-      // Sync to journal automatically
-      syncAttendanceSessionToJournal(activeSession, next, students);
-
-      return next;
-    });
+    setAttendanceRecords(next);
+    syncAttendanceSessionToJournal(activeSession, next, students);
   };
 
-  const handleSetAllHadir = () => {
+  const handleSetAllHadir = async () => {
     const classStudents = students.filter((s) => s.classId === activeClass.id);
     const studentIdsInClass = new Set(classStudents.map((s) => s.id));
 
-    setAttendanceRecords((prev) => {
-      const filteredOther = prev.filter(
-        (r) => !(r.sessionId === activeSession.id && studentIdsInClass.has(r.studentId))
-      );
+    const allHadirForCurrent: AttendanceRecord[] = classStudents.map((std) => ({
+      id: crypto.randomUUID(),
+      sessionId: activeSession.id,
+      studentId: std.id,
+      status: 'H',
+      keterangan: '',
+      updatedAt: new Date().toISOString(),
+    }));
 
-      const allHadirForCurrent: AttendanceRecord[] = classStudents.map((std) => ({
-        id: crypto.randomUUID(),
-        sessionId: activeSession.id,
-        studentId: std.id,
-        status: 'H',
-        keterangan: '',
-        updatedAt: new Date().toISOString(),
-      }));
-
-      if (!isDemoMode && userId) {
-        upsertAttendanceRecordsBatch(allHadirForCurrent);
+    if (!isDemoMode && userId) {
+      const success = await upsertAttendanceRecordsBatch(allHadirForCurrent);
+      if (!success) {
+        showToast('Gagal Memperbarui Presensi', 'Gagal menyimpan status hadir ke Supabase.');
+        return;
       }
+    }
 
-      const updated = [...filteredOther, ...allHadirForCurrent];
-      syncAttendanceSessionToJournal(activeSession, updated, students);
-      return updated;
-    });
+    const filteredOther = attendanceRecords.filter(
+      (r) => !(r.sessionId === activeSession.id && studentIdsInClass.has(r.studentId))
+    );
+
+    const updated = [...filteredOther, ...allHadirForCurrent];
+    setAttendanceRecords(updated);
+    syncAttendanceSessionToJournal(activeSession, updated, students);
 
     showToast(
       'Seluruh Murid Diset Hadir',
@@ -552,7 +589,7 @@ export default function App() {
     showToast('Tersimpan di Cloud Supabase', 'Data berhasil disinkronisasi ke PostgreSQL dengan Row Level Security.');
   };
 
-  const handleCreateNewSession = (customData?: {
+  const handleCreateNewSession = async (customData?: {
     pertemuanKe?: number;
     tanggal?: string;
     mapel?: string;
@@ -571,7 +608,7 @@ export default function App() {
     const mapel = customData?.mapel || activeClass.mapel;
     const materi = customData?.materi || '';
     const kegiatan = customData?.kegiatan || '';
-    const jamPelajaran = customData?.jamPelajaran || '07.15 - 09.15 WIB';
+    const jamPelajaran = customData?.jamPelajaran || '07:15 - 09:15 WIB';
 
     const newSession: AttendanceSession = {
       id: crypto.randomUUID(),
@@ -588,33 +625,40 @@ export default function App() {
       createdAt: new Date().toISOString(),
     };
 
-    setSessions((prev) => [newSession, ...prev]);
-    setActiveSession(newSession);
+    let sessionToUse = newSession;
     if (!isDemoMode && userId) {
-      createAttendanceSession(userId, newSession);
+      const created = await createAttendanceSession(userId, newSession);
+      if (!created) {
+        showToast('Gagal Membuat Sesi', 'Tidak dapat menyimpan sesi presensi ke Supabase.');
+        return;
+      }
+      sessionToUse = created;
     }
 
-    const classStudents = students.filter((s) => s.classId === activeClass.id);
+    setSessions((prev) => [sessionToUse, ...prev]);
+    setActiveSession(sessionToUse);
 
+    const classStudents = students.filter((s) => s.classId === activeClass.id);
     let recordsToSync = attendanceRecords;
+
     if (customData?.setAllHadir) {
       const allHadirForCurrent: AttendanceRecord[] = classStudents.map((std) => ({
         id: crypto.randomUUID(),
-        sessionId: newSession.id,
+        sessionId: sessionToUse.id,
         studentId: std.id,
         status: 'H',
         keterangan: '',
         updatedAt: new Date().toISOString(),
       }));
+      if (!isDemoMode && userId) {
+        await upsertAttendanceRecordsBatch(allHadirForCurrent);
+      }
       recordsToSync = [...attendanceRecords, ...allHadirForCurrent];
       setAttendanceRecords(recordsToSync);
-      if (!isDemoMode && userId) {
-        upsertAttendanceRecordsBatch(allHadirForCurrent);
-      }
     }
 
     // Otomatis sinkronkan data absen menuju agenda mengajar
-    syncAttendanceSessionToJournal(newSession, recordsToSync, students);
+    syncAttendanceSessionToJournal(sessionToUse, recordsToSync, students);
 
     showToast(
       'Sesi Absen Baru & Agenda Mengajar Terbentuk',
@@ -622,15 +666,20 @@ export default function App() {
     );
   };
 
-  const handleUpdateSession = (updatedSession: AttendanceSession) => {
+  const handleUpdateSession = async (updatedSession: AttendanceSession) => {
+    if (!isDemoMode && userId) {
+      const success = await updateAttendanceSession(updatedSession);
+      if (!success) {
+        showToast('Gagal Memperbarui Sesi', 'Tidak dapat memperbarui sesi presensi di Supabase.');
+        return;
+      }
+    }
+
     setSessions((prev) =>
       prev.map((s) => (s.id === updatedSession.id ? updatedSession : s))
     );
     if (activeSession.id === updatedSession.id) {
       setActiveSession(updatedSession);
-    }
-    if (!isDemoMode && userId) {
-      updateAttendanceSession(updatedSession);
     }
     // Sinkronkan perubahan sesi absen ke Agenda Mengajar
     syncAttendanceSessionToJournal(updatedSession, attendanceRecords, students);
@@ -640,19 +689,25 @@ export default function App() {
     );
   };
 
-  const handleDeleteSession = (sessionId: string) => {
+  const handleDeleteSession = async (sessionId: string) => {
     const classSess = sessions.filter((s) => s.classId === activeClass.id);
     if (classSess.length <= 1) {
       showToast('Perhatian', 'Minimal harus tersisa 1 sesi pertemuan pada rombel ini.');
       return;
     }
     const targetSession = sessions.find((s) => s.id === sessionId);
+
+    if (!isDemoMode && userId) {
+      const success = await deleteAttendanceSession(sessionId);
+      if (!success) {
+        showToast('Gagal Menghapus Sesi', 'Tidak dapat menghapus sesi pertemuan dari Supabase.');
+        return;
+      }
+    }
+
     const remaining = sessions.filter((s) => s.id !== sessionId);
     setSessions(remaining);
     setAttendanceRecords((prev) => prev.filter((r) => r.sessionId !== sessionId));
-    if (!isDemoMode && userId) {
-      deleteAttendanceSession(sessionId);
-    }
 
     if (activeSession.id === sessionId) {
       const remainingForClass = remaining.filter((s) => s.classId === activeClass.id);
@@ -667,151 +722,182 @@ export default function App() {
   };
 
   // Handlers for Grades
-  const handleUpdateGrade = (studentId: string, updatedGrade: Partial<GradeRecord>) => {
-    setGrades((prev) => {
-      const idx = prev.findIndex((g) => g.studentId === studentId);
-      let targetGrade: GradeRecord;
-      let next: GradeRecord[];
-      if (idx >= 0) {
-        next = [...prev];
-        targetGrade = { ...next[idx], ...updatedGrade, updatedAt: new Date().toISOString() };
-        next[idx] = targetGrade;
-      } else {
-        targetGrade = {
-          id: crypto.randomUUID(),
-          studentId,
-          classId: activeClass.id,
-          formatif: updatedGrade.formatif || Array(activeClass.formatifCount).fill(null),
-          sts: updatedGrade.sts ?? null,
-          sas: updatedGrade.sas ?? null,
-          deskripsi: updatedGrade.deskripsi || '',
-          updatedAt: new Date().toISOString(),
-          ...updatedGrade,
-        };
-        next = [...prev, targetGrade];
-      }
+  const handleUpdateGrade = async (studentId: string, updatedGrade: Partial<GradeRecord>) => {
+    const idx = grades.findIndex((g) => g.studentId === studentId);
+    let targetGrade: GradeRecord;
+    if (idx >= 0) {
+      targetGrade = { ...grades[idx], ...updatedGrade, updatedAt: new Date().toISOString() };
+    } else {
+      targetGrade = {
+        id: crypto.randomUUID(),
+        studentId,
+        classId: activeClass.id,
+        formatif: updatedGrade.formatif || Array(activeClass.formatifCount).fill(null),
+        sts: updatedGrade.sts ?? null,
+        sas: updatedGrade.sas ?? null,
+        deskripsi: updatedGrade.deskripsi || '',
+        updatedAt: new Date().toISOString(),
+        ...updatedGrade,
+      };
+    }
 
-      if (!isDemoMode && userId) {
-        upsertGrade(userId, targetGrade);
+    if (!isDemoMode && userId) {
+      const saved = await upsertGrade(userId, targetGrade);
+      if (!saved) {
+        showToast('Gagal Menyimpan Nilai', 'Tidak dapat memperbarui nilai rapor di Supabase.');
+        return;
       }
+      targetGrade = saved;
+    }
 
-      return next;
-    });
+    const next =
+      idx >= 0
+        ? grades.map((g, i) => (i === idx ? targetGrade : g))
+        : [...grades, targetGrade];
+    setGrades(next);
   };
 
-  const handleGenerateAllDescriptions = () => {
-    setGrades((prev) => {
-      const updatedList = prev.map((g) => {
-        const validF = (g.formatif || []).filter((v): v is number => v !== null && !isNaN(v));
-        const avg = validF.length > 0 ? validF.reduce((a, b) => a + b, 0) / validF.length : 75;
-        const student = students.find((s) => s.id === g.studentId);
-        const name = student?.nama || 'Siswa';
+  const handleGenerateAllDescriptions = async () => {
+    const updatedList = grades.map((g) => {
+      const validF = (g.formatif || []).filter((v): v is number => v !== null && !isNaN(v));
+      const avg = validF.length > 0 ? validF.reduce((a, b) => a + b, 0) / validF.length : 75;
+      const student = students.find((s) => s.id === g.studentId);
+      const name = student?.nama || 'Siswa';
 
-        let deskripsi = '';
-        if (avg >= 88) {
-          deskripsi = `${name} menunjukkan penguasaan SANGAT BAIK pada seluruh capaian TP 1-5 dan memiliki kemandirian praktik yang tinggi.`;
-        } else if (avg >= activeClass.kkm) {
-          deskripsi = `${name} menunjukkan pencapaian yang BAIK dalam ketercapaian tujuan pembelajaran, perlu penguatan ketelitian pada evaluasi akhir.`;
-        } else {
-          deskripsi = `${name} perlu bimbingan dan pendampingan intensif (remedial) dalam memahami konsep dasar dan keselamatan kerja bengkel.`;
-        }
+      let deskripsi = '';
+      if (avg >= 88) {
+        deskripsi = `${name} menunjukkan penguasaan SANGAT BAIK pada seluruh capaian TP 1-5 dan memiliki kemandirian praktik yang tinggi.`;
+      } else if (avg >= activeClass.kkm) {
+        deskripsi = `${name} menunjukkan pencapaian yang BAIK dalam ketercapaian tujuan pembelajaran, perlu penguatan ketelitian pada evaluasi akhir.`;
+      } else {
+        deskripsi = `${name} perlu bimbingan dan pendampingan intensif (remedial) dalam memahami konsep dasar dan keselamatan kerja bengkel.`;
+      }
 
-        const updated = {
-          ...g,
-          deskripsi,
-          updatedAt: new Date().toISOString(),
-        };
-
-        if (!isDemoMode && userId) {
-          upsertGrade(userId, updated);
-        }
-
-        return updated;
-      });
-      return updatedList;
+      return {
+        ...g,
+        deskripsi,
+        updatedAt: new Date().toISOString(),
+      };
     });
 
+    if (!isDemoMode && userId) {
+      try {
+        await Promise.all(updatedList.map((g) => upsertGrade(userId, g)));
+      } catch {
+        showToast('Peringatan Sinkronisasi', 'Sebagian deskripsi nilai tidak tersimpan ke cloud.');
+      }
+    }
+
+    setGrades(updatedList);
     showToast('Deskripsi Merdeka Dibuat Otomatis', 'Catatan capaian kompetensi berhasil digenerate untuk seluruh murid.');
   };
 
-  const handleApplyDeepLearningDescriptions = (descriptionsMap: Map<string, string>) => {
-    setGrades((prev) => {
-      return prev.map((g) => {
-        const autoDesc = descriptionsMap.get(g.studentId);
-        if (autoDesc) {
-          const updated = {
-            ...g,
-            deskripsi: autoDesc,
-            updatedAt: new Date().toISOString(),
-          };
-          if (!isDemoMode && userId) {
-            upsertGrade(userId, updated);
-          }
-          return updated;
-        }
-        return g;
-      });
+  const handleApplyDeepLearningDescriptions = async (descriptionsMap: Map<string, string>) => {
+    const updatedList = grades.map((g) => {
+      const autoDesc = descriptionsMap.get(g.studentId);
+      if (autoDesc) {
+        return {
+          ...g,
+          deskripsi: autoDesc,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      return g;
     });
 
+    if (!isDemoMode && userId) {
+      const changed = updatedList.filter((g) => descriptionsMap.has(g.studentId));
+      try {
+        await Promise.all(changed.map((g) => upsertGrade(userId, g)));
+      } catch {
+        showToast('Peringatan Sinkronisasi', 'Sebagian analisis AI tidak tersimpan ke Supabase.');
+      }
+    }
+
+    setGrades(updatedList);
     showToast('Deskripsi AI Diterapkan', 'Analisis neural telah ditautkan langsung ke Buku Penilaian Rapor.');
     setActiveTab('penilaian');
   };
 
   // Handlers for Journals
-  const handleAddJournal = (entry: Omit<JournalEntry, 'id'>) => {
+  const handleAddJournal = async (entry: Omit<JournalEntry, 'id'>) => {
     const newEntry: JournalEntry = {
       ...entry,
       id: crypto.randomUUID(),
     };
-    setJournals([newEntry, ...journals]);
     if (!isDemoMode && userId) {
-      createJournal(userId, newEntry);
+      const created = await createJournal(userId, newEntry);
+      if (!created) {
+        showToast('Gagal Menambahkan Agenda', 'Tidak dapat menyimpan agenda mengajar ke Supabase.');
+        return;
+      }
+      setJournals((prev) => [created, ...prev]);
+    } else {
+      setJournals((prev) => [newEntry, ...prev]);
     }
-    showToast('Agenda Mengajar Ditambahkan', `Pertemuan ${entry.pertemuanKe} kelas ${entry.className} tersimpan.`);
+    showToast('Agenda Mengajar Ditambahkan', `Pertemuan Ke-${entry.pertemuanKe} kelas ${entry.className} tersimpan.`);
   };
 
-  const handleUpdateJournal = (updatedEntry: JournalEntry) => {
-    setJournals((prev) => prev.map((j) => (j.id === updatedEntry.id ? updatedEntry : j)));
+  const handleUpdateJournal = async (updatedEntry: JournalEntry) => {
     if (!isDemoMode && userId) {
-      updateJournal(updatedEntry);
+      const success = await updateJournal(updatedEntry);
+      if (!success) {
+        showToast('Gagal Memperbarui Agenda', 'Tidak dapat memperbarui catatan agenda di Supabase.');
+        return;
+      }
     }
+    setJournals((prev) => prev.map((j) => (j.id === updatedEntry.id ? updatedEntry : j)));
     showToast(
       'Agenda Mengajar Diperbarui',
-      `Catatan pertemuan ${updatedEntry.pertemuanKe} (${updatedEntry.className}) berhasil disimpan.`
+      `Catatan pertemuan Ke-${updatedEntry.pertemuanKe} (${updatedEntry.className}) berhasil disimpan.`
     );
   };
 
-  const handleDeleteJournal = (id: string) => {
-    setJournals((prev) => prev.filter((j) => j.id !== id));
+  const handleDeleteJournal = async (id: string) => {
     if (!isDemoMode && userId) {
-      deleteJournal(id);
+      const success = await deleteJournal(id);
+      if (!success) {
+        showToast('Gagal Menghapus Agenda', 'Tidak dapat menghapus agenda dari Supabase.');
+        return;
+      }
     }
+    setJournals((prev) => prev.filter((j) => j.id !== id));
     showToast('Agenda Mengajar Dihapus', 'Catatan agenda telah dihapus dari buku jurnal.');
   };
 
   // Handlers for Finances
-  const handleAddTransaction = (tx: Omit<FinanceTransaction, 'id'>) => {
+  const handleAddTransaction = async (tx: Omit<FinanceTransaction, 'id'>) => {
     const newTx: FinanceTransaction = {
       ...tx,
       id: crypto.randomUUID(),
     };
-    setFinances([newTx, ...finances]);
     if (!isDemoMode && userId) {
-      createFinance(userId, newTx);
+      const created = await createFinance(userId, newTx);
+      if (!created) {
+        showToast('Gagal Mencatat Transaksi', 'Tidak dapat menyimpan transaksi ke Supabase.');
+        return;
+      }
+      setFinances((prev) => [created, ...prev]);
+    } else {
+      setFinances((prev) => [newTx, ...prev]);
     }
     showToast('Transaksi Dicatat', `${tx.tipe} Rp ${tx.nominal.toLocaleString('id-ID')} masuk ke pembukuan.`);
   };
 
-  const handleDeleteTransaction = (id: string) => {
-    setFinances((prev) => prev.filter((t) => t.id !== id));
+  const handleDeleteTransaction = async (id: string) => {
     if (!isDemoMode && userId) {
-      deleteFinance(id);
+      const success = await deleteFinance(id);
+      if (!success) {
+        showToast('Gagal Menghapus Transaksi', 'Tidak dapat menghapus transaksi dari Supabase.');
+        return;
+      }
     }
+    setFinances((prev) => prev.filter((t) => t.id !== id));
     showToast('Transaksi Dihapus', 'Data pembukuan berhasil disesuaikan.');
   };
 
   // Handlers for Students
-  const handleAddStudent = (newStd: Omit<Student, 'id' | 'noUrut'>) => {
+  const handleAddStudent = async (newStd: Omit<Student, 'id' | 'noUrut'>) => {
     const currentClassStudents = students.filter((s) => s.classId === activeClass.id);
     const nextNo = currentClassStudents.length + 1;
     const student: Student = {
@@ -819,55 +905,71 @@ export default function App() {
       id: crypto.randomUUID(),
       noUrut: nextNo,
     };
-    setStudents([...students, student]);
     if (!isDemoMode && userId) {
-      createStudent(userId, student);
+      const created = await createStudent(userId, student);
+      if (!created) {
+        showToast('Gagal Menambahkan Murid', 'Terjadi kesalahan saat menyimpan data murid ke Supabase.');
+        return;
+      }
+      setStudents((prev) => [...prev, created]);
+    } else {
+      setStudents((prev) => [...prev, student]);
     }
     showToast('Murid Berhasil Ditambahkan', `${student.nama} terdaftar di kelas ${activeClass.nama} dengan nomor absen ${nextNo}.`);
   };
 
-  const handleEditStudent = (updatedStudent: Student) => {
-    setStudents((prev) => prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s)));
+  const handleEditStudent = async (updatedStudent: Student) => {
     if (!isDemoMode && userId) {
-      updateStudent(updatedStudent);
+      const success = await updateStudent(updatedStudent);
+      if (!success) {
+        showToast('Gagal Memperbarui Murid', 'Tidak dapat menyimpan perubahan data murid ke Supabase.');
+        return;
+      }
     }
+    setStudents((prev) => prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s)));
     showToast('Data Murid Diperbarui', `Informasi ${updatedStudent.nama} berhasil diubah.`);
   };
 
   // Sistem dalam absen: jika data siswa dihapus, nomor absen siswa setelahnya otomatis diganti
-  const handleDeleteStudent = (id: string) => {
+  const handleDeleteStudent = async (id: string) => {
     const studentToDelete = students.find((s) => s.id === id);
     if (!studentToDelete) return;
     const targetClassId = studentToDelete.classId;
 
-    setStudents((prev) => {
-      const otherStudents = prev.filter((s) => s.classId !== targetClassId);
-      const remainingThisClass = prev
-        .filter((s) => s.classId === targetClassId && s.id !== id)
-        .sort((a, b) => a.noUrut - b.noUrut);
+    if (!isDemoMode && userId) {
+      const success = await deleteStudent(id);
+      if (!success) {
+        showToast('Gagal Menghapus Murid', 'Tidak dapat menghapus data murid dari Supabase.');
+        return;
+      }
+    }
 
-      const reindexed = remainingThisClass.map((s, idx) => ({
-        ...s,
-        noUrut: idx + 1,
-      }));
+    const otherStudents = students.filter((s) => s.classId !== targetClassId);
+    const remainingThisClass = students
+      .filter((s) => s.classId === targetClassId && s.id !== id)
+      .sort((a, b) => a.noUrut - b.noUrut);
 
-      return [...otherStudents, ...reindexed];
-    });
+    const reindexed = remainingThisClass.map((s, idx) => ({
+      ...s,
+      noUrut: idx + 1,
+    }));
 
+    if (!isDemoMode && userId && reindexed.length > 0) {
+      await updateStudentsBatch(reindexed, userId);
+    }
+
+    setStudents([...otherStudents, ...reindexed]);
     setAttendanceRecords((prev) => prev.filter((r) => r.studentId !== id));
     setGrades((prev) => prev.filter((g) => g.studentId !== id));
-    if (!isDemoMode && userId) {
-      deleteStudent(id);
-    }
 
     showToast(
       'Nomor Absen Diperbarui Otomatis',
-      `Murid ${studentToDelete.nama} (No. ${studentToDelete.noUrut}) dihapus. Nomor absen rombel setelahnya otomatis digeser maju berurutan (misal 17 jadi 16).`
+      `Murid ${studentToDelete.nama} (No. ${studentToDelete.noUrut}) dihapus. Nomor absen rombel setelahnya otomatis digeser maju berurutan.`
     );
   };
 
   // Batch Student Import (from Excel / Copas Langsung)
-  const handleAddStudentsBatch = (
+  const handleAddStudentsBatch = async (
     newStds: Omit<Student, 'id' | 'noUrut'>[],
     mode: 'append' | 'replace'
   ) => {
@@ -881,9 +983,15 @@ export default function App() {
         classId: activeClass.id,
         noUrut: idx + 1,
       }));
-      setStudents([...otherClassStudents, ...formatted]);
       if (!isDemoMode && userId) {
-        createStudentsBatch(userId, formatted);
+        const created = await createStudentsBatch(userId, formatted);
+        if (!created || created.length === 0) {
+          showToast('Gagal Mengimpor Murid', 'Tidak dapat menyimpan batch murid ke Supabase.');
+          return;
+        }
+        setStudents([...otherClassStudents, ...created]);
+      } else {
+        setStudents([...otherClassStudents, ...formatted]);
       }
       showToast(
         'Impor Selesai (Ganti Data)',
@@ -898,9 +1006,15 @@ export default function App() {
         classId: activeClass.id,
         noUrut: startNo + idx + 1,
       }));
-      setStudents([...students, ...formatted]);
       if (!isDemoMode && userId) {
-        createStudentsBatch(userId, formatted);
+        const created = await createStudentsBatch(userId, formatted);
+        if (!created || created.length === 0) {
+          showToast('Gagal Mengimpor Murid', 'Tidak dapat menyimpan batch murid ke Supabase.');
+          return;
+        }
+        setStudents([...students, ...created]);
+      } else {
+        setStudents([...students, ...formatted]);
       }
       showToast(
         'Impor Selesai (Tambahkan)',
@@ -910,47 +1024,79 @@ export default function App() {
   };
 
   // Handlers for Classes (Add, Edit, Delete Rombel)
-  const handleAddClass = (newCls: Omit<ClassRoom, 'id'>) => {
+  const handleAddClass = async (newCls: Omit<ClassRoom, 'id'>) => {
     const newClassRoom: ClassRoom = {
       ...newCls,
       id: crypto.randomUUID(),
+      tpTitles: newCls.tpTitles || {},
     };
-    const nextClasses = [...classes, newClassRoom];
-    setClasses(nextClasses);
-    setActiveClass(newClassRoom);
+
     if (!isDemoMode && userId) {
-      createClass(userId, newClassRoom);
+      const created = await createClass(userId, newClassRoom);
+      if (!created) {
+        showToast('Gagal Menambahkan Rombel', 'Tidak dapat menyimpan kelas ke Supabase.');
+        return;
+      }
+      setClasses((prev) => [...prev, created]);
+      setActiveClass(created);
+    } else {
+      setClasses((prev) => [...prev, newClassRoom]);
+      setActiveClass(newClassRoom);
     }
     showToast('Rombel Berhasil Ditambahkan', `Kelas ${newClassRoom.nama} siap digunakan.`);
   };
 
-  const handleEditClass = (updatedCls: ClassRoom) => {
-    const nextClasses = classes.map((c) => (c.id === updatedCls.id ? updatedCls : c));
-    setClasses(nextClasses);
+  const handleEditClass = async (updatedCls: ClassRoom) => {
+    if (!isDemoMode && userId) {
+      const success = await updateClass(updatedCls);
+      if (!success) {
+        showToast('Gagal Memperbarui Rombel', 'Tidak dapat memperbarui data kelas di Supabase.');
+        return;
+      }
+    }
+    setClasses((prev) => prev.map((c) => (c.id === updatedCls.id ? updatedCls : c)));
     if (activeClass.id === updatedCls.id) {
       setActiveClass(updatedCls);
-    }
-    if (!isDemoMode && userId) {
-      updateClass(updatedCls);
     }
     showToast('Rombel Diperbarui', `Informasi kelas ${updatedCls.nama} berhasil disimpan.`);
   };
 
-  const handleDeleteClass = (classId: string) => {
+  const handleDeleteClass = async (classId: string) => {
     if (classes.length <= 1) {
       showToast('Gagal Menghapus', 'Minimal harus ada 1 rombel belajar.');
       return;
     }
     const target = classes.find((c) => c.id === classId);
+
+    if (!isDemoMode && userId) {
+      const success = await deleteClass(classId);
+      if (!success) {
+        showToast('Gagal Menghapus Rombel', 'Tidak dapat menghapus kelas dari Supabase.');
+        return;
+      }
+    }
+
     const remaining = classes.filter((c) => c.id !== classId);
     setClasses(remaining);
     if (activeClass.id === classId) {
       setActiveClass(remaining[0]);
     }
-    if (!isDemoMode && userId) {
-      deleteClass(classId);
-    }
     showToast('Rombel Dihapus', `Kelas ${target?.nama || ''} telah dihapus.`);
+  };
+
+  const handleUpdateTeacher = async (updated: TeacherProfile) => {
+    if (!isDemoMode && userId) {
+      const success = await updateProfile(userId, updated);
+      if (!success) {
+        showToast('Gagal Memperbarui Profil', 'Tidak dapat menyimpan profil ke Supabase.');
+        return;
+      }
+    }
+    setTeacher(updated);
+    if (updated.school) {
+      setSchoolName(updated.school);
+    }
+    showToast('Profil Berhasil Diperbarui', 'Data identitas pendidik telah tersimpan ke sistem.');
   };
 
   // Backup & Refresh
@@ -982,7 +1128,6 @@ export default function App() {
         dbClasses,
         dbStudents,
         dbSessions,
-        dbRecords,
         dbGrades,
         dbJournals,
         dbFinances,
@@ -991,33 +1136,39 @@ export default function App() {
         fetchClasses(userId),
         fetchStudents(userId),
         fetchAttendanceSessions(userId),
-        fetchAttendanceRecords(),
         fetchGrades(userId),
         fetchJournals(userId),
         fetchFinances(userId),
       ]);
 
+      const sessionIds = (dbSessions || []).map((s) => s.id);
+      const dbRecords = sessionIds.length > 0 ? await fetchAttendanceRecords(sessionIds) : [];
+
       if (dbProfile) {
         setTeacher(dbProfile);
         if (dbProfile.school) setSchoolName(dbProfile.school);
       }
-      if (dbClasses && dbClasses.length > 0) {
+      if (dbClasses) {
         setClasses(dbClasses);
-        setActiveClass((prev) => dbClasses.find((c) => c.id === prev.id) || dbClasses[0]);
+        if (dbClasses.length > 0) {
+          setActiveClass((prev) => dbClasses.find((c) => c.id === prev.id) || dbClasses[0]);
+        }
       }
-      if (dbStudents && dbStudents.length > 0) setStudents(dbStudents);
-      if (dbSessions && dbSessions.length > 0) {
+      if (dbStudents) setStudents(dbStudents);
+      if (dbSessions) {
         setSessions(dbSessions);
-        setActiveSession((prev) => dbSessions.find((s) => s.id === prev.id) || dbSessions[0]);
+        if (dbSessions.length > 0) {
+          setActiveSession((prev) => dbSessions.find((s) => s.id === prev.id) || dbSessions[0]);
+        }
       }
-      if (dbRecords && dbRecords.length > 0) setAttendanceRecords(dbRecords);
-      if (dbGrades && dbGrades.length > 0) setGrades(dbGrades);
-      if (dbJournals && dbJournals.length > 0) setJournals(dbJournals);
-      if (dbFinances && dbFinances.length > 0) setFinances(dbFinances);
+      if (dbRecords) setAttendanceRecords(dbRecords);
+      if (dbGrades) setGrades(dbGrades);
+      if (dbJournals) setJournals(dbJournals);
+      if (dbFinances) setFinances(dbFinances);
 
       showToast('Data Telah Disinkronkan', 'Data berhasil diperbarui dari Supabase Cloud.');
     } catch (err: any) {
-      showToast('Info Sinkronisasi', err?.message || 'Data lokal tetap aktif.');
+      showToast('Gagal Sinkronisasi', err?.message || 'Tidak dapat memperbarui data dari cloud.');
     }
   };
 
@@ -1256,9 +1407,7 @@ export default function App() {
             schoolName={schoolName}
             classes={classes}
             totalStudents={students.length}
-            onUpdateTeacher={(updated) => {
-              setTeacher(updated);
-            }}
+            onUpdateTeacher={handleUpdateTeacher}
             onLogout={handleLogout}
             onShowToast={showToast}
             activeClass={activeClass}

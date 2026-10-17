@@ -34,7 +34,7 @@ export async function upsertProfile(userId: string, profile: TeacherProfile): Pr
     nama_lengkap: profile.name,
     email: profile.email,
     nama_sekolah: profile.school,
-    avatar_url: profile.handle,
+    avatar_url: null,
     updated_at: new Date().toISOString(),
   });
 

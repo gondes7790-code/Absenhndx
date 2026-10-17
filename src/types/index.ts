@@ -21,6 +21,7 @@ export interface ClassRoom {
   mapel: string;
   kkm: number;
   formatifCount: number;
+  tpTitles?: Record<number, string>;
 }
 
 export interface AttendanceSession {
@@ -63,7 +64,7 @@ export interface JournalEntry {
   mapel: string;
   classId: string;
   className: string;
-  pertemuanKe: string;
+  pertemuanKe: number;
   jamPelajaran: string;
   materiKegiatan: string;
   materi?: string;

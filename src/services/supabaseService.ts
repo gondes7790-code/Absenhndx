@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS public.classes (
   mapel VARCHAR(100) NOT NULL,
   kkm NUMERIC DEFAULT 75,
   formatif_count INTEGER DEFAULT 5,
+  tp_titles JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -63,6 +64,9 @@ CREATE TABLE IF NOT EXISTS public.attendance_sessions (
   pertemuan_ke INTEGER NOT NULL,
   tanggal DATE NOT NULL,
   mapel VARCHAR(100),
+  jam_pelajaran VARCHAR(50),
+  materi TEXT,
+  kegiatan TEXT,
   catatan_kegiatan TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -100,7 +104,7 @@ CREATE TABLE IF NOT EXISTS public.journals (
   tanggal DATE NOT NULL,
   pendidik VARCHAR(255) NOT NULL,
   mapel VARCHAR(100) NOT NULL,
-  pertemuan_ke VARCHAR(50) NOT NULL,
+  pertemuan_ke INTEGER NOT NULL,
   jam_pelajaran VARCHAR(50) NOT NULL,
   materi_kegiatan TEXT NOT NULL,
   absensi_catatan TEXT,
