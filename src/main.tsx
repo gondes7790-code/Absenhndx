@@ -1,10 +1,25 @@
 import { createRoot } from 'react-dom/client';
-import App from './App.tsx';
-import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
 
-createRoot(document.getElementById('root')!).render(
-  <AuthProvider>
-    <App />
-  </AuthProvider>
-);
+const root = createRoot(document.getElementById('root')!);
+
+// Tautan wali murid (?p=<token>) dirender terpisah dari aplikasi guru:
+// tanpa AuthProvider, tanpa App, tanpa localStorage, dan hanya memuat
+// kode halaman publik (bundle jauh lebih kecil di ponsel wali murid).
+const shareToken = new URLSearchParams(window.location.search).get('p');
+
+if (shareToken) {
+  import('./components/PublicSharePage').then(({ PublicSharePage }) => {
+    root.render(<PublicSharePage token={shareToken} />);
+  });
+} else {
+  Promise.all([import('./App.tsx'), import('./contexts/AuthContext')]).then(
+    ([{ default: App }, { AuthProvider }]) => {
+      root.render(
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      );
+    }
+  );
+}
