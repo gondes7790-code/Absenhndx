@@ -12,8 +12,19 @@ import {
   ExternalLink,
   ShieldCheck,
   User,
+  Trash2,
+  Send,
 } from 'lucide-react';
 import QRCode from 'qrcode';
+import {
+  ShareRow,
+  ShareScope,
+  SHARE_SCOPE_LABEL,
+  buildShareUrl,
+  createShare,
+  listActiveShares,
+  revokeShare,
+} from '../services/shareService';
 import { Student, AttendanceRecord, GradeRecord, ClassRoom, TeacherProfile, FinanceTransaction } from '../types';
 import { APP_LOGO_URL } from '../utils/printConfig';
 
@@ -31,6 +42,8 @@ interface ParentPortalModalProps {
   schoolName?: string;
   initialType?: PortalType;
   onOpenFullPublicPortal?: () => void;
+  userId?: string | null;
+  isDemoMode?: boolean;
 }
 
 export const ParentPortalModal: React.FC<ParentPortalModalProps> = ({
@@ -44,6 +57,9 @@ export const ParentPortalModal: React.FC<ParentPortalModalProps> = ({
   teacher,
   initialType = 'absen',
   onOpenFullPublicPortal,
+  userId,
+  isDemoMode,
+  schoolName,
 }) => {
   const [activePortalType, setActivePortalType] = useState<PortalType>(initialType);
   const [selectedStudentId, setSelectedStudentId] = useState<string>(students[0]?.id || '');
@@ -51,36 +67,74 @@ export const ParentPortalModal: React.FC<ParentPortalModalProps> = ({
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [showQrExpanded, setShowQrExpanded] = useState(false);
 
+  // Tautan aman wali murid (token acak, masa berlaku, bisa dicabut)
+  const [shares, setShares] = useState<ShareRow[]>([]);
+  const [sharesLoading, setSharesLoading] = useState(false);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareError, setShareError] = useState('');
+  const [shareScopes, setShareScopes] = useState<ShareScope[]>(['absen']);
+  const [shareDays, setShareDays] = useState<number>(30);
+
+  const canShare = Boolean(userId) && !isDemoMode;
+  const sharingAllowed = canShare && activePortalType !== 'rekap';
+  const currentStudent = students.find((s) => s.id === selectedStudentId) || students[0];
+  const currentStudentId = currentStudent?.id;
+  const activeShare = sharingAllowed ? shares[0] || null : null;
+  const shareUrl = activeShare ? buildShareUrl(activeShare.token) : '';
+
+  // CATATAN: semua hook harus dipanggil SEBELUM early return di bawah.
+  // (Versi lama memanggil useEffect setelah `return null`, yang membuat React
+  // melempar "Rendered more hooks than during the previous render" saat modal dibuka.)
   useEffect(() => {
     setActivePortalType(initialType);
   }, [initialType, isOpen]);
 
-  if (!isOpen || !activeClass) return null;
-
-  const currentStudent = students.find((s) => s.id === selectedStudentId) || students[0];
-
-  // Dynamic portal link for public access (one unified link with query type)
-  const publicPortalUrl = `${window.location.origin}?portal=publik&kelas=${activeClass.id}&tipe=${activePortalType}${
-    currentStudent ? `&nisn=${currentStudent.nisn}` : ''
-  }`;
-
-  // Generate QR Code whenever URL changes
+  // Muat tautan aktif milik murid terpilih (satu query)
   useEffect(() => {
-    if (isOpen) {
-      QRCode.toDataURL(publicPortalUrl, {
-        width: 240,
-        margin: 1,
-        color: {
-          dark: '#0f172a',
-          light: '#ffffff',
-        },
-      })
-        .then((url) => setQrDataUrl(url))
-        .catch((err) => console.error('QR code error', err));
+    if (!isOpen || !canShare || !currentStudentId) {
+      setShares([]);
+      return;
     }
-  }, [publicPortalUrl, isOpen]);
+    let cancelled = false;
+    setSharesLoading(true);
+    setShareError('');
+    listActiveShares(currentStudentId)
+      .then((rows) => {
+        if (!cancelled) setShares(rows);
+      })
+      .catch((err: Error) => {
+        if (!cancelled) setShareError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setSharesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, canShare, currentStudentId]);
 
-  if (!isOpen) return null;
+  // QR hanya dibuat untuk tautan yang benar-benar ada
+  useEffect(() => {
+    if (!isOpen || !shareUrl) {
+      setQrDataUrl('');
+      return;
+    }
+    let cancelled = false;
+    QRCode.toDataURL(shareUrl, {
+      width: 240,
+      margin: 1,
+      color: { dark: '#0f172a', light: '#ffffff' },
+    })
+      .then((url) => {
+        if (!cancelled) setQrDataUrl(url);
+      })
+      .catch((err) => console.error('QR code error', err));
+    return () => {
+      cancelled = true;
+    };
+  }, [shareUrl, isOpen]);
+
+  if (!isOpen || !activeClass) return null;
 
   // --- 1. Data Absen (Read-Only) ---
   const studentRecords = attendanceRecords.filter((r) => r.studentId === currentStudent?.id);
@@ -120,9 +174,60 @@ export const ParentPortalModal: React.FC<ParentPortalModalProps> = ({
   const finalScore = Math.round((formatifAvg * 0.5) + (sts * 0.25) + (sas * 0.25));
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(publicPortalUrl);
+    if (!shareUrl) return;
+    navigator.clipboard.writeText(shareUrl);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2200);
+  };
+
+  const toggleShareScope = (scope: ShareScope) => {
+    setShareScopes((prev) =>
+      prev.includes(scope) ? (prev.length > 1 ? prev.filter((x) => x !== scope) : prev) : [...prev, scope]
+    );
+  };
+
+  const handleCreateShare = async () => {
+    if (!userId || !currentStudent) return;
+    setShareBusy(true);
+    setShareError('');
+    try {
+      const row = await createShare(userId, {
+        classId: activeClass.id,
+        studentId: currentStudent.id,
+        scopes: shareScopes,
+        days: shareDays,
+      });
+      setShares([row]);
+    } catch (err: any) {
+      setShareError(err?.message || 'Gagal membuat tautan.');
+    } finally {
+      setShareBusy(false);
+    }
+  };
+
+  const handleRevokeShare = async () => {
+    if (!activeShare) return;
+    if (!window.confirm('Cabut tautan ini? Wali murid tidak akan bisa membukanya lagi.')) return;
+    setShareBusy(true);
+    setShareError('');
+    try {
+      await revokeShare(activeShare.id);
+      setShares([]);
+    } catch (err: any) {
+      setShareError(err?.message || 'Gagal mencabut tautan.');
+    } finally {
+      setShareBusy(false);
+    }
+  };
+
+  const handleSendWhatsApp = () => {
+    if (!shareUrl || !currentStudent) return;
+    const number = (currentStudent.kontakOrtu || '').replace(/\D/g, '').replace(/^0/, '62');
+    const text =
+      `Assalamu'alaikum Bapak/Ibu wali dari ${currentStudent.nama}. ` +
+      `Berikut tautan pribadi untuk memantau data ananda di ${schoolName || 'sekolah'}:\n${shareUrl}\n\n` +
+      'Tautan ini bersifat pribadi, mohon tidak dibagikan kepada pihak lain.';
+    window.open(`https://wa.me/${number}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -224,7 +329,7 @@ export const ParentPortalModal: React.FC<ParentPortalModalProps> = ({
           <div className="truncate flex items-center gap-1.5 font-bold text-slate-800 min-w-0">
             <span className="text-slate-500 shrink-0">Tautan:</span>
             <code className="bg-white px-2 py-0.5 rounded-lg border border-slate-900 font-mono text-[11px] truncate">
-              {publicPortalUrl}
+              {shareUrl || 'Belum ada tautan aktif'}
             </code>
           </div>
 
@@ -242,12 +347,110 @@ export const ParentPortalModal: React.FC<ParentPortalModalProps> = ({
 
             <button
               onClick={handleCopyLink}
-              className="px-3 py-1.5 rounded-xl bg-[#dcfce7] hover:bg-[#bbf7d0] text-emerald-950 font-black text-xs flex items-center gap-1 border-2 border-slate-900 shadow-[1.5px_1.5px_0px_#1e293b] cursor-pointer"
+              disabled={!shareUrl}
+              className="disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 rounded-xl bg-[#dcfce7] hover:bg-[#bbf7d0] text-emerald-950 font-black text-xs flex items-center gap-1 border-2 border-slate-900 shadow-[1.5px_1.5px_0px_#1e293b] cursor-pointer"
             >
               {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-800" /> : <Copy className="w-3.5 h-3.5 text-emerald-800" />}
               <span>{copiedLink ? 'Tersalin!' : 'Salin Tautan'}</span>
             </button>
           </div>
+        </div>
+
+        {/* Pengaturan Tautan Aman: token acak, isi dipilih guru, ada masa berlaku, bisa dicabut */}
+        <div className="px-4 py-3 border-b-2 border-slate-900 bg-[#fffdf8] text-xs space-y-2.5">
+          <div className="flex items-center gap-1.5 font-black text-slate-900">
+            <ShieldCheck className="w-4 h-4 text-emerald-800" />
+            <span>Tautan Pribadi Wali Murid</span>
+          </div>
+
+          {!canShare ? (
+            <p className="font-medium text-slate-600 leading-relaxed">
+              Tautan publik hanya tersedia setelah login ke Supabase (bukan mode demo). Pratinjau di bawah tetap bisa dilihat.
+            </p>
+          ) : activePortalType === 'rekap' ? (
+            <p className="font-medium text-slate-600 leading-relaxed">
+              Rekap kelas memuat data semua murid, jadi tidak dibagikan lewat tautan publik. Pilih tab Absen, Tabungan, atau Nilai untuk membuat tautan per murid.
+            </p>
+          ) : (
+            <>
+              <p className="font-bold text-slate-700">
+                {currentStudent?.nama}:{' '}
+                {sharesLoading
+                  ? 'memeriksa tautan...'
+                  : activeShare
+                  ? `tautan aktif sampai ${new Date(activeShare.expiresAt).toLocaleDateString('id-ID', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })} (isi: ${activeShare.scopes.map((sc) => SHARE_SCOPE_LABEL[sc]).join(', ')})`
+                  : 'belum ada tautan aktif'}
+              </p>
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="font-bold text-slate-500">Isi:</span>
+                {(['absen', 'nilai', 'tabungan'] as ShareScope[]).map((sc) => (
+                  <label
+                    key={sc}
+                    className={`cursor-pointer px-2.5 py-1 rounded-xl border-2 border-slate-900 font-black ${
+                      shareScopes.includes(sc)
+                        ? 'bg-[#dcfce7] text-slate-950 shadow-[1.5px_1.5px_0px_#1e293b]'
+                        : 'bg-white text-slate-500'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={shareScopes.includes(sc)}
+                      onChange={() => toggleShareScope(sc)}
+                    />
+                    {SHARE_SCOPE_LABEL[sc]}
+                  </label>
+                ))}
+                <select
+                  value={shareDays}
+                  onChange={(e) => setShareDays(Number(e.target.value))}
+                  className="px-2 py-1 rounded-xl border-2 border-slate-900 bg-white font-bold text-slate-900"
+                  aria-label="Masa berlaku tautan"
+                >
+                  <option value={7}>7 hari</option>
+                  <option value={30}>30 hari</option>
+                  <option value={90}>90 hari</option>
+                  <option value={180}>180 hari</option>
+                </select>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={handleCreateShare}
+                  disabled={shareBusy || sharesLoading || !currentStudent}
+                  className="disabled:opacity-50 px-3 py-1.5 rounded-xl bg-[#a7f3d0] hover:bg-[#6ee7b7] border-2 border-slate-900 shadow-[1.5px_1.5px_0px_#1e293b] font-black text-slate-950 cursor-pointer"
+                >
+                  {shareBusy ? 'Memproses...' : activeShare ? 'Buat Ulang (ganti tautan)' : 'Buat Tautan Aman'}
+                </button>
+                {activeShare && (
+                  <>
+                    <button
+                      onClick={handleSendWhatsApp}
+                      className="px-3 py-1.5 rounded-xl bg-[#dcfce7] hover:bg-[#bbf7d0] border-2 border-slate-900 shadow-[1.5px_1.5px_0px_#1e293b] font-black text-emerald-950 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Kirim WhatsApp</span>
+                    </button>
+                    <button
+                      onClick={handleRevokeShare}
+                      disabled={shareBusy}
+                      className="disabled:opacity-50 px-3 py-1.5 rounded-xl bg-[#fee2e2] hover:bg-[#fca5a5] border-2 border-slate-900 shadow-[1.5px_1.5px_0px_#1e293b] font-black text-rose-950 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Cabut</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+
+          {shareError && <p className="font-bold text-rose-700 leading-relaxed">{shareError}</p>}
         </div>
 
         {/* QR Code Collapsible Display */}
@@ -258,7 +461,7 @@ export const ParentPortalModal: React.FC<ParentPortalModalProps> = ({
                 <img src={qrDataUrl} alt="QR Code Link Publik" className="w-36 h-36 rounded-xl" />
               ) : (
                 <div className="w-36 h-36 flex items-center justify-center text-xs text-slate-400">
-                  Memuat QR...
+                  {shareUrl ? 'Memuat QR...' : 'Buat tautan dulu'}
                 </div>
               )}
             </div>
@@ -271,7 +474,7 @@ export const ParentPortalModal: React.FC<ParentPortalModalProps> = ({
                 Pindai dengan Kamera Ponsel
               </h4>
               <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                Arahkan kamera smartphone untuk langsung membuka data <strong>{activePortalType.toUpperCase()}</strong> kelas {activeClass.nama}. Tampilan terkunci (hanya baca).
+                Arahkan kamera smartphone untuk membuka data <strong>{currentStudent?.nama}</strong>. Tautan bersifat pribadi dan hanya baca.
               </p>
             </div>
           </div>
