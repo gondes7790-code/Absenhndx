@@ -136,9 +136,9 @@ export const PrintConfigManualEditor: React.FC<PrintConfigManualEditorProps> = (
   const currentPrintClass = classes.find((c) => c.id === selectedClassId) || activeClass;
 
   // Filter students for the selected class if applicable
-  const classStudents = students.filter(
-    (s) => !s.classId || s.classId === currentPrintClass.id
-  );
+  const classStudents = currentPrintClass
+    ? students.filter((s) => s.classId === currentPrintClass.id)
+    : [];
 
   return (
     <div className="bg-white border-2 border-slate-900 rounded-3xl p-6 shadow-[4px_4px_0px_#1e293b]">

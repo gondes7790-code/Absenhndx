@@ -14,8 +14,8 @@ import { Student, AttendanceSession, AttendanceRecord, ClassRoom, TeacherProfile
 interface WhatsAppModalProps {
   isOpen: boolean;
   onClose: () => void;
-  activeClass: ClassRoom;
-  activeSession: AttendanceSession;
+  activeClass?: ClassRoom | null;
+  activeSession?: AttendanceSession | null;
   students: Student[];
   attendanceRecords: AttendanceRecord[];
   targetStudent?: Student;
@@ -38,7 +38,7 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
   const [selectedStudentId, setSelectedStudentId] = useState<string>(targetStudent?.id || students[0]?.id || '');
   const [copied, setCopied] = useState(false);
 
-  if (!isOpen) return null;
+  if (!isOpen || !activeClass || !activeSession) return null;
 
   const recordsMap = new Map<string, AttendanceRecord>();
   attendanceRecords

@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   Calendar,
   Flame,
+  Plus,
 } from 'lucide-react';
 import {
   Student,
@@ -20,12 +21,13 @@ import {
 import { PrintableDocument } from './PrintableDocument';
 
 interface MonthlyRecapViewProps {
-  activeClass: ClassRoom;
+  activeClass?: ClassRoom | null;
   students: Student[];
   sessions: AttendanceSession[];
   attendanceRecords: AttendanceRecord[];
   teacher: TeacherProfile;
   schoolName: string;
+  onOpenClassManagement?: () => void;
   printConfig?: PrintConfig;
 }
 
@@ -36,6 +38,7 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
   attendanceRecords,
   teacher,
   schoolName,
+  onOpenClassManagement,
   printConfig,
 }) => {
   const [selectedPeriod, setSelectedPeriod] = useState<string>('Bulan Ini');
@@ -52,9 +55,20 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
     { label: 'Satu Tahun Penuh', val: '1 Tahun' },
   ];
 
+  // Class-specific students & sessions (strictly filtered by activeClass.id)
+  const classStudents = useMemo(() => {
+    if (!activeClass) return [];
+    return students.filter((s) => s.classId === activeClass.id);
+  }, [students, activeClass?.id]);
+
+  const classSessions = useMemo(() => {
+    if (!activeClass) return [];
+    return sessions.filter((s) => s.classId === activeClass.id);
+  }, [sessions, activeClass?.id]);
+
   // Aggregation per student
   const studentRecaps = useMemo(() => {
-    return students.map((std) => {
+    return classStudents.map((std) => {
       let h = 0;
       let s = 0;
       let i = 0;
@@ -63,7 +77,7 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
 
       // Filter attendance records for active class and this student
       attendanceRecords
-        .filter((rec) => rec.studentId === std.id && sessions.some((sess) => sess.id === rec.sessionId))
+        .filter((rec) => rec.studentId === std.id && classSessions.some((sess) => sess.id === rec.sessionId))
         .forEach((rec) => {
           if (rec.status === 'H') h++;
           else if (rec.status === 'S') s++;
@@ -100,11 +114,11 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
         ketBg,
       };
     });
-  }, [students, attendanceRecords, sessions]);
+  }, [classStudents, classSessions, attendanceRecords]);
 
   // Overall class recap metrics
   const overallMetrics = useMemo(() => {
-    const totalSesi = sessions.length;
+    const totalSesi = classSessions.length;
     let totalH = 0;
     let totalS = 0;
     let totalI = 0;
@@ -123,7 +137,7 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
     const avgRate = Math.round((totalH / grandTotal) * 100);
 
     return { totalSesi, totalH, totalS, totalI, totalA, totalD, avgRate };
-  }, [sessions, studentRecaps]);
+  }, [classSessions, studentRecaps]);
 
   // Filtered and sorted students
   const filteredRecaps = useMemo(() => {
@@ -150,7 +164,7 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
       `"${r.student.nisn}"`,
       `"${r.student.nama}"`,
       r.student.gender,
-      `"${activeClass.nama}"`,
+      `"${activeClass?.nama || 'Kelas'}"`,
       r.h,
       r.s,
       r.i,
@@ -164,11 +178,34 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Rekap_Presensi_${activeClass.nama}_${selectedPeriod}.csv`);
+    link.setAttribute('download', `Rekap_Presensi_${activeClass?.nama || 'Kelas'}_${selectedPeriod}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
+
+  if (!activeClass) {
+    return (
+      <div className="bg-[#fffdf8] rounded-3xl p-8 border-2 border-slate-900 shadow-[4px_4px_0px_#1e293b] text-center max-w-xl mx-auto my-6">
+        <div className="w-14 h-14 rounded-2xl bg-[#6ee7b7] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] mx-auto flex items-center justify-center mb-3">
+          <Calendar className="w-7 h-7 text-slate-950" />
+        </div>
+        <h3 className="text-base font-black text-slate-900 mb-1">Belum Ada Rombel / Kelas Aktif</h3>
+        <p className="text-xs font-bold text-slate-600 mb-4">
+          Silakan buat rombel kelas terlebih dahulu untuk melihat rekapitulasi presensi bulanan.
+        </p>
+        {onOpenClassManagement && (
+          <button
+            onClick={onOpenClassManagement}
+            className="px-4 py-2.5 rounded-2xl bg-[#6ee7b7] hover:bg-[#34d399] border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] font-black text-xs text-slate-950 cursor-pointer inline-flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Buat Rombel Pertama</span>
+          </button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -407,11 +444,25 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y-2 divide-slate-100">
-              {filteredRecaps.map((item, idx) => (
-                <tr key={item.student.id} className="hover:bg-[#faf7ee]/60 transition-colors">
-                  <td className="py-3 px-3 text-center text-slate-600 font-mono font-bold whitespace-nowrap">
-                    {item.student.noUrut || idx + 1}
+              {filteredRecaps.length === 0 ? (
+                <tr>
+                  <td colSpan={12} className="py-10 text-center text-slate-500 font-bold bg-[#faf7ee]/30">
+                    <p className="text-sm text-slate-700 font-black">
+                      {searchQuery ? 'Tidak ada siswa yang sesuai pencarian' : 'Belum Ada Murid Terdaftar di Kelas Ini'}
+                    </p>
+                    <p className="text-xs text-slate-500 font-medium mt-1">
+                      {searchQuery
+                        ? 'Coba kata kunci pencarian lain'
+                        : 'Buka tab "Data Murid" untuk mendaftarkan siswa ke kelas ini.'}
+                    </p>
                   </td>
+                </tr>
+              ) : (
+                filteredRecaps.map((item, idx) => (
+                  <tr key={item.student.id} className="hover:bg-[#faf7ee]/60 transition-colors">
+                    <td className="py-3 px-3 text-center text-slate-600 font-mono font-bold whitespace-nowrap">
+                      {item.student.noUrut || idx + 1}
+                    </td>
                   <td className="py-3 px-3 font-mono font-medium text-slate-500 whitespace-nowrap">
                     {item.student.nisn}
                   </td>
@@ -460,7 +511,7 @@ export const MonthlyRecapView: React.FC<MonthlyRecapViewProps> = ({
                     </span>
                   </td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         </div>

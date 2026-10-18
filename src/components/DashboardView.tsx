@@ -16,7 +16,7 @@ import {
 import { Student, AttendanceSession, AttendanceRecord, GradeRecord, FinanceTransaction, ClassRoom, ActiveTab } from '../types';
 
 interface DashboardViewProps {
-  activeClass: ClassRoom;
+  activeClass?: ClassRoom | null;
   students: Student[];
   sessions: AttendanceSession[];
   attendanceRecords: AttendanceRecord[];
@@ -36,17 +36,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigateTab,
   schoolName,
 }) => {
-  const kkm = activeClass.kkm || 75;
+  const kkm = activeClass?.kkm || 75;
 
-  // Compute metrics
+  // Compute metrics (scoped to activeClass if available)
   const stats = useMemo(() => {
+    const classStudents = activeClass
+      ? students.filter((s) => s.classId === activeClass.id)
+      : students;
+    const classSessions = activeClass
+      ? sessions.filter((s) => s.classId === activeClass.id)
+      : sessions;
+    const classFinances = activeClass
+      ? finances.filter((t) => t.classId === activeClass.id)
+      : finances;
+
     // 1. Attendance Average
     const relevantRecords = attendanceRecords.filter((r) =>
-      sessions.some((s) => s.id === r.sessionId)
+      classSessions.some((s) => s.id === r.sessionId)
     );
-    const totalRecorded = relevantRecords.length || 1;
+    const totalRecorded = relevantRecords.length;
     const hadirCount = relevantRecords.filter((r) => r.status === 'H').length;
-    const avgAttendance = Math.round((hadirCount / totalRecorded) * 100);
+    const avgAttendance = totalRecorded > 0 ? Math.round((hadirCount / totalRecorded) * 100) : 0;
 
     // 2. Grades & Predicate distribution
     let predA = 0;
@@ -61,7 +71,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const gradesMap = new Map<string, GradeRecord>();
     grades.forEach((g) => gradesMap.set(g.studentId, g));
 
-    students.forEach((s) => {
+    classStudents.forEach((s) => {
       const g = gradesMap.get(s.id);
       const validFormatif = (g?.formatif || []).filter((v): v is number => v !== null && !isNaN(v));
       if (validFormatif.length > 0 || g?.sts !== null || g?.sas !== null) {
@@ -92,7 +102,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
     // 3. Finances
     let totalKasDanTabungan = 0;
-    finances.forEach((tx) => {
+    classFinances.forEach((tx) => {
       if (tx.tipe === 'Pemasukan') totalKasDanTabungan += tx.nominal;
       else totalKasDanTabungan -= tx.nominal;
     });
@@ -138,10 +148,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="bg-[#e0f2fe] text-sky-950 px-2.5 py-0.5 rounded-full border border-slate-900 text-[10px] font-mono font-bold shadow-[1px_1px_0px_#1e293b]">
-                  {activeClass.nama}
+                  {activeClass?.nama || 'Seluruh Rombel'}
                 </span>
                 <span className="text-xs font-bold text-slate-500">•</span>
-                <span className="text-xs font-bold text-slate-600">{activeClass.mapel}</span>
+                <span className="text-xs font-bold text-slate-600">{activeClass?.mapel || 'Kurikulum Merdeka'}</span>
               </div>
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                 Statistik & Analisis Pembelajaran

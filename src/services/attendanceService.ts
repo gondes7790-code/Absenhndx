@@ -163,22 +163,35 @@ export async function upsertAttendanceRecord(
 ): Promise<AttendanceRecord | null> {
   const supabase = getSupabase();
   const id = record.id || crypto.randomUUID();
+  const payload = {
+    id,
+    session_id: record.sessionId,
+    student_id: record.studentId,
+    status: record.status,
+    keterangan: record.keterangan || '',
+    updated_at: new Date().toISOString(),
+  };
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('attendance_records')
-    .upsert(
-      {
-        id,
-        session_id: record.sessionId,
-        student_id: record.studentId,
-        status: record.status,
-        keterangan: record.keterangan || '',
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'session_id,student_id' }
-    )
+    .upsert(payload, { onConflict: 'session_id,student_id' })
     .select()
     .single();
+
+  if (
+    error &&
+    (error.code === '42P10' ||
+      error.message?.includes('ON CONFLICT') ||
+      error.message?.includes('constraint'))
+  ) {
+    const fallback = await supabase
+      .from('attendance_records')
+      .upsert(payload, { onConflict: 'id' })
+      .select()
+      .single();
+    data = fallback.data;
+    error = fallback.error;
+  }
 
   if (error || !data) {
     console.error('[attendanceService] upsertAttendanceRecord error:', error);
@@ -198,6 +211,7 @@ export async function upsertAttendanceRecord(
 export async function upsertAttendanceRecordsBatch(
   records: (Omit<AttendanceRecord, 'id'> & { id?: string })[]
 ): Promise<boolean> {
+  if (!records || records.length === 0) return true;
   const supabase = getSupabase();
   const rows = records.map((r) => ({
     id: r.id || crypto.randomUUID(),
@@ -208,9 +222,25 @@ export async function upsertAttendanceRecordsBatch(
     updated_at: new Date().toISOString(),
   }));
 
-  const { error } = await supabase
+  let { error } = await supabase
     .from('attendance_records')
     .upsert(rows, { onConflict: 'session_id,student_id' });
+
+  if (
+    error &&
+    (error.code === '42P10' ||
+      error.message?.includes('ON CONFLICT') ||
+      error.message?.includes('constraint'))
+  ) {
+    console.warn(
+      '[attendanceService] fallback upsert onConflict id:',
+      error.message
+    );
+    const fallback = await supabase
+      .from('attendance_records')
+      .upsert(rows, { onConflict: 'id' });
+    error = fallback.error;
+  }
 
   if (error) {
     console.error('[attendanceService] upsertAttendanceRecordsBatch error:', error);

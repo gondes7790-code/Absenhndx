@@ -18,7 +18,7 @@ interface ClassManagementModalProps {
   isOpen: boolean;
   onClose: () => void;
   classes: ClassRoom[];
-  activeClass: ClassRoom;
+  activeClass?: ClassRoom | null;
   onSelectClass: (cls: ClassRoom) => void;
   onAddClass: (newClass: Omit<ClassRoom, 'id'>) => void;
   onEditClass: (updatedClass: ClassRoom) => void;
@@ -104,6 +104,7 @@ export const ClassManagementModal: React.FC<ClassManagementModalProps> = ({
         formatifCount: Number(formFormatifCount) || 5,
       });
       setViewState('list');
+      onClose();
     } else if (viewState === 'edit' && editingClass) {
       onEditClass({
         ...editingClass,
@@ -121,10 +122,6 @@ export const ClassManagementModal: React.FC<ClassManagementModalProps> = ({
   };
 
   const handleDelete = (clsId: string) => {
-    if (classes.length <= 1) {
-      alert('Tidak dapat menghapus kelas terakhir. Minimal harus ada 1 rombel belajar.');
-      return;
-    }
     onDeleteClass(clsId);
     setDeleteConfirmId(null);
   };
@@ -188,19 +185,36 @@ export const ClassManagementModal: React.FC<ClassManagementModalProps> = ({
               </div>
 
               <div className="space-y-2.5">
-                {classes.map((cls) => {
-                  const isActive = cls.id === activeClass.id;
-                  const isConfirmingDelete = deleteConfirmId === cls.id;
-
-                  return (
-                    <div
-                      key={cls.id}
-                      className={`p-3.5 rounded-2xl border-2 border-slate-900 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                        isActive
-                          ? 'bg-[#dcfce7] shadow-[3px_3px_0px_#1e293b]'
-                          : 'bg-white hover:bg-[#faf7ee] shadow-[2px_2px_0px_#1e293b]'
-                      }`}
+                {classes.length === 0 ? (
+                  <div className="p-8 text-center bg-white rounded-2xl border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b]">
+                    <GraduationCap className="w-10 h-10 text-slate-400 mx-auto mb-2" />
+                    <p className="font-black text-slate-800 text-sm">Belum Ada Rombel Terdaftar</p>
+                    <p className="text-xs text-slate-500 font-medium mt-1 mb-4">
+                      Buat rombel kelas pertama Anda untuk memulai presensi dan buku penilaian.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleOpenAdd}
+                      className="px-4 py-2 rounded-xl bg-[#6ee7b7] hover:bg-[#34d399] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] text-xs font-black text-slate-950 inline-flex items-center gap-1.5 cursor-pointer"
                     >
+                      <Plus className="w-4 h-4" />
+                      <span>+ Buat Rombel Pertama</span>
+                    </button>
+                  </div>
+                ) : (
+                  classes.map((cls) => {
+                    const isActive = cls.id === activeClass?.id;
+                    const isConfirmingDelete = deleteConfirmId === cls.id;
+
+                    return (
+                      <div
+                        key={cls.id}
+                        className={`p-3.5 rounded-2xl border-2 border-slate-900 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                          isActive
+                            ? 'bg-[#dcfce7] shadow-[3px_3px_0px_#1e293b]'
+                            : 'bg-white hover:bg-[#faf7ee] shadow-[2px_2px_0px_#1e293b]'
+                        }`}
+                      >
                       <div className="flex items-start gap-3">
                         <div
                           className={`w-9 h-9 rounded-xl border-2 border-slate-900 flex items-center justify-center font-black text-xs shrink-0 ${
@@ -285,7 +299,7 @@ export const ClassManagementModal: React.FC<ClassManagementModalProps> = ({
                       </div>
                     </div>
                   );
-                })}
+                }))}
               </div>
             </div>
           )}

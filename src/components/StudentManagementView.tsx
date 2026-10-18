@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import {
   Users,
   UserPlus,
+  Plus,
   Cloud,
   FileSpreadsheet,
   Search,
@@ -17,12 +18,13 @@ import { Student, ClassRoom } from '../types';
 import { StudentImportModal } from './StudentImportModal';
 
 interface StudentManagementViewProps {
-  activeClass: ClassRoom;
+  activeClass?: ClassRoom | null;
   students: Student[];
   onAddStudent: (student: Omit<Student, 'id' | 'noUrut'>) => void;
   onEditStudent: (student: Student) => void;
   onDeleteStudent: (id: string) => void;
   onSaveToCloud: () => void;
+  onOpenClassManagement?: () => void;
   schoolName: string;
   onAddStudentsBatch?: (
     newStudents: Omit<Student, 'id' | 'noUrut'>[],
@@ -37,6 +39,7 @@ export const StudentManagementView: React.FC<StudentManagementViewProps> = ({
   onEditStudent,
   onDeleteStudent,
   onSaveToCloud,
+  onOpenClassManagement,
   schoolName,
   onAddStudentsBatch,
 }) => {
@@ -53,20 +56,26 @@ export const StudentManagementView: React.FC<StudentManagementViewProps> = ({
   const [formKontak, setFormKontak] = useState('');
   const [formCatatan, setFormCatatan] = useState('');
 
+  // Class-specific students (strictly filtered by activeClass.id)
+  const classStudents = useMemo(() => {
+    if (!activeClass) return [];
+    return students.filter((s) => s.classId === activeClass.id);
+  }, [students, activeClass?.id]);
+
   // Gender counters
   const genderStats = useMemo(() => {
     let l = 0;
     let p = 0;
-    students.forEach((s) => {
+    classStudents.forEach((s) => {
       if (s.gender === 'L') l++;
       else p++;
     });
-    return { l, p, total: students.length };
-  }, [students]);
+    return { l, p, total: classStudents.length };
+  }, [classStudents]);
 
   // Filtered & sorted students
   const filteredStudents = useMemo(() => {
-    let list = [...students];
+    let list = [...classStudents];
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter((s) => s.nama.toLowerCase().includes(q) || s.nisn.includes(q));
@@ -79,7 +88,7 @@ export const StudentManagementView: React.FC<StudentManagementViewProps> = ({
       list.sort((a, b) => a.noUrut - b.noUrut);
     }
     return list;
-  }, [students, searchQuery, sortMode]);
+  }, [classStudents, searchQuery, sortMode]);
 
   const handleOpenAdd = () => {
     setEditingStudent(null);
@@ -103,7 +112,7 @@ export const StudentManagementView: React.FC<StudentManagementViewProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formNama.trim()) return;
+    if (!activeClass || !formNama.trim()) return;
 
     if (editingStudent) {
       onEditStudent({
@@ -143,11 +152,34 @@ export const StudentManagementView: React.FC<StudentManagementViewProps> = ({
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Data_Murid_${activeClass.nama}.csv`);
+    link.setAttribute('download', `Data_Murid_${activeClass?.nama || 'Kelas'}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
+
+  if (!activeClass) {
+    return (
+      <div className="bg-[#fffdf8] rounded-3xl p-8 border-2 border-slate-900 shadow-[4px_4px_0px_#1e293b] text-center max-w-xl mx-auto my-6">
+        <div className="w-14 h-14 rounded-2xl bg-[#6ee7b7] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] mx-auto flex items-center justify-center mb-3">
+          <Users className="w-7 h-7 text-slate-950" />
+        </div>
+        <h3 className="text-base font-black text-slate-900 mb-1">Belum Ada Rombel / Kelas Aktif</h3>
+        <p className="text-xs font-bold text-slate-600 mb-4">
+          Silakan buat atau pilih rombel kelas terlebih dahulu untuk mengelola data murid.
+        </p>
+        {onOpenClassManagement && (
+          <button
+            onClick={onOpenClassManagement}
+            className="px-4 py-2.5 rounded-2xl bg-[#6ee7b7] hover:bg-[#34d399] border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] font-black text-xs text-slate-950 cursor-pointer inline-flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Buat Rombel Pertama</span>
+          </button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -273,11 +305,26 @@ export const StudentManagementView: React.FC<StudentManagementViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y-2 divide-slate-100">
-              {filteredStudents.map((student, idx) => (
-                <tr key={student.id} className="hover:bg-[#faf7ee]/60 transition-colors">
-                  <td className="py-3 px-3 text-center text-slate-600 font-mono font-bold">
-                    {student.noUrut || idx + 1}
+              {filteredStudents.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-10 text-center text-slate-500 font-bold bg-[#faf7ee]/30">
+                    <Users className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                    <p className="text-sm text-slate-700 font-black">
+                      {searchQuery ? 'Tidak ada siswa yang sesuai pencarian' : 'Belum Ada Murid Terdaftar di Kelas Ini'}
+                    </p>
+                    <p className="text-xs text-slate-500 font-medium mt-1">
+                      {searchQuery
+                        ? 'Coba kata kunci pencarian lain'
+                        : 'Klik "+ Tambah Murid" atau "Impor Excel / CSV" untuk mendaftarkan siswa.'}
+                    </p>
                   </td>
+                </tr>
+              ) : (
+                filteredStudents.map((student, idx) => (
+                  <tr key={student.id} className="hover:bg-[#faf7ee]/60 transition-colors">
+                    <td className="py-3 px-3 text-center text-slate-600 font-mono font-bold">
+                      {student.noUrut || idx + 1}
+                    </td>
                   <td className="py-3 px-4 font-mono font-bold text-slate-600">
                     {student.nisn}
                   </td>
@@ -322,7 +369,7 @@ export const StudentManagementView: React.FC<StudentManagementViewProps> = ({
                     </div>
                   </td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         </div>

@@ -11,18 +11,21 @@ import {
   AlertTriangle,
   X,
   Check,
+  Plus,
+  Award,
 } from 'lucide-react';
 import { Student, GradeRecord, ClassRoom, TeacherProfile, PrintConfig } from '../types';
 import { PrintableDocument } from './PrintableDocument';
 
 interface GradebookViewProps {
-  activeClass: ClassRoom;
+  activeClass?: ClassRoom | null;
   students: Student[];
   grades: GradeRecord[];
   onUpdateGrade: (studentId: string, updatedGrade: Partial<GradeRecord>) => void;
   onGenerateAllDescriptions: () => void;
   onSaveToCloud: () => void;
   onOpenParentLink: () => void;
+  onOpenClassManagement?: () => void;
   schoolName: string;
   teacher?: TeacherProfile;
   onUpdateClass?: (updatedClass: ClassRoom) => void;
@@ -37,32 +40,33 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
   onGenerateAllDescriptions,
   onSaveToCloud,
   onOpenParentLink,
+  onOpenClassManagement,
   schoolName,
-  teacher = {
-    name: 'Hendra Setiawan, S. Pd.',
-    email: 'hendrasetiawan72@guru.smk.belajar.id',
-    nip: '19870415 201201 1 003',
-    school: 'Hadir!',
-    handle: '@hndx07',
-  },
+  teacher,
   onUpdateClass,
   printConfig,
 }) => {
-  const [formatifColumns, setFormatifColumns] = useState<number>(activeClass.formatifCount || 5);
+  const [formatifColumns, setFormatifColumns] = useState<number>(activeClass?.formatifCount || 5);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<'no' | 'az' | 'za'>('az');
   const [editingTpTitle, setEditingTpTitle] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
-  const [currentKkm, setCurrentKkm] = useState<number>(activeClass.kkm || 75);
+  const [currentKkm, setCurrentKkm] = useState<number>(activeClass?.kkm || 75);
   const [tpTitles, setTpTitles] = useState<Record<number, string>>(
-    () => activeClass.tpTitles || {}
+    () => activeClass?.tpTitles || {}
   );
 
   useEffect(() => {
-    setTpTitles(activeClass.tpTitles || {});
-    setFormatifColumns(activeClass.formatifCount || 5);
-    setCurrentKkm(activeClass.kkm || 75);
-  }, [activeClass.id, activeClass.tpTitles, activeClass.formatifCount, activeClass.kkm]);
+    setTpTitles(activeClass?.tpTitles || {});
+    setFormatifColumns(activeClass?.formatifCount || 5);
+    setCurrentKkm(activeClass?.kkm || 75);
+  }, [activeClass?.id, activeClass?.tpTitles, activeClass?.formatifCount, activeClass?.kkm]);
+
+  // Class-specific students (strictly filtered by activeClass.id)
+  const classStudents = useMemo(() => {
+    if (!activeClass) return [];
+    return students.filter((s) => s.classId === activeClass.id);
+  }, [students, activeClass?.id]);
 
   // Map studentId -> GradeRecord
   const gradesMap = useMemo(() => {
@@ -76,9 +80,9 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     let totalScoreSum = 0;
     let studentsWithScores = 0;
     let tuntasCount = 0;
-    const kkm = activeClass.kkm || 75;
+    const kkm = activeClass?.kkm || 75;
 
-    students.forEach((s) => {
+    classStudents.forEach((s) => {
       const g = gradesMap.get(s.id);
       const validFormatif = (g?.formatif || [])
         .slice(0, formatifColumns)
@@ -104,7 +108,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     const tuntasPercent = studentsWithScores > 0 ? Math.round((tuntasCount / studentsWithScores) * 100) : 0;
 
     return { classAverage, tuntasCount, studentsWithScores, tuntasPercent };
-  }, [students, gradesMap, formatifColumns, activeClass.kkm]);
+  }, [classStudents, gradesMap, formatifColumns, activeClass?.kkm]);
 
   // Predicate Helper according to Kurikulum Merdeka
   const getPredikat = (score: number, kkm: number) => {
@@ -116,7 +120,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
 
   // Filter & Sort
   const filteredStudents = useMemo(() => {
-    let list = [...students];
+    let list = [...classStudents];
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter((s) => s.nama.toLowerCase().includes(q) || s.nisn.includes(q));
@@ -129,7 +133,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       list.sort((a, b) => a.noUrut - b.noUrut);
     }
     return list;
-  }, [students, searchQuery, sortMode]);
+  }, [classStudents, searchQuery, sortMode]);
 
   const handleFormatifChange = (studentId: string, tpIndex: number, valStr: string) => {
     const val = valStr === '' ? null : Math.min(100, Math.max(0, Number(valStr)));
@@ -163,7 +167,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
       const sts = g?.sts ?? fAvg;
       const sas = g?.sas ?? fAvg;
       const finalScore = Math.round(((fAvg as number) * 0.5) + (sts * 0.25) + (sas * 0.25));
-      const pred = getPredikat(finalScore, activeClass.kkm);
+      const pred = getPredikat(finalScore, activeClass?.kkm || 75);
 
       return [
         idx + 1,
@@ -182,11 +186,34 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Penilaian_Merdeka_${activeClass.nama}.csv`);
+    link.setAttribute('download', `Penilaian_Merdeka_${activeClass?.nama || 'Kelas'}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
+
+  if (!activeClass) {
+    return (
+      <div className="bg-[#fffdf8] rounded-3xl p-8 border-2 border-slate-900 shadow-[4px_4px_0px_#1e293b] text-center max-w-xl mx-auto my-6">
+        <div className="w-14 h-14 rounded-2xl bg-[#6ee7b7] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] mx-auto flex items-center justify-center mb-3">
+          <Award className="w-7 h-7 text-slate-950" />
+        </div>
+        <h3 className="text-base font-black text-slate-900 mb-1">Belum Ada Rombel / Kelas Aktif</h3>
+        <p className="text-xs font-bold text-slate-600 mb-4">
+          Silakan buat rombel kelas terlebih dahulu untuk mengisi buku penilaian formatif dan sumatif.
+        </p>
+        {onOpenClassManagement && (
+          <button
+            onClick={onOpenClassManagement}
+            className="px-4 py-2.5 rounded-2xl bg-[#6ee7b7] hover:bg-[#34d399] border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] font-black text-xs text-slate-950 cursor-pointer inline-flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Buat Rombel Pertama</span>
+          </button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -409,25 +436,39 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y-2 divide-slate-100">
-              {filteredStudents.map((student, idx) => {
-                const g = gradesMap.get(student.id);
-                const formatifArr = g?.formatif || Array(formatifColumns).fill(null);
+              {filteredStudents.length === 0 ? (
+                <tr>
+                  <td colSpan={formatifColumns + 8} className="py-10 text-center text-slate-500 font-bold bg-[#faf7ee]/30">
+                    <p className="text-sm text-slate-700 font-black">
+                      {searchQuery ? 'Tidak ada siswa yang sesuai pencarian' : 'Belum Ada Murid Terdaftar di Kelas Ini'}
+                    </p>
+                    <p className="text-xs text-slate-500 font-medium mt-1">
+                      {searchQuery
+                        ? 'Coba kata kunci pencarian lain'
+                        : 'Buka tab "Data Murid" untuk mendaftarkan siswa ke kelas ini.'}
+                    </p>
+                  </td>
+                </tr>
+              ) : (
+                filteredStudents.map((student, idx) => {
+                  const g = gradesMap.get(student.id);
+                  const formatifArr = g?.formatif || Array(formatifColumns).fill(null);
 
-                // Calculations
-                const validFormatif = formatifArr.slice(0, formatifColumns).filter((v): v is number => v !== null && !isNaN(v));
-                const formatifAvg = validFormatif.length > 0
-                  ? validFormatif.reduce((a, b) => a + b, 0) / validFormatif.length
-                  : 0;
-                const sts = g?.sts ?? (validFormatif.length > 0 ? formatifAvg : null);
-                const sas = g?.sas ?? (validFormatif.length > 0 ? formatifAvg : null);
+                  // Calculations
+                  const validFormatif = formatifArr.slice(0, formatifColumns).filter((v): v is number => v !== null && !isNaN(v));
+                  const formatifAvg = validFormatif.length > 0
+                    ? validFormatif.reduce((a, b) => a + b, 0) / validFormatif.length
+                    : 0;
+                  const sts = g?.sts ?? (validFormatif.length > 0 ? formatifAvg : null);
+                  const sas = g?.sas ?? (validFormatif.length > 0 ? formatifAvg : null);
 
-                const hasAnyScore = validFormatif.length > 0 || sts !== null || sas !== null;
-                const totalSum = hasAnyScore ? Math.round(((sts || 0) + (sas || 0)) / 2) : '-';
-                const finalGrade = hasAnyScore
-                  ? Math.round((formatifAvg * 0.5) + ((sts || formatifAvg) * 0.25) + ((sas || formatifAvg) * 0.25))
-                  : null;
+                  const hasAnyScore = validFormatif.length > 0 || sts !== null || sas !== null;
+                  const totalSum = hasAnyScore ? Math.round(((sts || 0) + (sas || 0)) / 2) : '-';
+                  const finalGrade = hasAnyScore
+                    ? Math.round((formatifAvg * 0.5) + ((sts || formatifAvg) * 0.25) + ((sas || formatifAvg) * 0.25))
+                    : null;
 
-                const predikat = finalGrade !== null ? getPredikat(finalGrade, activeClass.kkm) : null;
+                  const predikat = finalGrade !== null ? getPredikat(finalGrade, activeClass?.kkm || 75) : null;
 
                 return (
                   <tr key={student.id} className="hover:bg-[#faf7ee]/60 transition-colors group">
@@ -525,7 +566,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
                     </td>
                   </tr>
                 );
-              })}
+              }))}
             </tbody>
           </table>
         </div>

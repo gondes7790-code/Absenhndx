@@ -29,13 +29,13 @@ interface PrintableDocumentProps {
   type: PrintableDocumentType;
   isOpen?: boolean;
   onClose?: () => void;
-  activeClass: ClassRoom;
-  teacher: TeacherProfile;
+  activeClass?: ClassRoom | null;
+  teacher?: TeacherProfile | null;
   schoolName: string;
   printConfig?: PrintConfig;
   // Specific data
   students?: Student[];
-  session?: AttendanceSession;
+  session?: AttendanceSession | null;
   sessions?: AttendanceSession[];
   attendanceRecords?: AttendanceRecord[];
   grades?: GradeRecord[];
@@ -601,7 +601,7 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
 
       case 'finance': {
         const classTxs = financeTransactions.filter(
-          (t) => !t.classId || t.classId === activeClass.id
+          (t) => t.classId === activeClass.id
         );
         let totalPemasukan = 0;
         let totalPengeluaran = 0;

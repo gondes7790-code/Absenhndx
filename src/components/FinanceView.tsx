@@ -19,7 +19,7 @@ import { FinanceTransaction, Student, ClassRoom, TeacherProfile, PrintConfig } f
 import { PrintableDocument } from './PrintableDocument';
 
 interface FinanceViewProps {
-  activeClass: ClassRoom;
+  activeClass?: ClassRoom | null;
   students: Student[];
   finances: FinanceTransaction[];
   teacher: TeacherProfile;
@@ -29,6 +29,7 @@ interface FinanceViewProps {
   onDeleteTransaction: (id: string) => void;
   onSaveToCloud: () => void;
   onOpenParentLink: () => void;
+  onOpenClassManagement?: () => void;
 }
 
 export const FinanceView: React.FC<FinanceViewProps> = ({
@@ -42,6 +43,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
   onDeleteTransaction,
   onSaveToCloud,
   onOpenParentLink,
+  onOpenClassManagement,
 }) => {
   const [activeTab, setActiveTab] = useState<'kas' | 'tabungan'>('kas');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -76,10 +78,16 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
     return { saldoKas, kasMasuk, kasKeluar, tabunganTotal, totalMutasi };
   }, [finances]);
 
+  // Class-specific students
+  const classStudents = useMemo(() => {
+    if (!activeClass) return [];
+    return students.filter((s) => s.classId === activeClass.id);
+  }, [students, activeClass?.id]);
+
   // Tabungan per student
   const studentSavings = useMemo(() => {
     const map = new Map<string, number>();
-    students.forEach((s) => map.set(s.id, 0));
+    classStudents.forEach((s) => map.set(s.id, 0));
 
     finances
       .filter((t) => t.kategori === 'Tabungan Siswa' && t.studentId)
@@ -89,11 +97,11 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
         else map.set(t.studentId!, cur - t.nominal);
       });
 
-    return students.map((s) => ({
+    return classStudents.map((s) => ({
       student: s,
       saldo: map.get(s.id) || 0,
     }));
-  }, [students, finances]);
+  }, [classStudents, finances]);
 
   // Filtered transactions for table
   const filteredTransactions = useMemo(() => {
@@ -106,7 +114,7 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const nom = Number(txNominal);
-    if (!nom || nom <= 0 || !txKeterangan.trim()) return;
+    if (!activeClass || !nom || nom <= 0 || !txKeterangan.trim()) return;
 
     let studentName = undefined;
     if (txCategory === 'Tabungan Siswa' && txStudentId) {
@@ -131,6 +139,29 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
     setTxNominal('');
     setTxStudentId('');
   };
+
+  if (!activeClass) {
+    return (
+      <div className="bg-[#fffdf8] rounded-3xl p-8 border-2 border-slate-900 shadow-[4px_4px_0px_#1e293b] text-center max-w-xl mx-auto my-6">
+        <div className="w-14 h-14 rounded-2xl bg-[#6ee7b7] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] mx-auto flex items-center justify-center mb-3">
+          <Wallet className="w-7 h-7 text-slate-950" />
+        </div>
+        <h3 className="text-base font-black text-slate-900 mb-1">Belum Ada Rombel / Kelas Aktif</h3>
+        <p className="text-xs font-bold text-slate-600 mb-4">
+          Silakan buat rombel kelas terlebih dahulu untuk mengelola kas kelas dan tabungan siswa.
+        </p>
+        {onOpenClassManagement && (
+          <button
+            onClick={onOpenClassManagement}
+            className="px-4 py-2.5 rounded-2xl bg-[#6ee7b7] hover:bg-[#34d399] border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] font-black text-xs text-slate-950 cursor-pointer inline-flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Buat Rombel Pertama</span>
+          </button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5 sm:space-y-6">

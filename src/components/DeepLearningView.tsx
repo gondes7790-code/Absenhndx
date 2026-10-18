@@ -19,7 +19,7 @@ import { Student, AttendanceRecord, GradeRecord, ClassRoom, DeepLearningPredicti
 import { runDeepLearningStudentAnalysis } from '../services/deepLearningService';
 
 interface DeepLearningViewProps {
-  activeClass: ClassRoom;
+  activeClass?: ClassRoom | null;
   students: Student[];
   attendanceRecords: AttendanceRecord[];
   grades: GradeRecord[];
@@ -47,13 +47,19 @@ export const DeepLearningView: React.FC<DeepLearningViewProps> = ({
     return map;
   }, [grades]);
 
-  // Compute predictions for all students
+  const classStudents = useMemo(() => {
+    if (!activeClass) return [];
+    return students.filter((s) => s.classId === activeClass.id);
+  }, [students, activeClass?.id]);
+
+  // Compute predictions for class students
   const predictions: DeepLearningPrediction[] = useMemo(() => {
-    return students.map((std) => {
+    if (!activeClass) return [];
+    return classStudents.map((std) => {
       const g = gradesMap.get(std.id);
       return runDeepLearningStudentAnalysis(std, activeClass, attendanceRecords, g);
     });
-  }, [students, activeClass, attendanceRecords, gradesMap]);
+  }, [classStudents, activeClass, attendanceRecords, gradesMap]);
 
   // Summary risk counts
   const riskStats = useMemo(() => {
@@ -122,7 +128,7 @@ export const DeepLearningView: React.FC<DeepLearningViewProps> = ({
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="bg-[#e0f2fe] text-sky-950 px-2.5 py-0.5 rounded-full border border-slate-900 text-[10px] font-mono font-bold shadow-[1px_1px_0px_#1e293b]">
-                  {activeClass.nama}
+                  {activeClass?.nama || 'Seluruh Rombel'}
                 </span>
                 <span className="text-xs font-bold text-slate-500">•</span>
                 <span className="text-xs font-bold text-slate-600">Multi-Feature Neural Scoring</span>

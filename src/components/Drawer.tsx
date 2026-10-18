@@ -25,7 +25,7 @@ interface DrawerProps {
   onClose: () => void;
   activeTab: ActiveTab;
   onSelectTab: (tab: ActiveTab) => void;
-  activeClass: ClassRoom;
+  activeClass?: ClassRoom | null;
   onSwitchClass: () => void;
   onOpenClassManagement?: () => void;
   onRefreshData: () => void;
@@ -178,19 +178,21 @@ export const Drawer: React.FC<DrawerProps> = ({
                 ROMBEL AKTIF SAAT INI
               </span>
               <p className="text-sm font-black text-slate-900 mt-0.5 leading-tight">
-                {activeClass.nama}
+                {activeClass?.nama || 'Belum Ada Rombel'}
               </p>
               <p className="text-[11px] font-bold text-slate-600 mt-0.5">
-                {activeClass.mapel} • KKM: {activeClass.kkm}
+                {activeClass
+                  ? `${activeClass.mapel} • KKM: ${activeClass.kkm}`
+                  : 'Belum ada kelas dipilih'}
               </p>
             </div>
 
             <div className="flex flex-col gap-1.5 shrink-0">
               <button
-                onClick={onSwitchClass}
+                onClick={activeClass ? onSwitchClass : onOpenClassManagement}
                 className="px-3 py-1 rounded-xl bg-white hover:bg-slate-50 border-2 border-slate-900 shadow-[1.5px_1.5px_0px_#1e293b] text-xs font-black text-slate-900 active:translate-x-[1px] active:translate-y-[1px] cursor-pointer transition-all"
               >
-                Ganti Kelas
+                {activeClass ? 'Ganti Kelas' : '+ Buat Kelas'}
               </button>
               {onOpenClassManagement && (
                 <button

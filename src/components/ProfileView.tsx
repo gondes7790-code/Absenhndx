@@ -45,7 +45,7 @@ interface ProfileViewProps {
   onLogout: () => void;
   onShowToast: (title: string, desc: string) => void;
   // Universal Print & Document integration
-  activeClass?: ClassRoom;
+  activeClass?: ClassRoom | null;
   students?: Student[];
   sessions?: AttendanceSession[];
   attendanceRecords?: AttendanceRecord[];

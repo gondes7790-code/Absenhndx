@@ -85,80 +85,162 @@ export default function App() {
     isLoading: isAuthLoading,
   } = useAuth();
 
-  // Global States with local persistence fallback
+  // Global States with local persistence fallback (User-scoped and Demo-scoped)
   const [classes, setClasses] = useState<ClassRoom[]>(() => {
     try {
-      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_classes`);
-      return saved ? JSON.parse(saved) : initialClasses;
+      if (isDemoMode) {
+        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_demo_classes`);
+        return saved ? JSON.parse(saved) : initialClasses;
+      }
+      if (userId) {
+        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_u_${userId}_classes`);
+        return saved ? JSON.parse(saved) : [];
+      }
+      return [];
     } catch {
-      return initialClasses;
+      return isDemoMode ? initialClasses : [];
     }
   });
 
-  const [activeClass, setActiveClass] = useState<ClassRoom>(classes[0] || initialClasses[0]);
+  const [activeClass, setActiveClass] = useState<ClassRoom | null>(() => {
+    return classes[0] || (isDemoMode ? initialClasses[0] : null);
+  });
 
   const [students, setStudents] = useState<Student[]>(() => {
     try {
-      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_students`);
-      return saved ? JSON.parse(saved) : initialStudents;
+      if (isDemoMode) {
+        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_demo_students`);
+        return saved ? JSON.parse(saved) : initialStudents;
+      }
+      if (userId) {
+        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_u_${userId}_students`);
+        return saved ? JSON.parse(saved) : [];
+      }
+      return [];
     } catch {
-      return initialStudents;
+      return isDemoMode ? initialStudents : [];
     }
   });
 
   const [sessions, setSessions] = useState<AttendanceSession[]>(() => {
     try {
-      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_sessions`);
-      return saved ? JSON.parse(saved) : initialSessions;
+      if (isDemoMode) {
+        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_demo_sessions`);
+        return saved ? JSON.parse(saved) : initialSessions;
+      }
+      if (userId) {
+        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_u_${userId}_sessions`);
+        return saved ? JSON.parse(saved) : [];
+      }
+      return [];
     } catch {
-      return initialSessions;
+      return isDemoMode ? initialSessions : [];
     }
   });
 
-  const [activeSession, setActiveSession] = useState<AttendanceSession>(sessions[0] || initialSessions[0]);
+  const [activeSession, setActiveSession] = useState<AttendanceSession | null>(() => {
+    return sessions[0] || (isDemoMode ? initialSessions[0] : null);
+  });
 
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(() => {
     try {
-      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_attendance`);
-      return saved ? JSON.parse(saved) : initialAttendanceRecords;
+      if (isDemoMode) {
+        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_demo_attendance`);
+        return saved ? JSON.parse(saved) : initialAttendanceRecords;
+      }
+      if (userId) {
+        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_u_${userId}_attendance`);
+        return saved ? JSON.parse(saved) : [];
+      }
+      return [];
     } catch {
-      return initialAttendanceRecords;
+      return isDemoMode ? initialAttendanceRecords : [];
     }
   });
 
   const [grades, setGrades] = useState<GradeRecord[]>(() => {
     try {
-      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_grades`);
-      return saved ? JSON.parse(saved) : initialGrades;
+      if (isDemoMode) {
+        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_demo_grades`);
+        return saved ? JSON.parse(saved) : initialGrades;
+      }
+      if (userId) {
+        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_u_${userId}_grades`);
+        return saved ? JSON.parse(saved) : [];
+      }
+      return [];
     } catch {
-      return initialGrades;
+      return isDemoMode ? initialGrades : [];
     }
   });
 
   const [journals, setJournals] = useState<JournalEntry[]>(() => {
     try {
-      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_journals`);
-      return saved ? JSON.parse(saved) : initialJournals;
+      if (isDemoMode) {
+        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_demo_journals`);
+        return saved ? JSON.parse(saved) : initialJournals;
+      }
+      if (userId) {
+        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_u_${userId}_journals`);
+        return saved ? JSON.parse(saved) : [];
+      }
+      return [];
     } catch {
-      return initialJournals;
+      return isDemoMode ? initialJournals : [];
     }
   });
 
   const [finances, setFinances] = useState<FinanceTransaction[]>(() => {
     try {
-      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_finances`);
-      return saved ? JSON.parse(saved) : initialFinances;
+      if (isDemoMode) {
+        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_demo_finances`);
+        return saved ? JSON.parse(saved) : initialFinances;
+      }
+      if (userId) {
+        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_u_${userId}_finances`);
+        return saved ? JSON.parse(saved) : [];
+      }
+      return [];
     } catch {
-      return initialFinances;
+      return isDemoMode ? initialFinances : [];
     }
   });
 
   const [teacher, setTeacher] = useState<TeacherProfile>(() => {
     try {
-      const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_teacher`);
-      return saved ? JSON.parse(saved) : initialTeacher;
+      if (isDemoMode) {
+        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_demo_teacher`);
+        return saved ? JSON.parse(saved) : initialTeacher;
+      }
+      if (userId) {
+        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_u_${userId}_teacher`);
+        if (saved) return JSON.parse(saved);
+      }
+      return {
+        name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Guru Pendidik',
+        email: user?.email || '',
+        nip: '',
+        nuptk: '',
+        school: 'Hadir!',
+        handle: `@${(user?.email?.split('@')[0] || 'guru').toLowerCase()}`,
+        phone: '',
+        mapelUtama: '',
+        bio: '',
+      };
     } catch {
-      return initialTeacher;
+      return isDemoMode
+        ? initialTeacher
+        : {
+            name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Guru Pendidik',
+            email: user?.email || '',
+            nip: '',
+            nuptk: '',
+            school: 'Hadir!',
+            handle: `@${(user?.email?.split('@')[0] || 'guru').toLowerCase()}`,
+            phone: '',
+            mapelUtama: '',
+            bio: '',
+          };
     }
   });
 
@@ -236,21 +318,27 @@ export default function App() {
     }, 3200);
   };
 
-  // Sync business data to LocalStorage (as cache / offline backup)
+  // Sync business data to LocalStorage (User-scoped and Demo-scoped cache)
   useEffect(() => {
     try {
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}_classes`, JSON.stringify(classes));
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}_students`, JSON.stringify(students));
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}_sessions`, JSON.stringify(sessions));
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}_attendance`, JSON.stringify(attendanceRecords));
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}_grades`, JSON.stringify(grades));
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}_journals`, JSON.stringify(journals));
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}_finances`, JSON.stringify(finances));
-      localStorage.setItem(`${STORAGE_KEY_PREFIX}_teacher`, JSON.stringify(teacher));
+      const storagePrefix = isDemoMode
+        ? `${STORAGE_KEY_PREFIX}_demo`
+        : userId
+        ? `${STORAGE_KEY_PREFIX}_u_${userId}`
+        : `${STORAGE_KEY_PREFIX}_guest`;
+
+      localStorage.setItem(`${storagePrefix}_classes`, JSON.stringify(classes));
+      localStorage.setItem(`${storagePrefix}_students`, JSON.stringify(students));
+      localStorage.setItem(`${storagePrefix}_sessions`, JSON.stringify(sessions));
+      localStorage.setItem(`${storagePrefix}_attendance`, JSON.stringify(attendanceRecords));
+      localStorage.setItem(`${storagePrefix}_grades`, JSON.stringify(grades));
+      localStorage.setItem(`${storagePrefix}_journals`, JSON.stringify(journals));
+      localStorage.setItem(`${storagePrefix}_finances`, JSON.stringify(finances));
+      localStorage.setItem(`${storagePrefix}_teacher`, JSON.stringify(teacher));
     } catch (e) {
       console.warn('Storage sync issue', e);
     }
-  }, [classes, students, sessions, attendanceRecords, grades, journals, finances, teacher]);
+  }, [isDemoMode, userId, classes, students, sessions, attendanceRecords, grades, journals, finances, teacher]);
 
   // Fetch data from Supabase when user is logged in (NOT demo mode)
   useEffect(() => {
@@ -288,41 +376,36 @@ export default function App() {
         if (dbProfile) {
           setTeacher(dbProfile);
           if (dbProfile.school) setSchoolName(dbProfile.school);
+        } else {
+          setTeacher((prev) => ({
+            ...prev,
+            name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Guru Pendidik',
+            email: user?.email || prev.email || '',
+          }));
         }
 
-        if (dbClasses) {
-          setClasses(dbClasses);
-          if (dbClasses.length > 0) {
-            setActiveClass((prev) => dbClasses.find((c) => c.id === prev.id) || dbClasses[0]);
-          }
+        const loadedClasses = dbClasses || [];
+        setClasses(loadedClasses);
+        if (loadedClasses.length > 0) {
+          setActiveClass((prev) => (prev ? loadedClasses.find((c) => c.id === prev.id) || loadedClasses[0] : loadedClasses[0]));
+        } else {
+          setActiveClass(null);
         }
 
-        if (dbStudents) {
-          setStudents(dbStudents);
+        setStudents(dbStudents || []);
+
+        const loadedSessions = dbSessions || [];
+        setSessions(loadedSessions);
+        if (loadedSessions.length > 0) {
+          setActiveSession((prev) => (prev ? loadedSessions.find((s) => s.id === prev.id) || loadedSessions[0] : loadedSessions[0]));
+        } else {
+          setActiveSession(null);
         }
 
-        if (dbSessions) {
-          setSessions(dbSessions);
-          if (dbSessions.length > 0) {
-            setActiveSession((prev) => dbSessions.find((s) => s.id === prev.id) || dbSessions[0]);
-          }
-        }
-
-        if (dbRecords) {
-          setAttendanceRecords(dbRecords);
-        }
-
-        if (dbGrades) {
-          setGrades(dbGrades);
-        }
-
-        if (dbJournals) {
-          setJournals(dbJournals);
-        }
-
-        if (dbFinances) {
-          setFinances(dbFinances);
-        }
+        setAttendanceRecords(dbRecords || []);
+        setGrades(dbGrades || []);
+        setJournals(dbJournals || []);
+        setFinances(dbFinances || []);
       } catch (err) {
         console.warn('[App] Error loading Supabase data:', err);
         showToast('Gagal Memuat Data Cloud', 'Terjadi kendala saat mengambil data dari Supabase.');
@@ -343,6 +426,15 @@ export default function App() {
     } catch (err) {
       console.warn('Logout error:', err);
     }
+    setClasses([]);
+    setActiveClass(null);
+    setStudents([]);
+    setSessions([]);
+    setActiveSession(null);
+    setAttendanceRecords([]);
+    setGrades([]);
+    setJournals([]);
+    setFinances([]);
     setActiveTab('presensi');
     showToast('Sesi Berakhir', 'Anda telah keluar dari akun pendidik secara aman.');
   };
@@ -437,7 +529,7 @@ export default function App() {
           pendidik: teacher.name,
           mapel: sessionToSync.mapel,
           classId: sessionToSync.classId,
-          className: targetClass.nama,
+          className: targetClass?.nama || 'Kelas',
           pertemuanKe: targetPertemuanKe,
           jamPelajaran: sessionToSync.jamPelajaran || '07.15 - 09.15 WIB',
           materiKegiatan:
@@ -447,7 +539,7 @@ export default function App() {
           materi: sessionToSync.materi,
           kegiatan: sessionToSync.kegiatan,
           absensiCatatan,
-          semester: `${targetClass.tahunAjaran} (${targetClass.semester})`,
+          semester: targetClass ? `${targetClass.tahunAjaran} (${targetClass.semester})` : 'Ganjil',
         };
         if (!isDemoMode && userId) {
           createJournal(userId, newEntry);
@@ -467,41 +559,32 @@ export default function App() {
     );
   };
 
-  const handleSelectClass = async (cls: ClassRoom) => {
+  const handleSelectClass = (cls: ClassRoom) => {
     setActiveClass(cls);
     const classSess = sessions.filter((s) => s.classId === cls.id);
     if (classSess.length > 0) {
       setActiveSession(classSess[0]);
     } else {
-      const today = new Date().toISOString().split('T')[0];
-      const defaultSess: AttendanceSession = {
-        id: crypto.randomUUID(),
-        classId: cls.id,
-        pertemuanKe: 1,
-        tanggal: today,
-        mapel: cls.mapel,
-        jamPelajaran: '07:15 - 09:15 WIB',
-        materi: 'Pertemuan Ke-1 Pembelajaran Tatap Muka',
-        kegiatan: 'Pengantar & Kontrak Belajar',
-        catatan: 'Pertemuan Ke-1 Pembelajaran Tatap Muka — Pengantar & Kontrak Belajar',
-        createdAt: new Date().toISOString(),
-      };
-      if (!isDemoMode && userId) {
-        const created = await createAttendanceSession(userId, defaultSess);
-        if (created) {
-          setSessions((prev) => [created, ...prev]);
-          setActiveSession(created);
-        } else {
-          showToast('Peringatan Sesi', 'Sesi dibuat secara lokal, gagal menyimpan ke Supabase.');
-          setSessions((prev) => [defaultSess, ...prev]);
-          setActiveSession(defaultSess);
-        }
-      } else {
-        setSessions((prev) => [defaultSess, ...prev]);
-        setActiveSession(defaultSess);
-      }
+      setActiveSession(null);
     }
   };
+
+  // Keep activeSession always strictly synchronized to activeClass
+  useEffect(() => {
+    if (!activeClass) {
+      if (activeSession !== null) setActiveSession(null);
+      return;
+    }
+    const classSess = sessions.filter((s) => s.classId === activeClass.id);
+    if (classSess.length === 0) {
+      if (activeSession !== null) setActiveSession(null);
+    } else {
+      // If currently activeSession doesn't belong to activeClass, pick the first session of activeClass
+      if (!activeSession || activeSession.classId !== activeClass.id || !classSess.some((s) => s.id === activeSession.id)) {
+        setActiveSession(classSess[0]);
+      }
+    }
+  }, [activeClass?.id, sessions]);
 
   // Handlers for Attendance
   const handleUpdateAttendanceRecord = async (
@@ -509,6 +592,7 @@ export default function App() {
     status: AttendanceStatus,
     keterangan = ''
   ) => {
+    if (!activeClass || !activeSession) return;
     const existingIdx = attendanceRecords.findIndex(
       (r) => r.sessionId === activeSession.id && r.studentId === studentId
     );
@@ -532,15 +616,6 @@ export default function App() {
       };
     }
 
-    if (!isDemoMode && userId) {
-      const saved = await upsertAttendanceRecord(targetRecord);
-      if (!saved) {
-        showToast('Gagal Menyimpan Presensi', 'Tidak dapat memperbarui presensi murid ke Supabase.');
-        return;
-      }
-      targetRecord = saved;
-    }
-
     const next =
       existingIdx >= 0
         ? attendanceRecords.map((r, i) => (i === existingIdx ? targetRecord : r))
@@ -548,41 +623,103 @@ export default function App() {
 
     setAttendanceRecords(next);
     syncAttendanceSessionToJournal(activeSession, next, students);
-  };
-
-  const handleSetAllHadir = async () => {
-    const classStudents = students.filter((s) => s.classId === activeClass.id);
-    const studentIdsInClass = new Set(classStudents.map((s) => s.id));
-
-    const allHadirForCurrent: AttendanceRecord[] = classStudents.map((std) => ({
-      id: crypto.randomUUID(),
-      sessionId: activeSession.id,
-      studentId: std.id,
-      status: 'H',
-      keterangan: '',
-      updatedAt: new Date().toISOString(),
-    }));
 
     if (!isDemoMode && userId) {
-      const success = await upsertAttendanceRecordsBatch(allHadirForCurrent);
-      if (!success) {
-        showToast('Gagal Memperbarui Presensi', 'Gagal menyimpan status hadir ke Supabase.');
-        return;
+      try {
+        const saved = await upsertAttendanceRecord(targetRecord);
+        if (saved) {
+          setAttendanceRecords((prev) =>
+            prev.map((r) =>
+              r.sessionId === targetRecord.sessionId && r.studentId === targetRecord.studentId
+                ? saved
+                : r
+            )
+          );
+        }
+      } catch (err) {
+        console.warn('Attendance save issue:', err);
+      }
+    }
+  };
+
+  const handleSetAllHadir = async (targetSession?: AttendanceSession) => {
+    if (!activeClass) {
+      showToast('Pilih Rombel Terlebih Dahulu', 'Silakan buat atau pilih kelas aktif terlebih dahulu.');
+      return;
+    }
+
+    // Resolve target session for activeClass (robust fallback)
+    let sess = targetSession || (activeSession && activeSession.classId === activeClass.id ? activeSession : null);
+    if (!sess) {
+      const classSessions = sessions.filter((s) => s.classId === activeClass.id);
+      if (classSessions.length > 0) {
+        sess = classSessions[0];
+        setActiveSession(sess);
       }
     }
 
+    if (!sess) {
+      showToast(
+        'Belum Ada Sesi Pertemuan',
+        'Buat sesi presensi terlebih dahulu dengan menekan tombol "+ Buat Absen Baru".'
+      );
+      return;
+    }
+
+    const classStudents = students.filter((s) => s.classId === activeClass.id);
+    if (classStudents.length === 0) {
+      showToast(
+        'Kelas Masih Kosong',
+        'Belum ada data murid di kelas ini. Silakan tambahkan murid terlebih dahulu di tab "Data Murid".'
+      );
+      return;
+    }
+
+    const studentIdsInClass = new Set(classStudents.map((s) => s.id));
+
+    // Preserve existing record IDs if already exists in this session
+    const allHadirForCurrent: AttendanceRecord[] = classStudents.map((std) => {
+      const existing = attendanceRecords.find(
+        (r) => r.sessionId === sess.id && r.studentId === std.id
+      );
+      return {
+        id: existing?.id || crypto.randomUUID(),
+        sessionId: sess.id,
+        studentId: std.id,
+        status: 'H',
+        keterangan: existing?.status === 'H' ? existing.keterangan || '' : '',
+        updatedAt: new Date().toISOString(),
+      };
+    });
+
+    // Optimistic UI update: instantly update local state so UI responds with no lag
     const filteredOther = attendanceRecords.filter(
-      (r) => !(r.sessionId === activeSession.id && studentIdsInClass.has(r.studentId))
+      (r) => !(r.sessionId === sess.id && studentIdsInClass.has(r.studentId))
     );
 
     const updated = [...filteredOther, ...allHadirForCurrent];
     setAttendanceRecords(updated);
-    syncAttendanceSessionToJournal(activeSession, updated, students);
+    syncAttendanceSessionToJournal(sess, updated, students);
 
     showToast(
-      'Seluruh Murid Diset Hadir',
-      `Presensi sesi ${activeSession.pertemuanKe} diperbarui menjadi 100% Hadir & disinkronkan ke Agenda Mengajar.`
+      'Semua Murid Hadir (100%)',
+      `Presensi pertemuan Ke-${sess.pertemuanKe} (${classStudents.length} siswa) berhasil diset 100% Hadir & disinkronkan ke Agenda Mengajar.`
     );
+
+    // Save to Supabase in background
+    if (!isDemoMode && userId) {
+      try {
+        const success = await upsertAttendanceRecordsBatch(allHadirForCurrent);
+        if (!success) {
+          console.warn('[handleSetAllHadir] Batch upsert warning, retrying individual fallback');
+          Promise.all(allHadirForCurrent.map((rec) => upsertAttendanceRecord(rec))).catch((err) =>
+            console.error('[handleSetAllHadir] Fallback upsert error:', err)
+          );
+        }
+      } catch (err) {
+        console.error('[handleSetAllHadir] Error saving to Supabase:', err);
+      }
+    }
   };
 
   const handleSaveToCloud = () => {
@@ -599,6 +736,10 @@ export default function App() {
     catatan?: string;
     setAllHadir?: boolean;
   }) => {
+    if (!activeClass) {
+      showToast('Pilih Rombel Terlebih Dahulu', 'Silakan pilih atau buat rombel kelas sebelum membuat sesi presensi.');
+      return;
+    }
     // Find next session number for current class
     const classSess = sessions.filter((s) => s.classId === activeClass.id);
     const nextNumber =
@@ -678,7 +819,7 @@ export default function App() {
     setSessions((prev) =>
       prev.map((s) => (s.id === updatedSession.id ? updatedSession : s))
     );
-    if (activeSession.id === updatedSession.id) {
+    if (activeSession?.id === updatedSession.id) {
       setActiveSession(updatedSession);
     }
     // Sinkronkan perubahan sesi absen ke Agenda Mengajar
@@ -690,7 +831,7 @@ export default function App() {
   };
 
   const handleDeleteSession = async (sessionId: string) => {
-    const classSess = sessions.filter((s) => s.classId === activeClass.id);
+    const classSess = activeClass ? sessions.filter((s) => s.classId === activeClass.id) : [];
     if (classSess.length <= 1) {
       showToast('Perhatian', 'Minimal harus tersisa 1 sesi pertemuan pada rombel ini.');
       return;
@@ -709,8 +850,8 @@ export default function App() {
     setSessions(remaining);
     setAttendanceRecords((prev) => prev.filter((r) => r.sessionId !== sessionId));
 
-    if (activeSession.id === sessionId) {
-      const remainingForClass = remaining.filter((s) => s.classId === activeClass.id);
+    if (activeSession?.id === sessionId) {
+      const remainingForClass = activeClass ? remaining.filter((s) => s.classId === activeClass.id) : [];
       if (remainingForClass.length > 0) {
         setActiveSession(remainingForClass[0]);
       }
@@ -723,6 +864,7 @@ export default function App() {
 
   // Handlers for Grades
   const handleUpdateGrade = async (studentId: string, updatedGrade: Partial<GradeRecord>) => {
+    if (!activeClass) return;
     const idx = grades.findIndex((g) => g.studentId === studentId);
     let targetGrade: GradeRecord;
     if (idx >= 0) {
@@ -758,6 +900,7 @@ export default function App() {
   };
 
   const handleGenerateAllDescriptions = async () => {
+    const kkm = activeClass?.kkm || 75;
     const updatedList = grades.map((g) => {
       const validF = (g.formatif || []).filter((v): v is number => v !== null && !isNaN(v));
       const avg = validF.length > 0 ? validF.reduce((a, b) => a + b, 0) / validF.length : 75;
@@ -767,7 +910,7 @@ export default function App() {
       let deskripsi = '';
       if (avg >= 88) {
         deskripsi = `${name} menunjukkan penguasaan SANGAT BAIK pada seluruh capaian TP 1-5 dan memiliki kemandirian praktik yang tinggi.`;
-      } else if (avg >= activeClass.kkm) {
+      } else if (avg >= kkm) {
         deskripsi = `${name} menunjukkan pencapaian yang BAIK dalam ketercapaian tujuan pembelajaran, perlu penguatan ketelitian pada evaluasi akhir.`;
       } else {
         deskripsi = `${name} perlu bimbingan dan pendampingan intensif (remedial) dalam memahami konsep dasar dan keselamatan kerja bengkel.`;
@@ -898,11 +1041,16 @@ export default function App() {
 
   // Handlers for Students
   const handleAddStudent = async (newStd: Omit<Student, 'id' | 'noUrut'>) => {
+    if (!activeClass) {
+      showToast('Pilih Rombel Terlebih Dahulu', 'Silakan buat atau pilih rombel kelas.');
+      return;
+    }
     const currentClassStudents = students.filter((s) => s.classId === activeClass.id);
     const nextNo = currentClassStudents.length + 1;
     const student: Student = {
       ...newStd,
       id: crypto.randomUUID(),
+      classId: activeClass.id,
       noUrut: nextNo,
     };
     if (!isDemoMode && userId) {
@@ -1039,11 +1187,16 @@ export default function App() {
       }
       setClasses((prev) => [...prev, created]);
       setActiveClass(created);
+      setActiveSession(null);
     } else {
       setClasses((prev) => [...prev, newClassRoom]);
       setActiveClass(newClassRoom);
+      setActiveSession(null);
     }
-    showToast('Rombel Berhasil Ditambahkan', `Kelas ${newClassRoom.nama} siap digunakan.`);
+    showToast(
+      'Rombel Berhasil Ditambahkan',
+      `Kelas ${newClassRoom.nama} siap digunakan. Kelas masih kosong (belum ada murid dan sesi presensi).`
+    );
   };
 
   const handleEditClass = async (updatedCls: ClassRoom) => {
@@ -1055,17 +1208,13 @@ export default function App() {
       }
     }
     setClasses((prev) => prev.map((c) => (c.id === updatedCls.id ? updatedCls : c)));
-    if (activeClass.id === updatedCls.id) {
+    if (activeClass?.id === updatedCls.id) {
       setActiveClass(updatedCls);
     }
     showToast('Rombel Diperbarui', `Informasi kelas ${updatedCls.nama} berhasil disimpan.`);
   };
 
   const handleDeleteClass = async (classId: string) => {
-    if (classes.length <= 1) {
-      showToast('Gagal Menghapus', 'Minimal harus ada 1 rombel belajar.');
-      return;
-    }
     const target = classes.find((c) => c.id === classId);
 
     if (!isDemoMode && userId) {
@@ -1078,8 +1227,15 @@ export default function App() {
 
     const remaining = classes.filter((c) => c.id !== classId);
     setClasses(remaining);
-    if (activeClass.id === classId) {
-      setActiveClass(remaining[0]);
+    if (activeClass?.id === classId) {
+      if (remaining.length > 0) {
+        setActiveClass(remaining[0]);
+        const remSess = sessions.filter((s) => s.classId === remaining[0].id);
+        setActiveSession(remSess.length > 0 ? remSess[0] : null);
+      } else {
+        setActiveClass(null);
+        setActiveSession(null);
+      }
     }
     showToast('Rombel Dihapus', `Kelas ${target?.nama || ''} telah dihapus.`);
   };
@@ -1216,9 +1372,42 @@ export default function App() {
           if (profile) setTeacher(profile);
           showToast('Selamat Datang!', `Berhasil masuk ke Ruang Guru (${user.email})`);
         }}
-        onDemoLogin={() => {
+        onDemoLogin={(startEmpty = false) => {
           setDemoMode(true);
-          showToast('Mode Uji Coba Demo', 'Masuk sebagai Guru Pengajar Akun Demo (Lokal & Offline).');
+          if (startEmpty) {
+            setClasses([]);
+            setActiveClass(null);
+            setStudents([]);
+            setSessions([]);
+            setActiveSession(null);
+            setAttendanceRecords([]);
+            setGrades([]);
+            setJournals([]);
+            setFinances([]);
+            try {
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}_demo_classes`, JSON.stringify([]));
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}_demo_students`, JSON.stringify([]));
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}_demo_sessions`, JSON.stringify([]));
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}_demo_attendance`, JSON.stringify([]));
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}_demo_grades`, JSON.stringify([]));
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}_demo_journals`, JSON.stringify([]));
+              localStorage.setItem(`${STORAGE_KEY_PREFIX}_demo_finances`, JSON.stringify([]));
+            } catch (e) {
+              console.warn('Local storage error', e);
+            }
+            showToast('Ruang Guru Bersih Siap Digunakan', 'Data kosong siap diisi dengan rombel dan murid sekolah Anda.');
+          } else {
+            setClasses(initialClasses);
+            setActiveClass(initialClasses[0]);
+            setStudents(initialStudents);
+            setSessions(initialSessions);
+            setActiveSession(initialSessions[0]);
+            setAttendanceRecords(initialAttendanceRecords);
+            setGrades(initialGrades);
+            setJournals(initialJournals);
+            setFinances(initialFinances);
+            showToast('Mode Uji Coba Demo', 'Masuk sebagai Guru Pengajar Akun Demo (Data Simulasi).');
+          }
         }}
         schoolName={schoolName}
       />
@@ -1303,6 +1492,7 @@ export default function App() {
             schoolName={schoolName}
             teacher={teacher}
             printConfig={printConfig}
+            onOpenClassManagement={() => setIsClassModalOpen(true)}
           />
         )}
 
@@ -1315,6 +1505,7 @@ export default function App() {
             teacher={teacher}
             schoolName={schoolName}
             printConfig={printConfig}
+            onOpenClassManagement={() => setIsClassModalOpen(true)}
           />
         )}
 
@@ -1331,6 +1522,7 @@ export default function App() {
             teacher={teacher}
             onUpdateClass={handleEditClass}
             printConfig={printConfig}
+            onOpenClassManagement={() => setIsClassModalOpen(true)}
           />
         )}
 
@@ -1344,6 +1536,7 @@ export default function App() {
             onSaveToCloud={handleSaveToCloud}
             schoolName={schoolName}
             onAddStudentsBatch={handleAddStudentsBatch}
+            onOpenClassManagement={() => setIsClassModalOpen(true)}
           />
         )}
 

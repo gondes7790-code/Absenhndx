@@ -24,6 +24,8 @@ import {
   RotateCcw,
   Clock,
   Layers,
+  GraduationCap,
+  Users,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import {
@@ -38,14 +40,14 @@ import {
 import { PrintableDocument } from './PrintableDocument';
 
 interface AttendanceViewProps {
-  activeClass: ClassRoom;
+  activeClass?: ClassRoom | null;
   students: Student[];
   sessions: AttendanceSession[];
-  activeSession: AttendanceSession;
+  activeSession?: AttendanceSession | null;
   attendanceRecords: AttendanceRecord[];
   onSelectSession: (s: AttendanceSession) => void;
   onUpdateRecord: (studentId: string, status: AttendanceStatus, keterangan?: string) => void;
-  onSetAllHadir: () => void;
+  onSetAllHadir: (session?: AttendanceSession) => void;
   onSaveToCloud: () => void;
   onCreateNewSession: (customData?: {
     pertemuanKe?: number;
@@ -62,6 +64,7 @@ interface AttendanceViewProps {
   onDeleteStudent?: (studentId: string) => void;
   onOpenParentLink: () => void;
   onOpenWhatsAppModal: (targetStudent?: Student) => void;
+  onOpenClassManagement?: () => void;
   schoolName: string;
   teacher?: TeacherProfile;
   printConfig?: PrintConfig;
@@ -71,7 +74,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   activeClass,
   students,
   sessions,
-  activeSession,
+  activeSession: rawActiveSession,
   attendanceRecords,
   onSelectSession,
   onUpdateRecord,
@@ -83,14 +86,9 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   onDeleteStudent,
   onOpenParentLink,
   onOpenWhatsAppModal,
+  onOpenClassManagement,
   schoolName,
-  teacher = {
-    name: 'Hendra Setiawan, S. Pd.',
-    email: 'hendrasetiawan72@guru.smk.belajar.id',
-    nip: '19870415 201201 1 003',
-    school: 'Hadir!',
-    handle: '@hndx07',
-  },
+  teacher,
   printConfig,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -103,17 +101,34 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditSessionModalOpen, setIsEditSessionModalOpen] = useState(false);
 
+  // Class-specific students & sessions (strict filter by activeClass.id)
+  const classStudents = useMemo(() => {
+    if (!activeClass) return [];
+    return students.filter((s) => s.classId === activeClass.id);
+  }, [students, activeClass?.id]);
+
+  const classSessions = useMemo(() => {
+    if (!activeClass) return [];
+    return sessions.filter((s) => s.classId === activeClass.id);
+  }, [sessions, activeClass?.id]);
+
+  // Ensure activeSession belongs to activeClass
+  const activeSession = useMemo(() => {
+    if (!rawActiveSession || !activeClass) return null;
+    if (rawActiveSession.classId && rawActiveSession.classId !== activeClass.id) return null;
+    return rawActiveSession;
+  }, [rawActiveSession, activeClass]);
+
   // Create Session Form State
   const nextSessionNumber = useMemo(() => {
-    const classSess = sessions.filter((s) => s.classId === activeClass.id);
-    return classSess.reduce((max, s) => Math.max(max, s.pertemuanKe), 0) + 1;
-  }, [sessions, activeClass.id]);
+    return classSessions.reduce((max, s) => Math.max(max, s.pertemuanKe), 0) + 1;
+  }, [classSessions]);
 
   const [createPertemuan, setCreatePertemuan] = useState<number>(nextSessionNumber);
   const [createTanggal, setCreateTanggal] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
-  const [createMapel, setCreateMapel] = useState<string>(activeClass.mapel);
+  const [createMapel, setCreateMapel] = useState<string>(activeClass?.mapel || '');
   const [createJam, setCreateJam] = useState<string>('07.15 - 09.15 WIB');
   const [createMateri, setCreateMateri] = useState<string>('');
   const [createKegiatan, setCreateKegiatan] = useState<string>('');
@@ -148,7 +163,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     let dispen = 0;
     let belumDiisi = 0;
 
-    students.forEach((std) => {
+    classStudents.forEach((std) => {
       const rec = recordsMap.get(std.id);
       const status = rec?.status;
       if (status === 'H') hadir++;
@@ -159,7 +174,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       else belumDiisi++;
     });
 
-    const total = students.length || 1;
+    const total = classStudents.length || 1;
     const percentage = Math.round((hadir / total) * 100);
 
     return {
@@ -169,14 +184,14 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       alpa,
       dispen,
       belumDiisi,
-      total: students.length,
+      total: classStudents.length,
       percentage,
     };
-  }, [students, recordsMap]);
+  }, [classStudents, recordsMap]);
 
   // Filter & sort students
   const filteredStudents = useMemo(() => {
-    let list = [...students];
+    let list = [...classStudents];
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter((s) => s.nama.toLowerCase().includes(q) || s.nisn.includes(q));
@@ -190,13 +205,13 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       list.sort((a, b) => a.noUrut - b.noUrut);
     }
     return list;
-  }, [students, searchQuery, sortMode]);
+  }, [classStudents, searchQuery, sortMode]);
 
   // Open Create Modal handler
   const handleOpenCreateModal = () => {
     setCreatePertemuan(nextSessionNumber);
     setCreateTanggal(new Date().toISOString().split('T')[0]);
-    setCreateMapel(activeClass.mapel);
+    setCreateMapel(activeClass?.mapel || '');
     setCreateJam('07.15 - 09.15 WIB');
     setCreateMateri('');
     setCreateKegiatan('');
@@ -258,7 +273,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   // Generate WhatsApp report text
   const generateWhatsAppReport = () => {
     const absentList: string[] = [];
-    students.forEach((s) => {
+    classStudents.forEach((s) => {
       const rec = recordsMap.get(s.id);
       if (rec && rec.status && rec.status !== 'H') {
         const ket = rec.keterangan ? ` (${rec.keterangan})` : '';
@@ -268,12 +283,12 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
 
     const text = `*LAPORAN PRESENSI HARIAN SISWA*
 🏫 *${schoolName}*
-📚 Kelas: ${activeClass.nama} | ${activeClass.mapel}
+📚 Kelas: ${activeClass ? `${activeClass.nama} | ${activeClass.mapel}` : '-'}
 📅 Tanggal: ${activeSession ? activeSession.tanggal : '-'} (Pertemuan Ke-${activeSession ? activeSession.pertemuanKe : '-'})
 📖 Materi: ${activeSession?.materi || 'Kurikulum Merdeka'}
 ━━━━━━━━━━━━━━━━━━
 📊 *Statistik Kehadiran:*
-• Total Siswa: ${students.length}
+• Total Siswa: ${classStudents.length}
 • Hadir (H): ${metrics.hadir} (${metrics.percentage}%)
 • Sakit (S): ${metrics.sakit}
 • Izin (I): ${metrics.izin}
@@ -319,7 +334,7 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
     link.setAttribute('href', encodedUri);
     link.setAttribute(
       'download',
-      `Presensi_${activeClass.nama}_Pertemuan_${activeSession?.pertemuanKe || 1}.csv`
+      `Presensi_${activeClass?.nama || 'Kelas'}_Pertemuan_${activeSession?.pertemuanKe || 1}.csv`
     );
     document.body.appendChild(link);
     link.click();
@@ -327,7 +342,7 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
   };
 
   const handleTriggerConfetti = () => {
-    onSetAllHadir();
+    onSetAllHadir(activeSession || undefined);
     try {
       confetti({
         particleCount: 50,
@@ -340,17 +355,47 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
     }
   };
 
+  if (!activeClass) {
+    return (
+      <div className="bg-[#fffdf8] rounded-3xl p-8 border-2 border-slate-900 shadow-[4px_4px_0px_#1e293b] text-center max-w-xl mx-auto my-6">
+        <div className="w-14 h-14 rounded-2xl bg-[#6ee7b7] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] mx-auto flex items-center justify-center mb-3">
+          <GraduationCap className="w-7 h-7 text-slate-950" />
+        </div>
+        <h3 className="text-base font-black text-slate-900 mb-1">Belum Ada Rombel / Kelas Aktif</h3>
+        <p className="text-xs font-bold text-slate-600 mb-4">
+          Silakan buat rombel kelas pertama Anda melalui menu Kelola Rombel untuk mulai presensi.
+        </p>
+        {onOpenClassManagement && (
+          <button
+            onClick={onOpenClassManagement}
+            className="px-4 py-2.5 rounded-2xl bg-[#6ee7b7] hover:bg-[#34d399] border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] font-black text-xs text-slate-950 cursor-pointer inline-flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Buat Rombel Pertama</span>
+          </button>
+        )}
+      </div>
+    );
+  }
+
   if (!activeSession) {
     return (
-      <div className="bg-white rounded-3xl p-8 border-2 border-slate-900 shadow-[4px_4px_0px_#1e293b] text-center">
-        <p className="text-sm font-bold text-slate-600 mb-4">
-          Belum ada sesi presensi untuk kelas ini.
+      <div className="bg-[#fffdf8] rounded-3xl p-8 border-2 border-slate-900 shadow-[4px_4px_0px_#1e293b] text-center max-w-xl mx-auto my-6">
+        <div className="w-14 h-14 rounded-2xl bg-[#ede9fe] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] mx-auto flex items-center justify-center mb-3">
+          <Calendar className="w-7 h-7 text-indigo-950" />
+        </div>
+        <h3 className="text-base font-black text-slate-900 mb-1">
+          Belum Ada Sesi Presensi ({activeClass.nama})
+        </h3>
+        <p className="text-xs font-bold text-slate-600 mb-5">
+          Buat pertemuan presensi pertama untuk kelas ini sekaligus sinkronkan ke agenda mengajar.
         </p>
         <button
           onClick={handleOpenCreateModal}
-          className="px-4 py-2 rounded-2xl bg-[#6ee7b7] text-slate-950 font-black text-xs border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] cursor-pointer"
+          className="px-5 py-2.5 rounded-2xl bg-[#6ee7b7] hover:bg-[#34d399] text-slate-950 font-black text-xs border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] cursor-pointer inline-flex items-center gap-2 transition-all"
         >
-          Buat Pertemuan Pertama & Agenda
+          <Plus className="w-4 h-4" />
+          <span>Buat Pertemuan Pertama & Agenda</span>
         </button>
       </div>
     );
@@ -448,7 +493,7 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
                     Pertemuan Ke-{activeSession.pertemuanKe} ({activeSession.tanggal})
                   </span>
                   <span className="text-xs bg-slate-900 text-white px-2 py-0.5 rounded-full ml-1 font-mono">
-                    {sessions.length} Sesi <ChevronDown className="w-3 h-3 inline-block ml-0.5" />
+                    {classSessions.length} Sesi <ChevronDown className="w-3 h-3 inline-block ml-0.5" />
                   </span>
                 </button>
 
@@ -456,10 +501,10 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
                   <div className="absolute left-0 mt-2 w-72 sm:w-80 bg-white rounded-3xl shadow-[6px_6px_0px_#1e293b] border-2 border-slate-900 py-2 z-50 max-h-72 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
                     <div className="px-3.5 py-1.5 text-[11px] font-black text-slate-500 uppercase tracking-wider border-b border-slate-100 flex items-center justify-between">
                       <span>DAFTAR SESI PERTEMUAN</span>
-                      <span className="font-mono">{sessions.length} Sesi</span>
+                      <span className="font-mono">{classSessions.length} Sesi</span>
                     </div>
                     <div className="p-1.5 space-y-1">
-                      {sessions.map((s) => (
+                      {classSessions.map((s) => (
                         <button
                           key={s.id}
                           onClick={() => {
@@ -507,7 +552,7 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
             <span className="text-[10px] font-black uppercase text-slate-500 shrink-0 font-mono mr-1">
               Sesi:
             </span>
-            {sessions.map((s) => {
+            {classSessions.map((s) => {
               const isActive = s.id === activeSession.id;
               return (
                 <button
@@ -610,7 +655,7 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
               DISTRIBUSI KEHADIRAN
             </span>
             <span className="text-xs font-bold text-slate-600 font-mono">
-              Total: {students.length} Siswa
+              Total: {classStudents.length} Siswa
             </span>
           </div>
 
@@ -669,8 +714,17 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 sm:w-64">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={handleTriggerConfetti}
+              className="px-3 py-1.5 rounded-2xl bg-[#6ee7b7] hover:bg-[#34d399] active:translate-x-[1px] active:translate-y-[1px] text-slate-950 text-xs font-black flex items-center gap-1.5 transition-all border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] cursor-pointer shrink-0"
+              title="Setel semua siswa menjadi Hadir (100%)"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5 text-slate-950" />
+              <span>Semua Hadir</span>
+            </button>
+
+            <div className="relative flex-1 sm:w-64 min-w-[160px]">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
@@ -730,7 +784,22 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
               </tr>
             </thead>
             <tbody className="divide-y-2 divide-slate-100">
-              {filteredStudents.map((student, idx) => {
+              {filteredStudents.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-10 text-center text-slate-500 font-bold bg-[#faf7ee]/30">
+                    <Users className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                    <p className="text-sm text-slate-700 font-black">
+                      {searchQuery ? 'Tidak ada siswa yang sesuai pencarian' : 'Belum Ada Murid di Kelas Ini'}
+                    </p>
+                    <p className="text-xs text-slate-500 font-medium mt-1">
+                      {searchQuery
+                        ? 'Coba kata kunci pencarian lain'
+                        : 'Buka tab "Data Murid" untuk mendaftarkan siswa ke kelas ini.'}
+                    </p>
+                  </td>
+                </tr>
+              ) : (
+                filteredStudents.map((student, idx) => {
                 const record = recordsMap.get(student.id);
                 const currentStatus: AttendanceStatus | '' = record?.status || '';
                 const currentKet = record?.keterangan || '';
@@ -874,7 +943,7 @@ _Laporan resmi dibuat via Sistem Kurikulum Merdeka Hadir! (Tersinkronisasi Otoma
                     </td>
                   </tr>
                 );
-              })}
+              }))}
             </tbody>
           </table>
         </div>

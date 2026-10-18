@@ -11,7 +11,7 @@ import { APP_LOGO_URL } from '../utils/printConfig';
 interface NavbarProps {
   onOpenDrawer: () => void;
   classes: ClassRoom[];
-  activeClass: ClassRoom;
+  activeClass?: ClassRoom | null;
   onSelectClass: (cls: ClassRoom) => void;
   onOpenClassManagement?: () => void;
 }
@@ -68,13 +68,19 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Right: HANYA BILAH PEMILIH KELAS */}
         <div className="relative shrink-0">
           <button
-            onClick={() => setDropdownOpen(!dropdownOpen)}
+            onClick={() => {
+              if (classes.length === 0 && onOpenClassManagement) {
+                onOpenClassManagement();
+              } else {
+                setDropdownOpen(!dropdownOpen);
+              }
+            }}
             className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-2xl bg-[#e0f2fe] hover:bg-[#bae6fd] active:translate-x-[1px] active:translate-y-[1px] border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] text-xs sm:text-sm font-black text-slate-900 transition-all cursor-pointer"
             title="Ganti Kelas Aktif"
           >
             <GraduationCap className="w-4 h-4 text-sky-900 shrink-0 hidden sm:block" />
             <span className="max-w-[130px] sm:max-w-[200px] truncate">
-              {activeClass.nama}
+              {activeClass?.nama || (classes.length > 0 ? 'Pilih Kelas' : '+ Buat Rombel')}
             </span>
             <ChevronDown className="w-4 h-4 text-slate-900 shrink-0 ml-0.5" />
           </button>
@@ -88,28 +94,34 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </span>
               </div>
               <div className="p-1.5 space-y-1">
-                {classes.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => {
-                      onSelectClass(c);
-                      setDropdownOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer ${
-                      c.id === activeClass.id
-                        ? 'bg-[#dcfce7] border-2 border-slate-900 text-slate-950 font-black shadow-[2px_2px_0px_#1e293b]'
-                        : 'hover:bg-[#faf7ee] text-slate-800 font-bold border border-transparent'
-                    }`}
-                  >
-                    <div>
-                      <p className="leading-tight">{c.nama}</p>
-                      <p className="text-[10px] text-slate-500 font-medium mt-0.5">{c.mapel}</p>
-                    </div>
-                    {c.id === activeClass.id && (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-800 shrink-0" />
-                    )}
-                  </button>
-                ))}
+                {classes.length === 0 ? (
+                  <div className="py-4 px-3 text-center text-xs text-slate-500 font-medium">
+                    Belum ada rombel terdaftar.
+                  </div>
+                ) : (
+                  classes.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => {
+                        onSelectClass(c);
+                        setDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer ${
+                        c.id === activeClass?.id
+                          ? 'bg-[#dcfce7] border-2 border-slate-900 text-slate-950 font-black shadow-[2px_2px_0px_#1e293b]'
+                          : 'hover:bg-[#faf7ee] text-slate-800 font-bold border border-transparent'
+                      }`}
+                    >
+                      <div>
+                        <p className="leading-tight">{c.nama}</p>
+                        <p className="text-[10px] text-slate-500 font-medium mt-0.5">{c.mapel}</p>
+                      </div>
+                      {c.id === activeClass?.id && (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-800 shrink-0" />
+                      )}
+                    </button>
+                  ))
+                )}
               </div>
               {onOpenClassManagement && (
                 <div className="pt-1.5 mt-1 border-t-2 border-slate-100 px-1.5">

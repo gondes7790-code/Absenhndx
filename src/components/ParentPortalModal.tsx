@@ -22,7 +22,7 @@ export type PortalType = 'absen' | 'tabungan' | 'nilai' | 'rekap';
 interface ParentPortalModalProps {
   isOpen: boolean;
   onClose: () => void;
-  activeClass: ClassRoom;
+  activeClass?: ClassRoom | null;
   students: Student[];
   attendanceRecords: AttendanceRecord[];
   grades: GradeRecord[];
@@ -54,6 +54,8 @@ export const ParentPortalModal: React.FC<ParentPortalModalProps> = ({
   useEffect(() => {
     setActivePortalType(initialType);
   }, [initialType, isOpen]);
+
+  if (!isOpen || !activeClass) return null;
 
   const currentStudent = students.find((s) => s.id === selectedStudentId) || students[0];
 
