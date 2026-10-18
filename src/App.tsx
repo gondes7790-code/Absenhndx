@@ -1333,7 +1333,7 @@ export default function App() {
     return (
       <PublicPortalView
         initialType={publicPortalParams.tipe}
-        initialClassId={publicPortalParams.kelas || activeClass.id}
+        initialClassId={publicPortalParams.kelas || activeClass?.id || ''}
         initialNisn={publicPortalParams.nisn}
         classes={classes}
         students={students}
@@ -1654,6 +1654,8 @@ export default function App() {
         finances={finances}
         teacher={teacher}
         schoolName={schoolName}
+        userId={userId}
+        isDemoMode={isDemoMode}
         onOpenFullPublicPortal={() => {
           setIsParentPortalOpen(false);
           setIsPublicPortalMode(true);
