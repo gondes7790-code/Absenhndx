@@ -9,6 +9,10 @@ export const SMK_BISA_LOGO_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www
 
 export const GARUDA_LOGO_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><circle cx="50" cy="50" r="48" fill="%23ffffff" stroke="%23b45309" stroke-width="3"/><path d="M50 15 L65 35 L85 45 L65 60 L70 85 L50 72 L30 85 L35 60 L15 45 L35 35 Z" fill="%23d97706"/><rect x="42" y="42" width="16" height="16" fill="%23dc2626" stroke="%23000000" stroke-width="1.5"/></svg>`;
 
+/** Render SVG as an image resource, never as HTML, to prevent markup execution. */
+export const svgToDataUrl = (svg: string): string =>
+  `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+
 export const DEFAULT_PRINT_CONFIG: PrintConfig = {
   dinasHeader: 'PEMERINTAH DAERAH PROVINSI • DINAS PENDIDIKAN',
   dinasSubHeader: 'CABANG DINAS PENDIDIKAN WILAYAH SATUAN PENDIDIKAN',
