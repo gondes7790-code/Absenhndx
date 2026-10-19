@@ -142,60 +142,47 @@ ALTER TABLE public.grades ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.journals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.finances ENABLE ROW LEVEL SECURITY;
 
--- 1. Kebijakan Profil: Hanya pemilik akun
-CREATE POLICY "Pendidik dapat mengelola profil sendiri"
-  ON public.profiles FOR ALL
-  USING (auth.uid() = id);
+-- Re-runnable, tenant-isolated RLS policies. No base table is public.
+DROP POLICY IF EXISTS "Pendidik dapat mengelola profil sendiri" ON public.profiles;
+DROP POLICY IF EXISTS "Pendidik hanya melihat kelas miliknya" ON public.classes;
+DROP POLICY IF EXISTS "Pendidik hanya mengelola kelas miliknya" ON public.classes;
+DROP POLICY IF EXISTS "Pendidik mengelola murid pada kelasnya" ON public.students;
+DROP POLICY IF EXISTS "Pendidik mengelola sesi presensi miliknya" ON public.attendance_sessions;
+DROP POLICY IF EXISTS "Pendidik mengelola detail presensi kelas miliknya" ON public.attendance_records;
+DROP POLICY IF EXISTS "Pendidik mengelola nilai murid kelas miliknya" ON public.grades;
+DROP POLICY IF EXISTS "Pendidik mengelola agenda jurnal miliknya" ON public.journals;
+DROP POLICY IF EXISTS "Pendidik mengelola kas dan tabungan kelasnya" ON public.finances;
+DROP POLICY IF EXISTS "Wali murid dapat melihat presensi publik terbatas" ON public.attendance_records;
 
--- 2. Kebijakan Kelas: Hanya pendidik yang membuat kelas
-CREATE POLICY "Pendidik hanya melihat kelas miliknya"
-  ON public.classes FOR SELECT
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Pendidik hanya mengelola kelas miliknya"
-  ON public.classes FOR ALL
-  USING (auth.uid() = user_id);
-
--- 3. Kebijakan Data Murid
-CREATE POLICY "Pendidik mengelola murid pada kelasnya"
-  ON public.students FOR ALL
-  USING (auth.uid() = user_id);
-
--- 4. Kebijakan Sesi Presensi
-CREATE POLICY "Pendidik mengelola sesi presensi miliknya"
-  ON public.attendance_sessions FOR ALL
-  USING (auth.uid() = user_id);
-
--- 5. Kebijakan Detail Presensi
-CREATE POLICY "Pendidik mengelola detail presensi kelas miliknya"
-  ON public.attendance_records FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.attendance_sessions s
-      WHERE s.id = attendance_records.session_id
-      AND s.user_id = auth.uid()
-    )
-  );
-
--- 6. Kebijakan Nilai Kurikulum Merdeka
-CREATE POLICY "Pendidik mengelola nilai murid kelas miliknya"
-  ON public.grades FOR ALL
-  USING (auth.uid() = user_id);
-
--- 7. Kebijakan Jurnal Pendidik
-CREATE POLICY "Pendidik mengelola agenda jurnal miliknya"
-  ON public.journals FOR ALL
-  USING (auth.uid() = user_id);
-
--- 8. Kebijakan Kas & Tabungan
-CREATE POLICY "Pendidik mengelola kas dan tabungan kelasnya"
-  ON public.finances FOR ALL
-  USING (auth.uid() = user_id);
-
--- 9. Kebijakan Akses Publik Terbatas (Portal Wali Murid dengan Token Aman)
-CREATE POLICY "Wali murid dapat melihat presensi publik terbatas"
-  ON public.attendance_records FOR SELECT
-  USING (true);
+CREATE POLICY "Pendidik dapat mengelola profil sendiri" ON public.profiles FOR ALL
+  USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+CREATE POLICY "Pendidik mengelola kelas miliknya" ON public.classes FOR ALL
+  USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Pendidik mengelola murid pada kelasnya" ON public.students FOR ALL
+  USING (auth.uid() = user_id AND EXISTS (SELECT 1 FROM public.classes c WHERE c.id = class_id AND c.user_id = auth.uid()))
+  WITH CHECK (auth.uid() = user_id AND EXISTS (SELECT 1 FROM public.classes c WHERE c.id = class_id AND c.user_id = auth.uid()));
+CREATE POLICY "Pendidik mengelola sesi presensi miliknya" ON public.attendance_sessions FOR ALL
+  USING (auth.uid() = user_id AND EXISTS (SELECT 1 FROM public.classes c WHERE c.id = class_id AND c.user_id = auth.uid()))
+  WITH CHECK (auth.uid() = user_id AND EXISTS (SELECT 1 FROM public.classes c WHERE c.id = class_id AND c.user_id = auth.uid()));
+CREATE POLICY "Pendidik mengelola detail presensi kelas miliknya" ON public.attendance_records FOR ALL
+  USING (EXISTS (
+    SELECT 1 FROM public.attendance_sessions s JOIN public.students st ON st.id = student_id
+    WHERE s.id = session_id AND s.user_id = auth.uid() AND st.class_id = s.class_id AND st.user_id = auth.uid()
+  ))
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM public.attendance_sessions s JOIN public.students st ON st.id = student_id
+    WHERE s.id = session_id AND s.user_id = auth.uid() AND st.class_id = s.class_id AND st.user_id = auth.uid()
+  ));
+CREATE POLICY "Pendidik mengelola nilai murid kelas miliknya" ON public.grades FOR ALL
+  USING (auth.uid() = user_id AND EXISTS (SELECT 1 FROM public.classes c JOIN public.students st ON st.class_id = c.id WHERE c.id = class_id AND st.id = student_id AND c.user_id = auth.uid() AND st.user_id = auth.uid()))
+  WITH CHECK (auth.uid() = user_id AND EXISTS (SELECT 1 FROM public.classes c JOIN public.students st ON st.class_id = c.id WHERE c.id = class_id AND st.id = student_id AND c.user_id = auth.uid() AND st.user_id = auth.uid()));
+CREATE POLICY "Pendidik mengelola agenda jurnal miliknya" ON public.journals FOR ALL
+  USING (auth.uid() = user_id AND (class_id IS NULL OR EXISTS (SELECT 1 FROM public.classes c WHERE c.id = class_id AND c.user_id = auth.uid())))
+  WITH CHECK (auth.uid() = user_id AND (class_id IS NULL OR EXISTS (SELECT 1 FROM public.classes c WHERE c.id = class_id AND c.user_id = auth.uid())));
+CREATE POLICY "Pendidik mengelola kas dan tabungan kelasnya" ON public.finances FOR ALL
+  USING (auth.uid() = user_id AND EXISTS (SELECT 1 FROM public.classes c WHERE c.id = class_id AND c.user_id = auth.uid()) AND (student_id IS NULL OR EXISTS (SELECT 1 FROM public.students st WHERE st.id = student_id AND st.class_id = class_id AND st.user_id = auth.uid())))
+  WITH CHECK (auth.uid() = user_id AND EXISTS (SELECT 1 FROM public.classes c WHERE c.id = class_id AND c.user_id = auth.uid()) AND (student_id IS NULL OR EXISTS (SELECT 1 FROM public.students st WHERE st.id = student_id AND st.class_id = class_id AND st.user_id = auth.uid())));
+-- Public portal must use the token RPC migration; direct table SELECT is intentionally absent.
 `;
 
 export interface SupabaseConfig {
