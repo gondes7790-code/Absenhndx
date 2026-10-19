@@ -47,7 +47,7 @@ function getPublicClient(): SupabaseClient {
       'Situs ini belum dikonfigurasi. Admin perlu mengisi VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY saat build.'
     );
   }
-  if (!/^https?:\/\//.test(url)) url = `https://${url}`;
+  if (!/^https:\/\//.test(url)) url = `https://${url}`;
   client = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
