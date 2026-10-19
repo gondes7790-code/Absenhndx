@@ -92,10 +92,6 @@ export default function App() {
         const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_demo_classes`);
         return saved ? JSON.parse(saved) : initialClasses;
       }
-      if (userId) {
-        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_u_${userId}_classes`);
-        return saved ? JSON.parse(saved) : [];
-      }
       return [];
     } catch {
       return isDemoMode ? initialClasses : [];
@@ -112,10 +108,6 @@ export default function App() {
         const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_demo_students`);
         return saved ? JSON.parse(saved) : initialStudents;
       }
-      if (userId) {
-        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_u_${userId}_students`);
-        return saved ? JSON.parse(saved) : [];
-      }
       return [];
     } catch {
       return isDemoMode ? initialStudents : [];
@@ -127,10 +119,6 @@ export default function App() {
       if (isDemoMode) {
         const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_demo_sessions`);
         return saved ? JSON.parse(saved) : initialSessions;
-      }
-      if (userId) {
-        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_u_${userId}_sessions`);
-        return saved ? JSON.parse(saved) : [];
       }
       return [];
     } catch {
@@ -148,10 +136,6 @@ export default function App() {
         const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_demo_attendance`);
         return saved ? JSON.parse(saved) : initialAttendanceRecords;
       }
-      if (userId) {
-        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_u_${userId}_attendance`);
-        return saved ? JSON.parse(saved) : [];
-      }
       return [];
     } catch {
       return isDemoMode ? initialAttendanceRecords : [];
@@ -163,10 +147,6 @@ export default function App() {
       if (isDemoMode) {
         const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_demo_grades`);
         return saved ? JSON.parse(saved) : initialGrades;
-      }
-      if (userId) {
-        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_u_${userId}_grades`);
-        return saved ? JSON.parse(saved) : [];
       }
       return [];
     } catch {
@@ -180,10 +160,6 @@ export default function App() {
         const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_demo_journals`);
         return saved ? JSON.parse(saved) : initialJournals;
       }
-      if (userId) {
-        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_u_${userId}_journals`);
-        return saved ? JSON.parse(saved) : [];
-      }
       return [];
     } catch {
       return isDemoMode ? initialJournals : [];
@@ -196,10 +172,6 @@ export default function App() {
         const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_demo_finances`);
         return saved ? JSON.parse(saved) : initialFinances;
       }
-      if (userId) {
-        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_u_${userId}_finances`);
-        return saved ? JSON.parse(saved) : [];
-      }
       return [];
     } catch {
       return isDemoMode ? initialFinances : [];
@@ -211,10 +183,6 @@ export default function App() {
       if (isDemoMode) {
         const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_demo_teacher`);
         return saved ? JSON.parse(saved) : initialTeacher;
-      }
-      if (userId) {
-        const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}_u_${userId}_teacher`);
-        if (saved) return JSON.parse(saved);
       }
       return {
         name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Guru Pendidik',
@@ -318,15 +286,25 @@ export default function App() {
     }, 3200);
   };
 
-  // Sync business data to LocalStorage (User-scoped and Demo-scoped cache)
+  // Remove legacy production caches created by older versions.
   useEffect(() => {
+    if (!userId) return;
     try {
-      const storagePrefix = isDemoMode
-        ? `${STORAGE_KEY_PREFIX}_demo`
-        : userId
-        ? `${STORAGE_KEY_PREFIX}_u_${userId}`
-        : `${STORAGE_KEY_PREFIX}_guest`;
+      const prefix = `${STORAGE_KEY_PREFIX}_u_${userId}_`;
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith(prefix))
+        .forEach((key) => localStorage.removeItem(key));
+    } catch (e) {
+      console.warn('Legacy storage cleanup issue', e);
+    }
+  }, [userId]);
 
+  // Only demo data is persisted locally. Production PII, grades and finances
+  // remain in Supabase and are not duplicated in browser localStorage.
+  useEffect(() => {
+    if (!isDemoMode) return;
+    try {
+      const storagePrefix = `${STORAGE_KEY_PREFIX}_demo`;
       localStorage.setItem(`${storagePrefix}_classes`, JSON.stringify(classes));
       localStorage.setItem(`${storagePrefix}_students`, JSON.stringify(students));
       localStorage.setItem(`${storagePrefix}_sessions`, JSON.stringify(sessions));
@@ -338,8 +316,7 @@ export default function App() {
     } catch (e) {
       console.warn('Storage sync issue', e);
     }
-  }, [isDemoMode, userId, classes, students, sessions, attendanceRecords, grades, journals, finances, teacher]);
-
+  }, [isDemoMode, classes, students, sessions, attendanceRecords, grades, journals, finances, teacher]);
   // Fetch data from Supabase when user is logged in (NOT demo mode)
   useEffect(() => {
     if (isDemoMode || !userId) return;
@@ -1121,7 +1098,7 @@ export default function App() {
     newStds: Omit<Student, 'id' | 'noUrut'>[],
     mode: 'append' | 'replace'
   ) => {
-    if (newStds.length === 0) return;
+    if (newStds.length === 0 || !activeClass) return;
 
     if (mode === 'replace') {
       const otherClassStudents = students.filter((s) => s.classId !== activeClass.id);
@@ -1307,14 +1284,14 @@ export default function App() {
       if (dbClasses) {
         setClasses(dbClasses);
         if (dbClasses.length > 0) {
-          setActiveClass((prev) => dbClasses.find((c) => c.id === prev.id) || dbClasses[0]);
+          setActiveClass((prev) => (prev ? dbClasses.find((c) => c.id === prev.id) || dbClasses[0] : dbClasses[0]));
         }
       }
       if (dbStudents) setStudents(dbStudents);
       if (dbSessions) {
         setSessions(dbSessions);
         if (dbSessions.length > 0) {
-          setActiveSession((prev) => dbSessions.find((s) => s.id === prev.id) || dbSessions[0]);
+          setActiveSession((prev) => (prev ? dbSessions.find((s) => s.id === prev.id) || dbSessions[0] : dbSessions[0]));
         }
       }
       if (dbRecords) setAttendanceRecords(dbRecords);
@@ -1372,42 +1349,20 @@ export default function App() {
           if (profile) setTeacher(profile);
           showToast('Selamat Datang!', `Berhasil masuk ke Ruang Guru (${user.email})`);
         }}
-        onDemoLogin={(startEmpty = false) => {
+        onDemoLogin={() => {
+          // Mode simulasi: murni lokal, tanpa login dan tanpa koneksi ke Supabase.
+          // Setiap masuk selalu mereset ke data contoh bawaan.
           setDemoMode(true);
-          if (startEmpty) {
-            setClasses([]);
-            setActiveClass(null);
-            setStudents([]);
-            setSessions([]);
-            setActiveSession(null);
-            setAttendanceRecords([]);
-            setGrades([]);
-            setJournals([]);
-            setFinances([]);
-            try {
-              localStorage.setItem(`${STORAGE_KEY_PREFIX}_demo_classes`, JSON.stringify([]));
-              localStorage.setItem(`${STORAGE_KEY_PREFIX}_demo_students`, JSON.stringify([]));
-              localStorage.setItem(`${STORAGE_KEY_PREFIX}_demo_sessions`, JSON.stringify([]));
-              localStorage.setItem(`${STORAGE_KEY_PREFIX}_demo_attendance`, JSON.stringify([]));
-              localStorage.setItem(`${STORAGE_KEY_PREFIX}_demo_grades`, JSON.stringify([]));
-              localStorage.setItem(`${STORAGE_KEY_PREFIX}_demo_journals`, JSON.stringify([]));
-              localStorage.setItem(`${STORAGE_KEY_PREFIX}_demo_finances`, JSON.stringify([]));
-            } catch (e) {
-              console.warn('Local storage error', e);
-            }
-            showToast('Ruang Guru Bersih Siap Digunakan', 'Data kosong siap diisi dengan rombel dan murid sekolah Anda.');
-          } else {
-            setClasses(initialClasses);
-            setActiveClass(initialClasses[0]);
-            setStudents(initialStudents);
-            setSessions(initialSessions);
-            setActiveSession(initialSessions[0]);
-            setAttendanceRecords(initialAttendanceRecords);
-            setGrades(initialGrades);
-            setJournals(initialJournals);
-            setFinances(initialFinances);
-            showToast('Mode Uji Coba Demo', 'Masuk sebagai Guru Pengajar Akun Demo (Data Simulasi).');
-          }
+          setClasses(initialClasses);
+          setActiveClass(initialClasses[0]);
+          setStudents(initialStudents);
+          setSessions(initialSessions);
+          setActiveSession(initialSessions[0]);
+          setAttendanceRecords(initialAttendanceRecords);
+          setGrades(initialGrades);
+          setJournals(initialJournals);
+          setFinances(initialFinances);
+          showToast('Mode Simulasi', 'Berjalan dengan data contoh lokal; tidak terhubung ke Supabase.');
         }}
         schoolName={schoolName}
       />
@@ -1420,7 +1375,7 @@ export default function App() {
       {isDemoMode && (
         <div className="bg-[#fef9c3] border-b-2 border-slate-900 px-4 py-2 text-center text-xs font-black text-amber-950 flex items-center justify-center gap-2 shadow-xs">
           <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
-          <span>Mode Demo Offline: Berjalan menggunakan data lokal mandiri dan tidak mengirim data ke Supabase Cloud.</span>
+          <span>Mode Simulasi: berjalan dengan data contoh lokal dan tidak terhubung ke Supabase Cloud.</span>
         </div>
       )}
       {/* Toast floating notification - Vintage Neobrutalist */}
@@ -1455,6 +1410,7 @@ export default function App() {
         }}
         activeClass={activeClass}
         onSwitchClass={() => {
+          if (!activeClass || classes.length === 0) return;
           const nextIdx = (classes.findIndex((c) => c.id === activeClass.id) + 1) % classes.length;
           handleSelectClass(classes[nextIdx]);
           showToast('Kelas Berganti', `Sekarang melihat data ${classes[nextIdx].nama}`);
