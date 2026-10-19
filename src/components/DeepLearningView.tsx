@@ -102,6 +102,13 @@ export const DeepLearningView: React.FC<DeepLearningViewProps> = ({
     }, 700);
   };
 
+  if (!activeClass) {
+    return (
+      <div className="p-6 rounded-3xl border-2 border-slate-900 bg-white font-bold">
+        Pilih kelas terlebih dahulu untuk menjalankan analisis.
+      </div>
+    );
+  }
   const handleApplyAllDescriptions = () => {
     const map = new Map<string, string>();
     predictions.forEach((p) => {
