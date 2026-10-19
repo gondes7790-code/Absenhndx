@@ -36,6 +36,7 @@ import {
   SMK_BISA_LOGO_SVG,
   GARUDA_LOGO_SVG,
   APP_LOGO_URL,
+  svgToDataUrl,
 } from '../utils/printConfig';
 import { PrintableDocument, PrintableDocumentType } from './PrintableDocument';
 
@@ -468,9 +469,10 @@ export const PrintConfigManualEditor: React.FC<PrintConfigManualEditorProps> = (
 
               <div className="w-28 h-28 rounded-2xl bg-white border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] flex items-center justify-center p-2 overflow-hidden mb-3">
                 {parsedLogo.type === 'svg' ? (
-                  <div
-                    className="w-full h-full flex items-center justify-center [&>svg]:w-full [&>svg]:h-full"
-                    dangerouslySetInnerHTML={{ __html: parsedLogo.content }}
+                  <img
+                    src={svgToDataUrl(parsedLogo.content)}
+                    alt="Pratinjau Logo"
+                    className="w-full h-full object-contain"
                   />
                 ) : parsedLogo.type === 'img' && parsedLogo.content ? (
                   <img
@@ -789,9 +791,10 @@ export const PrintConfigManualEditor: React.FC<PrintConfigManualEditorProps> = (
               <div className="w-14 h-14 shrink-0 flex items-center justify-center">
                 {formData.logoPosition === 'left' ? (
                   parsedLogo.type === 'svg' ? (
-                    <div
-                      className="w-12 h-12 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full"
-                      dangerouslySetInnerHTML={{ __html: parsedLogo.content }}
+                    <img
+                      src={svgToDataUrl(parsedLogo.content)}
+                      alt="Logo Sekolah"
+                      className="w-12 h-12 object-contain"
                     />
                   ) : parsedLogo.type === 'img' && parsedLogo.content ? (
                     <img
@@ -847,9 +850,10 @@ export const PrintConfigManualEditor: React.FC<PrintConfigManualEditorProps> = (
               <div className="w-14 h-14 shrink-0 flex items-center justify-center">
                 {formData.logoPosition === 'right' || formData.logoPosition === 'both' ? (
                   parsedLogo.type === 'svg' ? (
-                    <div
-                      className="w-12 h-12 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full"
-                      dangerouslySetInnerHTML={{ __html: parsedLogo.content }}
+                    <img
+                      src={svgToDataUrl(parsedLogo.content)}
+                      alt="Logo Sekolah"
+                      className="w-12 h-12 object-contain"
                     />
                   ) : parsedLogo.type === 'img' && parsedLogo.content ? (
                     <img
