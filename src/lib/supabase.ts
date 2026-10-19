@@ -20,8 +20,10 @@ export function getSupabase(): SupabaseClient {
   let validUrl = cfg.url?.trim() || '';
   if (!validUrl) {
     validUrl = 'https://placeholder-project.supabase.co';
-  } else if (!validUrl.startsWith('http://') && !validUrl.startsWith('https://')) {
-    validUrl = 'https://' + validUrl;
+  } else if (!validUrl.startsWith('https://')) {
+    // Never permit plaintext Supabase connections in production.
+    console.warn('[Supabase] URL HTTP ditolak; gunakan endpoint HTTPS.');
+    validUrl = 'https://placeholder-project.supabase.co';
   }
   const validKey = cfg.anonKey?.trim() || 'placeholder-anon-key';
 
