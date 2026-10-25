@@ -116,8 +116,8 @@ create table if not exists public.classes (
   tahun_ajaran   text default '2026/2027',
   semester       text default 'Ganjil' check (semester in ('Ganjil', 'Genap')),
   mapel          text,
-  kkm            numeric default 75,
-  formatif_count int default 5,
+  kkm            numeric default 75 check (kkm between 0 and 100),
+  formatif_count int default 5 check (formatif_count between 1 and 15),
   tp_titles      jsonb default '{}'::jsonb,
   created_at     timestamptz not null default now()
 );
@@ -128,7 +128,7 @@ create table if not exists public.students (
   user_id      uuid not null references auth.users(id) on delete cascade,
   class_id     uuid not null references public.classes(id) on delete cascade,
   nisn         text,
-  no_urut      int default 1,
+  no_urut      int default 1 check (no_urut > 0),
   nama         text not null,
   gender       text default 'L' check (gender in ('L', 'P')),
   kontak_ortu  text default '',
@@ -141,7 +141,7 @@ create table if not exists public.attendance_sessions (
   id                uuid primary key default gen_random_uuid(),
   user_id           uuid not null references auth.users(id) on delete cascade,
   class_id          uuid not null references public.classes(id) on delete cascade,
-  pertemuan_ke      int not null default 1,
+  pertemuan_ke      int not null default 1 check (pertemuan_ke > 0),
   tanggal           date not null,
   mapel             text,
   jam_pelajaran     text,
@@ -202,7 +202,7 @@ create table if not exists public.finances (
   tipe        text not null check (tipe in ('Pemasukan', 'Pengeluaran')),
   kategori    text not null check (kategori in ('Kas Kelas', 'Tabungan Siswa')),
   keterangan  text,
-  nominal     numeric not null default 0,
+  nominal     numeric not null default 0 check (nominal >= 0),
   pencatat    text,
   created_at  timestamptz not null default now()
 );
@@ -252,31 +252,118 @@ drop policy if exists "students_own" on public.students;
 create policy "students_own" on public.students
   for all to authenticated
   using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1 from public.classes c
+      where c.id = students.class_id
+        and c.user_id = auth.uid()
+    )
+  );
 
 drop policy if exists "attendance_sessions_own" on public.attendance_sessions;
 create policy "attendance_sessions_own" on public.attendance_sessions
   for all to authenticated
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using (
+    auth.uid() = user_id
+    and exists (
+      select 1 from public.classes c
+      where c.id = attendance_sessions.class_id
+        and c.user_id = auth.uid()
+    )
+  )
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1 from public.classes c
+      where c.id = attendance_sessions.class_id
+        and c.user_id = auth.uid()
+    )
+  );
 
 drop policy if exists "grades_own" on public.grades;
 create policy "grades_own" on public.grades
   for all to authenticated
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using (
+    auth.uid() = user_id
+    and exists (
+      select 1 from public.classes c
+      where c.id = grades.class_id
+        and c.user_id = auth.uid()
+    )
+    and exists (
+      select 1 from public.students s
+      where s.id = grades.student_id
+        and s.class_id = grades.class_id
+        and s.user_id = auth.uid()
+    )
+  )
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1 from public.classes c
+      where c.id = grades.class_id
+        and c.user_id = auth.uid()
+    )
+    and exists (
+      select 1 from public.students s
+      where s.id = grades.student_id
+        and s.class_id = grades.class_id
+        and s.user_id = auth.uid()
+    )
+  );
 
 drop policy if exists "journals_own" on public.journals;
 create policy "journals_own" on public.journals
   for all to authenticated
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using (
+    auth.uid() = user_id
+    and (class_id is null or exists (
+      select 1 from public.classes c
+      where c.id = journals.class_id
+        and c.user_id = auth.uid()
+    ))
+  )
+  with check (
+    auth.uid() = user_id
+    and (class_id is null or exists (
+      select 1 from public.classes c
+      where c.id = journals.class_id
+        and c.user_id = auth.uid()
+    ))
+  );
 
 drop policy if exists "finances_own" on public.finances;
 create policy "finances_own" on public.finances
   for all to authenticated
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using (
+    auth.uid() = user_id
+    and exists (
+      select 1 from public.classes c
+      where c.id = finances.class_id
+        and c.user_id = auth.uid()
+    )
+    and (student_id is null or exists (
+      select 1 from public.students s
+      where s.id = finances.student_id
+        and s.class_id = finances.class_id
+        and s.user_id = auth.uid()
+    ))
+  )
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1 from public.classes c
+      where c.id = finances.class_id
+        and c.user_id = auth.uid()
+    )
+    and (student_id is null or exists (
+      select 1 from public.students s
+      where s.id = finances.student_id
+        and s.class_id = finances.class_id
+        and s.user_id = auth.uid()
+    ))
+  );
 
 -- attendance_records tidak punya user_id: kepemilikan lewat sesi presensinya
 drop policy if exists "attendance_records_own" on public.attendance_records;
@@ -287,6 +374,12 @@ create policy "attendance_records_own" on public.attendance_records
       select 1 from public.attendance_sessions s
       where s.id = attendance_records.session_id
         and s.user_id = auth.uid()
+        and exists (
+          select 1 from public.students st
+          where st.id = attendance_records.student_id
+            and st.class_id = s.class_id
+            and st.user_id = auth.uid()
+        )
     )
   )
   with check (
@@ -294,6 +387,12 @@ create policy "attendance_records_own" on public.attendance_records
       select 1 from public.attendance_sessions s
       where s.id = attendance_records.session_id
         and s.user_id = auth.uid()
+        and exists (
+          select 1 from public.students st
+          where st.id = attendance_records.student_id
+            and st.class_id = s.class_id
+            and st.user_id = auth.uid()
+        )
     )
   );
 `;
