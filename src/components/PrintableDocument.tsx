@@ -61,6 +61,29 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
 }) => {
   // Use passed printConfig or load from storage
   const cfg = printConfig || getSavedPrintConfig(schoolName);
+  const printableClass: ClassRoom = activeClass || {
+    id: '',
+    nama: 'Kelas belum dipilih',
+    tingkat: '',
+    jurusan: '',
+    tahunAjaran: '-',
+    semester: 'Ganjil',
+    mapel: '-',
+    kkm: 75,
+    formatifCount: 5,
+    tpTitles: {},
+  };
+  const printableTeacher: TeacherProfile = teacher || {
+    name: 'Pendidik',
+    email: '',
+    nip: '-',
+    nuptk: '',
+    school: schoolName,
+    handle: '',
+    phone: '',
+    mapelUtama: '',
+    bio: '',
+  };
 
   // Reference to #print-root element for portal
   const [printTarget, setPrintTarget] = useState<HTMLElement | null>(() => {
@@ -220,22 +243,22 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
                   <td className="py-0.5 font-bold">{cfg.schoolName}</td>
                   <td className="w-28 font-semibold py-0.5">Mata Pelajaran</td>
                   <td className="w-3 py-0.5">:</td>
-                  <td className="py-0.5">{activeSess?.mapel || activeClass.mapel}</td>
+                  <td className="py-0.5">{activeSess?.mapel || printableClass.mapel}</td>
                 </tr>
                 <tr>
                   <td className="font-semibold py-0.5">Kelas / Rombel</td>
                   <td className="py-0.5">:</td>
-                  <td className="py-0.5 font-bold">{activeClass.nama}</td>
+                  <td className="py-0.5 font-bold">{printableClass.nama}</td>
                   <td className="font-semibold py-0.5">Tahun Ajaran</td>
                   <td className="py-0.5">:</td>
                   <td className="py-0.5">
-                    {activeClass.tahunAjaran} ({activeClass.semester})
+                    {printableClass.tahunAjaran} ({printableClass.semester})
                   </td>
                 </tr>
                 <tr>
                   <td className="font-semibold py-0.5">Guru Pengampu</td>
                   <td className="py-0.5">:</td>
-                  <td className="py-0.5">{teacher.name}</td>
+                  <td className="py-0.5">{printableTeacher.name}</td>
                   <td className="font-semibold py-0.5">Topik / Materi</td>
                   <td className="py-0.5">:</td>
                   <td className="py-0.5 italic">
@@ -334,7 +357,7 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
                 REKAPITULASI PRESENSI & KEHADIRAN SISWA
               </h2>
               <p className="text-xs font-semibold mt-1">
-                Tahun Ajaran {activeClass.tahunAjaran} • Semester {activeClass.semester}
+                Tahun Ajaran {printableClass.tahunAjaran} • Semester {printableClass.semester}
               </p>
             </div>
 
@@ -352,10 +375,10 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
                 <tr>
                   <td className="font-semibold py-0.5">Kelas / Rombel</td>
                   <td className="py-0.5">:</td>
-                  <td className="py-0.5 font-bold">{activeClass.nama}</td>
+                  <td className="py-0.5 font-bold">{printableClass.nama}</td>
                   <td className="font-semibold py-0.5">Guru Pengampu</td>
                   <td className="py-0.5">:</td>
-                  <td className="py-0.5">{teacher.name}</td>
+                  <td className="py-0.5">{printableTeacher.name}</td>
                 </tr>
               </tbody>
             </table>
@@ -440,7 +463,7 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
                 BUKU DAFTAR NILAI & CAPAIAN ASESMEN KURIKULUM MERDEKA
               </h2>
               <p className="text-xs font-semibold mt-1">
-                Tahun Ajaran {activeClass.tahunAjaran} • Semester {activeClass.semester}
+                Tahun Ajaran {printableClass.tahunAjaran} • Semester {printableClass.semester}
               </p>
             </div>
 
@@ -453,15 +476,15 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
                   <td className="py-0.5 font-bold">{cfg.schoolName}</td>
                   <td className="w-28 font-semibold py-0.5">KKM / Kriteria TP</td>
                   <td className="w-3 py-0.5">:</td>
-                  <td className="py-0.5">{activeClass.kkm}</td>
+                  <td className="py-0.5">{printableClass.kkm}</td>
                 </tr>
                 <tr>
                   <td className="font-semibold py-0.5">Kelas / Rombel</td>
                   <td className="py-0.5">:</td>
-                  <td className="py-0.5 font-bold">{activeClass.nama}</td>
+                  <td className="py-0.5 font-bold">{printableClass.nama}</td>
                   <td className="font-semibold py-0.5">Mata Pelajaran</td>
                   <td className="py-0.5">:</td>
-                  <td className="py-0.5 font-bold">{activeClass.mapel}</td>
+                  <td className="py-0.5 font-bold">{printableClass.mapel}</td>
                 </tr>
               </tbody>
             </table>
@@ -521,7 +544,7 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
 
       case 'journal': {
         const classJournals = journals.filter(
-          (j) => j.classId === activeClass.id || j.className === activeClass.nama
+          (j) => j.classId === printableClass.id || j.className === printableClass.nama
         );
         const listToDisplay = classJournals.length > 0 ? classJournals : journals;
 
@@ -532,7 +555,7 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
                 BUKU AGENDA & JURNAL MENGAJAR HARIAN PENDIDIK
               </h2>
               <p className="text-xs font-semibold mt-1">
-                Tahun Ajaran {activeClass.tahunAjaran} • Semester {activeClass.semester}
+                Tahun Ajaran {printableClass.tahunAjaran} • Semester {printableClass.semester}
               </p>
             </div>
 
@@ -545,15 +568,15 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
                   <td className="py-0.5 font-bold">{cfg.schoolName}</td>
                   <td className="w-28 font-semibold py-0.5">Nama Pendidik</td>
                   <td className="w-3 py-0.5">:</td>
-                  <td className="py-0.5 font-bold">{teacher.name}</td>
+                  <td className="py-0.5 font-bold">{printableTeacher.name}</td>
                 </tr>
                 <tr>
                   <td className="font-semibold py-0.5">Kelas / Rombel</td>
                   <td className="py-0.5">:</td>
-                  <td className="py-0.5">{activeClass.nama}</td>
+                  <td className="py-0.5">{printableClass.nama}</td>
                   <td className="font-semibold py-0.5">NIP / NUPTK</td>
                   <td className="py-0.5">:</td>
-                  <td className="py-0.5">{teacher.nip}</td>
+                  <td className="py-0.5">{printableTeacher.nip}</td>
                 </tr>
               </tbody>
             </table>
@@ -601,7 +624,7 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
 
       case 'finance': {
         const classTxs = financeTransactions.filter(
-          (t) => t.classId === activeClass.id
+          (t) => t.classId === printableClass.id
         );
         let totalPemasukan = 0;
         let totalPengeluaran = 0;
@@ -618,7 +641,7 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
                 BUKU REKAPITULASI KAS & TABUNGAN SISWA
               </h2>
               <p className="text-xs font-semibold mt-1">
-                Tahun Ajaran {activeClass.tahunAjaran} • Semester {activeClass.semester}
+                Tahun Ajaran {printableClass.tahunAjaran} • Semester {printableClass.semester}
               </p>
             </div>
 
@@ -638,7 +661,7 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
                 <tr>
                   <td className="font-semibold py-0.5">Kelas / Rombel</td>
                   <td className="py-0.5">:</td>
-                  <td className="py-0.5 font-bold">{activeClass.nama}</td>
+                  <td className="py-0.5 font-bold">{printableClass.nama}</td>
                   <td className="font-semibold py-0.5">Total Pengeluaran</td>
                   <td className="py-0.5">:</td>
                   <td className="py-0.5 font-mono text-rose-800">
@@ -648,7 +671,7 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
                 <tr>
                   <td className="font-semibold py-0.5">Wali Kelas / Guru</td>
                   <td className="py-0.5">:</td>
-                  <td className="py-0.5">{teacher.name}</td>
+                  <td className="py-0.5">{printableTeacher.name}</td>
                   <td className="font-semibold py-0.5 font-bold">Saldo Akhir</td>
                   <td className="py-0.5">:</td>
                   <td className="py-0.5 font-mono font-bold">
@@ -775,8 +798,8 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
           <p className="font-semibold">{cfg.documentCity}, {signatureDate}</p>
           <p className="font-bold">Guru Mata Pelajaran / Pendidik</p>
           <div className="h-16" />
-          <p className="font-bold underline uppercase">{teacher.name}</p>
-          <p className="text-[10px] font-mono">NIP. {teacher.nip}</p>
+          <p className="font-bold underline uppercase">{printableTeacher.name}</p>
+          <p className="text-[10px] font-mono">NIP. {printableTeacher.nip}</p>
         </div>
       </div>
 
