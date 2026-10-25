@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import './index.css';
+import { AppErrorBoundary } from './components/AppErrorBoundary';
 
 const root = createRoot(document.getElementById('root')!);
 
@@ -10,15 +11,21 @@ const shareToken = new URLSearchParams(window.location.search).get('p');
 
 if (shareToken) {
   import('./components/PublicSharePage').then(({ PublicSharePage }) => {
-    root.render(<PublicSharePage token={shareToken} />);
+    root.render(
+      <AppErrorBoundary>
+        <PublicSharePage token={shareToken} />
+      </AppErrorBoundary>
+    );
   });
 } else {
   Promise.all([import('./App.tsx'), import('./contexts/AuthContext')]).then(
     ([{ default: App }, { AuthProvider }]) => {
       root.render(
-        <AuthProvider>
-          <App />
-        </AuthProvider>
+        <AppErrorBoundary>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </AppErrorBoundary>
       );
     }
   );
