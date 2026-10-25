@@ -63,3 +63,237 @@ export function saveStoredSupabaseConfig(cfg: SupabaseConfig) {
   }
   localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(cfg));
 }
+
+/**
+ * Mengunduh seluruh data (kelas, murid, presensi, nilai, jurnal, keuangan)
+ * sebagai satu berkas JSON ke perangkat pengguna.
+ */
+export function downloadJsonBackup(data: unknown, filename?: string): void {
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+
+  const stamp = new Date().toISOString().slice(0, 10);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename || `backup-absenhndx-${stamp}.json`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/**
+ * Skema tabel + Row Level Security untuk Supabase (PostgreSQL).
+ * Aman dijalankan berulang kali di Supabase SQL Editor.
+ * Tabel tautan wali murid (public_shares) ada di berkas terpisah:
+ * supabase_public_share.sql — jalankan SETELAH skema ini.
+ */
+export const SUPABASE_SQL_SCHEMA = `-- ============================================================
+-- ABSENHNDX — Skema Database + Row Level Security (RLS)
+-- ============================================================
+
+-- 1. PROFIL PENDIDIK
+create table if not exists public.profiles (
+  id            uuid primary key references auth.users(id) on delete cascade,
+  nip           text,
+  nama_lengkap  text,
+  email         text,
+  nama_sekolah  text,
+  avatar_url    text,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
+-- 2. KELAS / ROMBEL
+create table if not exists public.classes (
+  id             uuid primary key default gen_random_uuid(),
+  user_id        uuid not null references auth.users(id) on delete cascade,
+  nama_kelas     text not null,
+  tingkat        text,
+  jurusan        text,
+  tahun_ajaran   text default '2026/2027',
+  semester       text default 'Ganjil' check (semester in ('Ganjil', 'Genap')),
+  mapel          text,
+  kkm            numeric default 75,
+  formatif_count int default 5,
+  tp_titles      jsonb default '{}'::jsonb,
+  created_at     timestamptz not null default now()
+);
+
+-- 3. MURID
+create table if not exists public.students (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null references auth.users(id) on delete cascade,
+  class_id     uuid not null references public.classes(id) on delete cascade,
+  nisn         text,
+  no_urut      int default 1,
+  nama         text not null,
+  gender       text default 'L' check (gender in ('L', 'P')),
+  kontak_ortu  text default '',
+  catatan      text default '',
+  created_at   timestamptz not null default now()
+);
+
+-- 4. SESI PRESENSI (PERTEMUAN)
+create table if not exists public.attendance_sessions (
+  id                uuid primary key default gen_random_uuid(),
+  user_id           uuid not null references auth.users(id) on delete cascade,
+  class_id          uuid not null references public.classes(id) on delete cascade,
+  pertemuan_ke      int not null default 1,
+  tanggal           date not null,
+  mapel             text,
+  jam_pelajaran     text,
+  materi            text default '',
+  kegiatan          text default '',
+  catatan_kegiatan  text default '',
+  created_at        timestamptz not null default now()
+);
+
+-- 5. CATATAN KEHADIRAN PER MURID
+create table if not exists public.attendance_records (
+  id          uuid primary key default gen_random_uuid(),
+  session_id  uuid not null references public.attendance_sessions(id) on delete cascade,
+  student_id  uuid not null references public.students(id) on delete cascade,
+  status      text not null default 'H' check (status in ('H', 'S', 'I', 'A', 'D')),
+  keterangan  text default '',
+  updated_at  timestamptz not null default now(),
+  constraint attendance_records_session_student_key unique (session_id, student_id)
+);
+
+-- 6. PENILAIAN
+create table if not exists public.grades (
+  id                 uuid primary key default gen_random_uuid(),
+  user_id            uuid not null references auth.users(id) on delete cascade,
+  class_id           uuid not null references public.classes(id) on delete cascade,
+  student_id         uuid not null references public.students(id) on delete cascade,
+  formatif           jsonb default '[]'::jsonb,
+  sts                numeric,
+  sas                numeric,
+  deskripsi_merdeka  text default '',
+  updated_at         timestamptz not null default now(),
+  constraint grades_class_student_key unique (class_id, student_id)
+);
+
+-- 7. JURNAL MENGAJAR
+create table if not exists public.journals (
+  id               uuid primary key default gen_random_uuid(),
+  user_id          uuid not null references auth.users(id) on delete cascade,
+  class_id         uuid references public.classes(id) on delete set null,
+  tanggal          date not null,
+  pendidik         text,
+  mapel            text,
+  pertemuan_ke     int default 1,
+  jam_pelajaran    text,
+  materi_kegiatan  text,
+  absensi_catatan  text default '',
+  semester         text default 'Ganjil',
+  created_at       timestamptz not null default now()
+);
+
+-- 8. KEUANGAN (KAS KELAS & TABUNGAN SISWA)
+create table if not exists public.finances (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  class_id    uuid not null references public.classes(id) on delete cascade,
+  student_id  uuid references public.students(id) on delete set null,
+  tanggal     date not null,
+  tipe        text not null check (tipe in ('Pemasukan', 'Pengeluaran')),
+  kategori    text not null check (kategori in ('Kas Kelas', 'Tabungan Siswa')),
+  keterangan  text,
+  nominal     numeric not null default 0,
+  pencatat    text,
+  created_at  timestamptz not null default now()
+);
+
+-- INDEKS
+create index if not exists idx_classes_user            on public.classes(user_id);
+create index if not exists idx_students_user           on public.students(user_id);
+create index if not exists idx_students_class          on public.students(class_id);
+create index if not exists idx_att_sessions_user       on public.attendance_sessions(user_id);
+create index if not exists idx_att_sessions_class      on public.attendance_sessions(class_id);
+create index if not exists idx_att_records_session     on public.attendance_records(session_id);
+create index if not exists idx_att_records_student     on public.attendance_records(student_id);
+create index if not exists idx_grades_user             on public.grades(user_id);
+create index if not exists idx_journals_user           on public.journals(user_id);
+create index if not exists idx_journals_class          on public.journals(class_id);
+create index if not exists idx_finances_user           on public.finances(user_id);
+create index if not exists idx_finances_class          on public.finances(class_id);
+create index if not exists idx_finances_student        on public.finances(student_id);
+
+-- ============================================================
+-- ROW LEVEL SECURITY: pendidik hanya bisa mengakses datanya sendiri
+-- ============================================================
+alter table public.profiles            enable row level security;
+alter table public.classes             enable row level security;
+alter table public.students            enable row level security;
+alter table public.attendance_sessions enable row level security;
+alter table public.attendance_records  enable row level security;
+alter table public.grades              enable row level security;
+alter table public.journals            enable row level security;
+alter table public.finances            enable row level security;
+
+-- profiles: kunci pada id = auth.uid()
+drop policy if exists "profiles_own" on public.profiles;
+create policy "profiles_own" on public.profiles
+  for all to authenticated
+  using (auth.uid() = id)
+  with check (auth.uid() = id);
+
+-- tabel dengan kolom user_id: auth.uid() = user_id
+drop policy if exists "classes_own" on public.classes;
+create policy "classes_own" on public.classes
+  for all to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+drop policy if exists "students_own" on public.students;
+create policy "students_own" on public.students
+  for all to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+drop policy if exists "attendance_sessions_own" on public.attendance_sessions;
+create policy "attendance_sessions_own" on public.attendance_sessions
+  for all to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+drop policy if exists "grades_own" on public.grades;
+create policy "grades_own" on public.grades
+  for all to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+drop policy if exists "journals_own" on public.journals;
+create policy "journals_own" on public.journals
+  for all to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+drop policy if exists "finances_own" on public.finances;
+create policy "finances_own" on public.finances
+  for all to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- attendance_records tidak punya user_id: kepemilikan lewat sesi presensinya
+drop policy if exists "attendance_records_own" on public.attendance_records;
+create policy "attendance_records_own" on public.attendance_records
+  for all to authenticated
+  using (
+    exists (
+      select 1 from public.attendance_sessions s
+      where s.id = attendance_records.session_id
+        and s.user_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.attendance_sessions s
+      where s.id = attendance_records.session_id
+        and s.user_id = auth.uid()
+    )
+  );
+`;
