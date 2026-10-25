@@ -6,7 +6,10 @@ import {
   GraduationCap,
 } from 'lucide-react';
 import { ClassRoom } from '../types';
-import { APP_LOGO_URL } from '../utils/printConfig';
+
+// Logo khusus header & menu samping (versi 800px, ukuran asli s2022 terlalu besar untuk ikon header).
+const HEADER_LOGO_URL =
+  'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEj35fOFocNE6ell6OOH82N3WfoTEN0juxQMMqmhtPCmp8QeEyII5GvVux10Z2p5L5dU5UKUcGH5_Peal5td3yRkLQAwQOP-85_oxHyXynz5Hfbe3LrMYB3ZfvLZuVybQYJlew8VncdQKaWC9t0RrHKzGCPdCpIPm9sntLR0eZycd-5LPHf7P0XKO0GdpchQ/s800/63906.png';
 
 interface NavbarProps {
   onOpenDrawer: () => void;
@@ -39,14 +42,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Menu className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-slate-900 stroke-[2.5]" />
           </button>
 
-          {/* Header Application Logo (hanya gambar logo) */}
-          <div className="h-10 sm:h-11 rounded-2xl bg-white border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] flex items-center justify-center shrink-0 p-1 overflow-hidden">
-            <img
-              src={APP_LOGO_URL}
-              alt="Logo Hadir!"
-              className="h-full w-auto max-w-[170px] sm:max-w-[240px] object-contain"
-            />
-          </div>
+          {/* Logo header (tanpa frame, tanpa teks) */}
+          <img
+            src={HEADER_LOGO_URL}
+            alt="Logo Hadir!"
+            decoding="async"
+            className="h-10 sm:h-12 w-auto max-w-[160px] sm:max-w-[260px] object-contain shrink-0"
+          />
         </div>
 
         {/* Right: HANYA BILAH PEMILIH KELAS */}
