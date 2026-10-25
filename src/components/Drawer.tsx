@@ -138,27 +138,12 @@ export const Drawer: React.FC<DrawerProps> = ({
       <div className="relative w-full max-w-sm sm:max-w-md bg-[#faf7ee] text-slate-900 h-full flex flex-col z-10 border-r-3 border-slate-900 shadow-[8px_0px_0px_#1e293b] overflow-hidden">
         {/* Header Drawer */}
         <div className="p-4 sm:p-5 bg-[#ffffff] border-b-2 border-slate-900 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] flex items-center justify-center shrink-0 p-1 overflow-hidden">
-              <img
-                src={APP_LOGO_URL}
-                alt="Logo Hadir!"
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h2 className="text-lg font-black text-slate-900 tracking-tight leading-none">
-                  Hadir!
-                </h2>
-              </div>
-              <p className="text-[11px] font-bold text-slate-500 mt-1 flex items-center gap-1">
-                <span>Ruang Pendidik</span>
-                <span className="bg-[#ede9fe] border border-slate-900 text-indigo-950 text-[9px] font-mono px-1.5 py-0.2 rounded-md">
-                  Kurikulum Merdeka
-                </span>
-              </p>
-            </div>
+          <div className="h-10 sm:h-11 rounded-2xl bg-white border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] flex items-center justify-center shrink-0 p-1 overflow-hidden">
+            <img
+              src={APP_LOGO_URL}
+              alt="Logo Hadir!"
+              className="h-full w-auto max-w-[200px] object-contain"
+            />
           </div>
 
           <button
