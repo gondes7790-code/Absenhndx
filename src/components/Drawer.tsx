@@ -18,7 +18,10 @@ import {
   Flame,
 } from 'lucide-react';
 import { ActiveTab, ClassRoom, TeacherProfile } from '../types';
-import { APP_LOGO_URL } from '../utils/printConfig';
+
+// Logo khusus header & menu samping (versi 800px, ukuran asli s2022 terlalu besar untuk ikon header).
+const HEADER_LOGO_URL =
+  'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEj35fOFocNE6ell6OOH82N3WfoTEN0juxQMMqmhtPCmp8QeEyII5GvVux10Z2p5L5dU5UKUcGH5_Peal5td3yRkLQAwQOP-85_oxHyXynz5Hfbe3LrMYB3ZfvLZuVybQYJlew8VncdQKaWC9t0RrHKzGCPdCpIPm9sntLR0eZycd-5LPHf7P0XKO0GdpchQ/s800/63906.png';
 
 interface DrawerProps {
   isOpen: boolean;
@@ -138,13 +141,12 @@ export const Drawer: React.FC<DrawerProps> = ({
       <div className="relative w-full max-w-sm sm:max-w-md bg-[#faf7ee] text-slate-900 h-full flex flex-col z-10 border-r-3 border-slate-900 shadow-[8px_0px_0px_#1e293b] overflow-hidden">
         {/* Header Drawer */}
         <div className="p-4 sm:p-5 bg-[#ffffff] border-b-2 border-slate-900 flex items-center justify-between">
-          <div className="h-10 sm:h-11 rounded-2xl bg-white border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] flex items-center justify-center shrink-0 p-1 overflow-hidden">
-            <img
-              src={APP_LOGO_URL}
-              alt="Logo Hadir!"
-              className="h-full w-auto max-w-[200px] object-contain"
-            />
-          </div>
+          <img
+            src={HEADER_LOGO_URL}
+            alt="Logo Hadir!"
+            decoding="async"
+            className="h-10 sm:h-12 w-auto max-w-[220px] object-contain"
+          />
 
           <button
             onClick={onClose}
