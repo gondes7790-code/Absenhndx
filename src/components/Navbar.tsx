@@ -6,7 +6,7 @@ import {
   GraduationCap,
 } from 'lucide-react';
 import { ClassRoom } from '../types';
-import { APP_LOGO_URL } from '../utils/printConfig';
+import { HEADER_LOGO_URL } from '../utils/printConfig';
 
 interface NavbarProps {
   onOpenDrawer: () => void;
@@ -40,14 +40,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           <div className="flex items-center gap-2.5">
-            {/* Header Application Logo */}
-            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] flex items-center justify-center shrink-0 p-1 overflow-hidden">
-              <img
-                src={APP_LOGO_URL}
-                alt="Logo Hadir!"
-                className="w-full h-full object-contain"
-              />
-            </div>
+            {/* Header Application Logo — polos, tanpa frame */}
+            <img
+              src={HEADER_LOGO_URL}
+              alt="Logo Hadir!"
+              className="h-10 sm:h-11 w-auto max-w-[96px] sm:max-w-[140px] object-contain shrink-0"
+            />
 
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
