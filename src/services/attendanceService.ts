@@ -1,17 +1,18 @@
 import { getSupabase } from '../lib/supabase';
 import { AttendanceSession, AttendanceRecord, AttendanceStatus } from '../types';
 
-export async function fetchAttendanceSessions(userId: string): Promise<AttendanceSession[]> {
+export async function fetchAttendanceSessions(
+  userId: string,
+  classId?: string
+): Promise<AttendanceSession[]> {
   const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from('attendance_sessions')
-    .select('*')
-    .eq('user_id', userId)
-    .order('pertemuan_ke', { ascending: true });
+  let query = supabase.from('attendance_sessions').select('*').eq('user_id', userId);
+  if (classId) query = query.eq('class_id', classId);
+  const { data, error } = await query.order('pertemuan_ke', { ascending: true });
 
   if (error) {
     console.error('[attendanceService] fetchAttendanceSessions error:', error);
-    return [];
+    throw new Error(error.message || 'Gagal memuat sesi presensi.');
   }
 
   return (data || []).map((row) => {
@@ -46,23 +47,47 @@ export async function fetchAttendanceSessions(userId: string): Promise<Attendanc
   });
 }
 
+// Batas aman: URL PostgREST tidak membengkak dan tiap request di bawah limit 1000 baris.
+const RECORD_SESSION_CHUNK = 20;
+const RECORD_PAGE_SIZE = 1000;
+
+async function fetchRecordRows(sessionIds: string[]) {
+  const supabase = getSupabase();
+  const rows: any[] = [];
+  for (let from = 0; ; from += RECORD_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('attendance_records')
+      .select('*')
+      .in('session_id', sessionIds)
+      .order('id', { ascending: true })
+      .range(from, from + RECORD_PAGE_SIZE - 1);
+
+    if (error) {
+      console.error('[attendanceService] fetchAttendanceRecords error:', error);
+      throw new Error(error.message || 'Gagal memuat data presensi.');
+    }
+    rows.push(...(data || []));
+    if (!data || data.length < RECORD_PAGE_SIZE) break;
+  }
+  return rows;
+}
+
+/**
+ * Ambil catatan presensi hanya untuk sesi yang diminta. ID sesi dipecah per
+ * chunk dan tiap chunk dipaginasi supaya tidak terpotong limit baris Supabase.
+ */
 export async function fetchAttendanceRecords(sessionIds: string[] = []): Promise<AttendanceRecord[]> {
   if (!sessionIds || sessionIds.length === 0) {
     return [];
   }
 
-  const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from('attendance_records')
-    .select('*')
-    .in('session_id', sessionIds);
-
-  if (error) {
-    console.error('[attendanceService] fetchAttendanceRecords error:', error);
-    return [];
+  const chunks: string[][] = [];
+  for (let i = 0; i < sessionIds.length; i += RECORD_SESSION_CHUNK) {
+    chunks.push(sessionIds.slice(i, i + RECORD_SESSION_CHUNK));
   }
+  const data = (await Promise.all(chunks.map(fetchRecordRows))).flat();
 
-  return (data || []).map((row) => ({
+  return data.map((row) => ({
     id: row.id,
     sessionId: row.session_id,
     studentId: row.student_id,
