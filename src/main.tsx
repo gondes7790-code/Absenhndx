@@ -18,12 +18,21 @@ if (shareToken) {
     );
   });
 } else {
-  Promise.all([import('./App.tsx'), import('./contexts/AuthContext')]).then(
-    ([{ default: App }, { AuthProvider }]) => {
+  Promise.all([
+    import('./App.tsx'),
+    import('./contexts/AuthContext'),
+    import('./contexts/QueryProvider'),
+    import('./contexts/ToastContext'),
+  ]).then(
+    ([{ default: App }, { AuthProvider }, { QueryProvider }, { ToastProvider }]) => {
       root.render(
         <AppErrorBoundary>
           <AuthProvider>
-            <App />
+            <QueryProvider>
+              <ToastProvider>
+                <App />
+              </ToastProvider>
+            </QueryProvider>
           </AuthProvider>
         </AppErrorBoundary>
       );
