@@ -11,7 +11,7 @@ export async function fetchClasses(userId: string): Promise<ClassRoom[]> {
 
   if (error) {
     console.error('[classService] fetchClasses error:', error);
-    return [];
+    throw new Error(error.message || 'Gagal memuat data kelas.');
   }
 
   return (data || []).map((row) => ({
