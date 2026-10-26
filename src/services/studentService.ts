@@ -1,17 +1,19 @@
 import { getSupabase } from '../lib/supabase';
 import { Student } from '../types';
 
-export async function fetchStudents(userId: string): Promise<Student[]> {
+/**
+ * Ambil murid milik guru. Jika `classId` diberikan, hanya murid rombel tersebut
+ * yang dimuat (dipakai untuk lazy loading per kelas aktif).
+ */
+export async function fetchStudents(userId: string, classId?: string): Promise<Student[]> {
   const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from('students')
-    .select('*')
-    .eq('user_id', userId)
-    .order('no_urut', { ascending: true });
+  let query = supabase.from('students').select('*').eq('user_id', userId);
+  if (classId) query = query.eq('class_id', classId);
+  const { data, error } = await query.order('no_urut', { ascending: true });
 
   if (error) {
     console.error('[studentService] fetchStudents error:', error);
-    return [];
+    throw new Error(error.message || 'Gagal memuat data murid.');
   }
 
   return (data || []).map((row) => ({
@@ -24,6 +26,21 @@ export async function fetchStudents(userId: string): Promise<Student[]> {
     kontakOrtu: row.kontak_ortu || '',
     catatan: row.catatan || '',
   }));
+}
+
+/** Jumlah seluruh murid milik guru (tanpa mengunduh barisnya). */
+export async function countStudents(userId: string): Promise<number> {
+  const supabase = getSupabase();
+  const { count, error } = await supabase
+    .from('students')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('[studentService] countStudents error:', error);
+    throw new Error(error.message || 'Gagal menghitung jumlah murid.');
+  }
+  return count ?? 0;
 }
 
 export async function createStudent(userId: string, std: Omit<Student, 'id'> & { id?: string }): Promise<Student | null> {
