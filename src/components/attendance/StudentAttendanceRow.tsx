@@ -29,7 +29,7 @@ export const StudentAttendanceRow = React.memo(function StudentAttendanceRow({
   onDeleteStudent,
 }: StudentAttendanceRowProps) {
   const [currentKet, setCurrentKet] = useState(keterangan);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);ndace
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const live = useRef({ status: currentStatus, ket: keterangan, onUpdateRecord, id: student.id });
   live.current.status = currentStatus;
   live.current.onUpdateRecord = onUpdateRecord;

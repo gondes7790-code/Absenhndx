@@ -1,3 +1,7 @@
+/**
+ * Logika bisnis murni: menyusun catatan presensi & agenda mengajar dari sebuah
+ * sesi. Dipisah dari React/hook agar mudah diuji dan tidak menumpuk di App.tsx.
+ */
 import {
   AttendanceRecord,
   AttendanceSession,
@@ -6,188 +10,126 @@ import {
   Student,
 } from '../types';
 
-/**
- * Ringkas hasil presensi satu sesi menjadi catatan singkat untuk agenda mengajar.
- * Contoh: "Hadir 28, Sakit 1, Izin 0, Alpa 1 (dari 30 siswa)"
- */
-export function buildAttendanceNote(
-  students: Student[],
-  records: AttendanceRecord[]
-): string {
-  const total = students.length;
-  if (total === 0 && records.length === 0) {
-    return 'Belum ada data presensi.';
-  }
+const DEFAULT_JAM = '07.15 - 09.15 WIB';
 
+/** Ringkasan kehadiran satu sesi → teks `absensiCatatan` pada jurnal. */
+export function buildAttendanceNote(
+  classStudents: Student[],
+  sessionRecords: AttendanceRecord[]
+): string {
   let hadir = 0;
   let sakit = 0;
   let izin = 0;
   let alpa = 0;
+  let dispen = 0;
+  const keteranganList: string[] = [];
 
-  const byStudent = new Map<string, string>();
-  for (const r of records) {
-    byStudent.set(r.studentId, (r.status || 'H').toUpperCase());
-  }
-
-  for (const st of students) {
-    const status = byStudent.get(st.id) || 'A';
-    switch (status) {
-      case 'H':
-        hadir++;
-        break;
-      case 'S':
-        sakit++;
-        break;
-      case 'I':
-        izin++;
-        break;
-      default:
-        alpa++;
-        break;
+  classStudents.forEach((std) => {
+    const rec = sessionRecords.find((r) => r.studentId === std.id);
+    if (rec?.status === 'H') hadir++;
+    else if (rec?.status === 'S') {
+      sakit++;
+      keteranganList.push(`${std.nama} (Sakit${rec.keterangan ? ': ' + rec.keterangan : ''})`);
+    } else if (rec?.status === 'I') {
+      izin++;
+      keteranganList.push(`${std.nama} (Izin${rec.keterangan ? ': ' + rec.keterangan : ''})`);
+    } else if (rec?.status === 'A') {
+      alpa++;
+      keteranganList.push(`${std.nama} (Alfa)`);
+    } else if (rec?.status === 'D') {
+      dispen++;
+      keteranganList.push(`${std.nama} (Dispen)`);
     }
-  }
+  });
 
-  for (const [studentId, status] of byStudent) {
-    if (students.some((s) => s.id === studentId)) continue;
-    switch (status) {
-      case 'H':
-        hadir++;
-        break;
-      case 'S':
-        sakit++;
-        break;
-      case 'I':
-        izin++;
-        break;
-      default:
-        alpa++;
-        break;
-    }
+  const totalFilled = hadir + sakit + izin + alpa + dispen;
+  if (totalFilled === 0) {
+    return 'Presensi pertemuan baru dibuka (absen kosong, siap diisi).';
   }
-
-  const parts = [
-    `Hadir ${hadir}`,
-    `Sakit ${sakit}`,
-    `Izin ${izin}`,
-    `Alpa ${alpa}`,
-  ];
-  const fromTotal = total > 0 ? ` (dari ${total} siswa)` : '';
-  return parts.join(', ') + fromTotal;
+  if (sakit === 0 && izin === 0 && alpa === 0 && dispen === 0) {
+    return `Hadir lengkap 100% (${hadir}/${classStudents.length} siswa).`;
+  }
+  return `H: ${hadir}, S: ${sakit}, I: ${izin}, A: ${alpa}, D: ${dispen}. ${
+    keteranganList.length > 0 ? 'Catatan: ' + keteranganList.join('; ') : ''
+  }`;
 }
 
-/**
- * Cari agenda mengajar yang sudah ada untuk sesi presensi tertentu.
- */
+export function combineMateriKegiatan(materi?: string, kegiatan?: string): string {
+  const m = (materi || '').trim();
+  const k = (kegiatan || '').trim();
+  if (m && k) return `${m} — ${k}`;
+  return m || k;
+}
+
+/** Cari agenda yang sudah ada untuk (kelas, pertemuan ke-N). */
 export function findJournalForSession(
   journals: JournalEntry[],
   session: AttendanceSession
 ): JournalEntry | undefined {
-  return journals.find(
-    (j) =>
-      j.classId === session.classId &&
-      Number(j.pertemuanKe) === Number(session.pertemuanKe)
-  );
+  const target = Number(session.pertemuanKe) || 1;
+  return journals.find((j) => j.classId === session.classId && Number(j.pertemuanKe) === target);
 }
 
-/**
- * Gabungkan data sesi presensi terbaru ke agenda yang sudah ada.
- */
+/** Perbarui agenda yang sudah ada dengan data sesi terbaru. */
 export function mergeSessionIntoJournal(
   existing: JournalEntry,
   session: AttendanceSession,
-  note: string
+  absensiCatatan: string
 ): JournalEntry {
-  const materi = session.materi?.trim() || '';
-  const kegiatan = session.kegiatan?.trim() || '';
-  const combinedFromSession =
-    materi && kegiatan ? `${materi} — ${kegiatan}` : materi || kegiatan || session.catatan || '';
-
   return {
     ...existing,
-    tanggal: session.tanggal || existing.tanggal,
-    mapel: session.mapel || existing.mapel,
-    jamPelajaran: session.jamPelajaran || existing.jamPelajaran,
-    materiKegiatan: existing.materiKegiatan?.trim()
-      ? existing.materiKegiatan
-      : combinedFromSession || existing.materiKegiatan,
-    materi: existing.materi?.trim() ? existing.materi : materi || existing.materi,
-    kegiatan: existing.kegiatan?.trim() ? existing.kegiatan : kegiatan || existing.kegiatan,
-    absensiCatatan: note,
-    updatedAt: new Date().toISOString(),
+    tanggal: session.tanggal,
+    mapel: session.mapel,
+    jamPelajaran: session.jamPelajaran || existing.jamPelajaran || DEFAULT_JAM,
+    materiKegiatan: combineMateriKegiatan(session.materi, session.kegiatan) || existing.materiKegiatan,
+    materi: session.materi || existing.materi,
+    kegiatan: session.kegiatan || existing.kegiatan,
+    absensiCatatan,
   };
 }
 
-/**
- * Buat entri agenda mengajar baru dari sesi presensi.
- */
+/** Buat agenda baru dari sebuah sesi. */
 export function createJournalFromSession(
   id: string,
   session: AttendanceSession,
   cls: ClassRoom | undefined,
-  teacher: string,
-  note: string
+  teacherName: string,
+  absensiCatatan: string
 ): JournalEntry {
-  const materi = session.materi?.trim() || '';
-  const kegiatan = session.kegiatan?.trim() || '';
-  const materiKegiatan =
-    materi && kegiatan
-      ? `${materi} — ${kegiatan}`
-      : materi || kegiatan || session.catatan || 'Materi sesuai RPP / modul ajar';
-
-  const semesterLabel = cls
-    ? `\( {cls.tahunAjaran || ''} ( \){cls.semester || 'Ganjil'})`.trim()
-    : '2026/2027 (Ganjil)';
-
+  const pertemuanKe = Number(session.pertemuanKe) || 1;
   return {
     id,
     tanggal: session.tanggal,
+    pendidik: teacherName,
+    mapel: session.mapel,
     classId: session.classId,
-    className: cls?.nama || '',
-    mapel: session.mapel || cls?.mapel || '',
-    pertemuanKe: Number(session.pertemuanKe) || 1,
-    jamPelajaran: session.jamPelajaran || '',
-    materiKegiatan,
-    materi: materi || undefined,
-    kegiatan: kegiatan || undefined,
-    absensiCatatan: note,
-    semester: semesterLabel,
-    guru: teacher || '',
-    createdAt: session.createdAt || new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    className: cls?.nama || 'Kelas',
+    pertemuanKe,
+    jamPelajaran: session.jamPelajaran || DEFAULT_JAM,
+    materiKegiatan:
+      combineMateriKegiatan(session.materi, session.kegiatan) ||
+      session.catatan ||
+      `Pembelajaran Tatap Muka & Praktikum Pertemuan Ke-${session.pertemuanKe}`,
+    materi: session.materi,
+    kegiatan: session.kegiatan,
+    absensiCatatan,
+    semester: cls ? `${cls.tahunAjaran} (${cls.semester})` : 'Ganjil',
   };
 }
 
-/**
- * Generate deskripsi capaian kompetensi (gaya Kurikulum Merdeka)
- * berdasarkan rata-rata nilai formatif dibanding KKM.
- */
+/** Deskripsi rapor otomatis berdasarkan rata-rata formatif & KKM. */
 export function buildGradeDescription(
-  name: string,
-  formatif: (number | null)[] | undefined,
+  studentName: string,
+  formatif: (number | null)[],
   kkm: number
 ): string {
-  const scores = (formatif || []).filter(
-    (v): v is number => typeof v === 'number' && !Number.isNaN(v)
-  );
-
-  if (scores.length === 0) {
-    return `${name} belum memiliki data penilaian formatif yang cukup untuk dibuatkan deskripsi capaian.`;
+  const valid = (formatif || []).filter((v): v is number => v !== null && !isNaN(v));
+  const avg = valid.length > 0 ? valid.reduce((a, b) => a + b, 0) / valid.length : 75;
+  if (avg >= 88) {
+    return `${studentName} menunjukkan penguasaan SANGAT BAIK pada seluruh capaian TP 1-5 dan memiliki kemandirian praktik yang tinggi.`;
   }
-
-  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-  const rounded = Math.round(avg);
-
-  if (rounded >= kkm + 15) {
-    return `${name} menunjukkan penguasaan kompetensi yang sangat baik (rata-rata ${rounded}). Mampu menerapkan konsep secara mandiri dan konsisten melampaui KKM.`;
+  if (avg >= kkm) {
+    return `${studentName} menunjukkan pencapaian yang BAIK dalam ketercapaian tujuan pembelajaran, perlu penguatan ketelitian pada evaluasi akhir.`;
   }
-  if (rounded >= kkm + 5) {
-    return `${name} telah menguasai kompetensi dengan baik (rata-rata ${rounded}). Mampu menyelesaikan tugas dengan tepat dan menunjukkan pemahaman yang kuat.`;
-  }
-  if (rounded >= kkm) {
-    return `${name} mencapai kompetensi sesuai kriteria ketuntasan (rata-rata ${rounded}). Perlu penguatan pada beberapa indikator agar lebih optimal.`;
-  }
-  if (rounded >= kkm - 10) {
-    return `${name} belum sepenuhnya mencapai KKM (rata-rata ${rounded}). Memerlukan bimbingan tambahan dan latihan terfokus pada materi yang belum dikuasai.`;
-  }
-  return `${name} memerlukan perhatian khusus (rata-rata ${rounded}). Disarankan pendampingan intensif dan remedial agar dapat mencapai kompetensi dasar.`;
+  return `${studentName} perlu bimbingan dan pendampingan intensif (remedial) dalam memahami konsep dasar dan keselamatan kerja bengkel.`;
 }

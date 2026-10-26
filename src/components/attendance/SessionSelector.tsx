@@ -122,7 +122,7 @@ export const SessionSelector: React.FC<SessionSelectorProps> = ({
               Pertemuan Ke-{activeSession.pertemuanKe}
             </span>
             <span className="text-slate-700 font-medium">
-               {activeSession.tanggal} •  {activeSession.mapel}
+              📅 {activeSession.tanggal} • 📚 {activeSession.mapel}
             </span>
             {activeSession.materi && (
               <span className="font-bold text-emerald-900 bg-emerald-100/70 px-2 py-0.5 rounded border border-emerald-300">
