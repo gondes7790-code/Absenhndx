@@ -1,225 +1,156 @@
-import { useCallback, useEffect, useRef } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  AttendanceRecord,
-  AttendanceSession,
-  ClassRoom,
-  JournalEntry,
-  Student,
-} from '../types';
-import { queryKeys } from '../lib/queryKeys';
-import { useToast } from '../contexts/ToastContext';
-import { useDataSource } from './useDataSource';
-import { errorMessage, newId, settle } from './mutationUtils';
-import {
-  buildAttendanceNote,
-  createJournalFromSession,
-  findJournalForSession,
-  mergeSessionIntoJournal,
-} from '../services/journalSync';
+import React from 'react';
+import { PrintConfig, TeacherProfile } from '../../types';
+import { svgToDataUrl, parseLogoEmbed, TUT_WURI_LOGO_SVG } from '../../utils/printConfig';
 
-const EMPTY_JOURNALS: JournalEntry[] = [];
-
-/** Agenda mengajar (lintas kelas, difilter di UI). Lazy: dimuat saat tab Jurnal/Profil dibuka. */
-export function useJournals(enabled = true) {
-  const { scope, repo } = useDataSource();
-  const { showToast } = useToast();
-  const queryClient = useQueryClient();
-  const s = scope ?? 'anon';
-  const key = queryKeys.journals(s);
-
-  const query = useQuery<JournalEntry[]>({
-    queryKey: key,
-    queryFn: () => repo!.journals.list(),
-    enabled: Boolean(scope && repo && enabled),
-    meta: { label: 'agenda mengajar' },
-  });
-
-  const addMutation = useMutation({
-    mutationFn: (entry: Omit<JournalEntry, 'id'>) => repo!.journals.create({ ...entry, id: newId() }),
-    onSuccess: (created) => {
-      queryClient.setQueryData<JournalEntry[]>(key, (prev) => [created, ...(prev ?? [])]);
-      showToast(
-        'Agenda Mengajar Ditambahkan',
-        `Pertemuan Ke-${created.pertemuanKe} kelas ${created.className} tersimpan.`
-      );
-    },
-    onError: (err) =>
-      showToast('Gagal Menambahkan Agenda', errorMessage(err, 'Tidak dapat menyimpan agenda mengajar ke Supabase.')),
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: (entry: JournalEntry) => repo!.journals.update(entry),
-    onSuccess: (updated) => {
-      queryClient.setQueryData<JournalEntry[]>(key, (prev) =>
-        (prev ?? []).map((j) => (j.id === updated.id ? updated : j))
-      );
-      showToast(
-        'Agenda Mengajar Diperbarui',
-        `Catatan pertemuan Ke-${updated.pertemuanKe} (${updated.className}) berhasil disimpan.`
-      );
-    },
-    onError: (err) =>
-      showToast('Gagal Memperbarui Agenda', errorMessage(err, 'Tidak dapat memperbarui catatan agenda di Supabase.')),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await repo!.journals.remove(id);
-      return id;
-    },
-    onSuccess: (id) => {
-      queryClient.setQueryData<JournalEntry[]>(key, (prev) => (prev ?? []).filter((j) => j.id !== id));
-      showToast('Agenda Mengajar Dihapus', 'Catatan agenda telah dihapus dari buku jurnal.');
-    },
-    onError: (err) =>
-      showToast('Gagal Menghapus Agenda', errorMessage(err, 'Tidak dapat menghapus agenda dari Supabase.')),
-  });
-
-  return {
-    journals: query.data ?? EMPTY_JOURNALS,
-    isLoading: query.isLoading,
-    addJournal: useCallback(
-      (entry: Omit<JournalEntry, 'id'>) => settle(addMutation.mutateAsync(entry)),
-      [addMutation.mutateAsync]
-    ),
-    updateJournal: useCallback(
-      (entry: JournalEntry) => settle(updateMutation.mutateAsync(entry)),
-      [updateMutation.mutateAsync]
-    ),
-    deleteJournal: useCallback(
-      (id: string) => settle(deleteMutation.mutateAsync(id)),
-      [deleteMutation.mutateAsync]
-    ),
-  };
+interface LetterheadPreviewProps {
+  formData: PrintConfig;
+  parsedLogo: ReturnType<typeof parseLogoEmbed>;
+  teacher: TeacherProfile;
 }
 
-/* ------------------------------------------------------------------ */
-/* Sinkronisasi Presensi → Agenda Mengajar                             */
-/* ------------------------------------------------------------------ */
+/** Pratinjau kop surat resmi & tanda tangan (hanya tampilan, tidak mengubah data). */
+export const LetterheadPreview: React.FC<LetterheadPreviewProps> = ({ formData, parsedLogo, teacher }) => (
+    <div className="mt-6 p-4 sm:p-6 rounded-2xl bg-[#ffffff] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b]">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+          <span>👁️ Pratinjau Kop Surat Resmi & Tanda Tangan:</span>
+        </span>
+        <span className="text-[10px] font-mono text-slate-500">
+          {formData.borderStyle.toUpperCase()} BORDER • A4 READY
+        </span>
+      </div>
 
-export interface JournalSyncRequest {
-  session: AttendanceSession;
-  /** Catatan presensi (boleh berisi sesi lain; difilter per sesi). */
-  records: AttendanceRecord[];
-  /** Murid kelas yang bersangkutan. */
-  students: Student[];
-}
+      {/* Scaled-down letterhead preview sheet */}
+      <div className="bg-white border border-slate-300 p-4 sm:p-6 rounded font-serif text-black text-center shadow-xs">
+        <div
+          className={`pb-3 mb-3 text-center ${
+            formData.borderStyle === 'solid'
+              ? 'border-b-2 border-black'
+              : formData.borderStyle === 'thick'
+              ? 'border-b-4 border-black'
+              : 'border-b-4 border-double border-black'
+          }`}
+        >
+          <div className="flex items-center justify-between gap-3">
+            {/* Left Logo Slot */}
+            <div className="w-14 h-14 shrink-0 flex items-center justify-center">
+              {formData.logoPosition === 'left' ? (
+                parsedLogo.type === 'svg' ? (
+                  <img
+                    src={svgToDataUrl(parsedLogo.content)}
+                    alt="Logo Sekolah"
+                    className="w-12 h-12 object-contain"
+                  />
+                ) : parsedLogo.type === 'img' && parsedLogo.content ? (
+                  <img
+                    src={parsedLogo.content}
+                    alt="Logo Sekolah"
+                    className="max-w-[48px] max-h-[48px] object-contain"
+                  />
+                ) : (
+                  <img
+                    src={TUT_WURI_LOGO_SVG}
+                    alt="Logo Tut Wuri"
+                    className="max-w-[44px] max-h-[44px] object-contain"
+                  />
+                )
+              ) : formData.showTutWuriLogo ? (
+                <img
+                  src={TUT_WURI_LOGO_SVG}
+                  alt="Tut Wuri"
+                  className="max-w-[48px] max-h-[48px] object-contain"
+                />
+              ) : (
+                <div className="w-4 shrink-0" />
+              )}
+            </div>
 
-/**
- * Sinkronisasi dijalankan BERURUTAN (antrian) dan digabung per sesi: ketukan
- * beruntun hanya menulis kondisi terbaru, dan tidak bisa membuat agenda ganda
- * walaupun cache jurnal belum pernah dimuat.
- */
-export function useJournalSync(teacherName: string, classes: ClassRoom[]) {
-  const { scope, repo } = useDataSource();
-  const { showToast } = useToast();
-  const queryClient = useQueryClient();
-  const s = scope ?? 'anon';
+            {/* Text */}
+            <div className="flex-1 text-center px-2">
+              <h3 className="text-[11px] sm:text-xs font-bold tracking-wider uppercase leading-tight font-serif text-black">
+                {formData.dinasHeader}
+              </h3>
+              {formData.dinasSubHeader ? (
+                <h4 className="text-[10px] font-bold tracking-wide uppercase leading-tight font-serif text-black mt-0.5">
+                  {formData.dinasSubHeader}
+                </h4>
+              ) : null}
+              <h1 className="text-sm sm:text-lg font-black tracking-wide uppercase leading-tight font-serif text-black mt-0.5">
+                {formData.schoolName}
+              </h1>
+              {formData.unitSubHeader ? (
+                <p className="text-[9px] font-bold tracking-wide uppercase leading-tight font-serif text-black mt-0.5">
+                  {formData.unitSubHeader}
+                </p>
+              ) : null}
+              <p className="text-[9px] text-black font-normal leading-tight font-serif mt-0.5">
+                {formData.address}
+              </p>
+              <p className="text-[8.5px] text-black font-normal leading-tight font-serif">
+                {formData.phone} • {formData.emailWeb}
+              </p>
+            </div>
 
-  const latest = useRef({ teacherName, classes, scope: s, repo });
-  useEffect(() => {
-    latest.current = { teacherName, classes, scope: s, repo };
-  }, [teacherName, classes, s, repo]);
+            {/* Right Logo Slot */}
+            <div className="w-14 h-14 shrink-0 flex items-center justify-center">
+              {formData.logoPosition === 'right' || formData.logoPosition === 'both' ? (
+                parsedLogo.type === 'svg' ? (
+                  <img
+                    src={svgToDataUrl(parsedLogo.content)}
+                    alt="Logo Sekolah"
+                    className="w-12 h-12 object-contain"
+                  />
+                ) : parsedLogo.type === 'img' && parsedLogo.content ? (
+                  <img
+                    src={parsedLogo.content}
+                    alt="Logo Sekolah"
+                    className="max-w-[48px] max-h-[48px] object-contain"
+                  />
+                ) : (
+                  <img
+                    src={TUT_WURI_LOGO_SVG}
+                    alt="Logo Tut Wuri"
+                    className="max-w-[44px] max-h-[44px] object-contain"
+                  />
+                )
+              ) : formData.logoPosition === 'left' && formData.showTutWuriLogo ? (
+                <img
+                  src={TUT_WURI_LOGO_SVG}
+                  alt="Logo Tut Wuri"
+                  className="max-w-[44px] max-h-[44px] object-contain"
+                />
+              ) : (
+                <div className="w-4 shrink-0" />
+              )}
+            </div>
+          </div>
+        </div>
 
-  const queue = useRef<Promise<void>>(Promise.resolve());
-  const pending = useRef(new Map<string, JournalSyncRequest>());
-
-  const run = useCallback(
-    async (req: JournalSyncRequest) => {
-      const { teacherName: teacher, classes: classList, scope: sc, repo: r } = latest.current;
-      if (!r) return;
-      const key = queryKeys.journals(sc);
-      const { session } = req;
-
-      const journals = await queryClient.ensureQueryData({
-        queryKey: key,
-        queryFn: () => r.journals.list(),
-      });
-
-      const note = buildAttendanceNote(
-        req.students.filter((st) => st.classId === session.classId),
-        req.records.filter((rec) => rec.sessionId === session.id)
-      );
-      const existing = findJournalForSession(journals, session);
-
-      if (existing) {
-        const updated = mergeSessionIntoJournal(existing, session, note);
-        queryClient.setQueryData<JournalEntry[]>(key, (prev) =>
-          (prev ?? []).map((j) => (j.id === updated.id ? updated : j))
-        );
-        try {
-          await r.journals.update(updated);
-        } catch (err) {
-          console.warn('[useJournalSync] Gagal memperbarui agenda:', err);
-          queryClient.invalidateQueries({ queryKey: key });
-        }
-        return;
-      }
-
-      const cls = classList.find((c) => c.id === session.classId);
-      const entry = createJournalFromSession(newId(), session, cls, teacher, note);
-      // Masuk cache lebih dulu agar sinkronisasi berikutnya menemukan agenda ini.
-      queryClient.setQueryData<JournalEntry[]>(key, (prev) => [entry, ...(prev ?? [])]);
-      try {
-        const created = await r.journals.create(entry);
-        queryClient.setQueryData<JournalEntry[]>(key, (prev) =>
-          (prev ?? []).map((j) => (j.id === entry.id ? created : j))
-        );
-      } catch (err) {
-        console.warn('[useJournalSync] Gagal membuat agenda:', err);
-        queryClient.setQueryData<JournalEntry[]>(key, (prev) =>
-          (prev ?? []).filter((j) => j.id !== entry.id)
-        );
-        showToast('Agenda Belum Tersinkron', 'Agenda mengajar otomatis tidak tersimpan ke Supabase.');
-      }
-    },
-    [queryClient, showToast]
-  );
-
-  const syncSession = useCallback(
-    (req: JournalSyncRequest): Promise<void> => {
-      pending.current.set(req.session.id, req);
-      queue.current = queue.current.then(async () => {
-        const next = pending.current.get(req.session.id);
-        if (!next) return; // sudah diproses oleh permintaan yang lebih baru
-        pending.current.delete(req.session.id);
-        try {
-          await run(next);
-        } catch (err) {
-          console.warn('[useJournalSync] Sinkronisasi gagal:', err);
-        }
-      });
-      return queue.current;
-    },
-    [run]
-  );
-
-  /** Sinkronkan seluruh sesi di SEMUA kelas (aksi manual dari tab Jurnal). */
-  const syncAllClasses = useCallback(async () => {
-    const { classes: classList, scope: sc, repo: r } = latest.current;
-    if (!r) return;
-    for (const cls of classList) {
-      const [students, sessions] = await Promise.all([
-        queryClient.ensureQueryData({
-          queryKey: queryKeys.students(sc, cls.id),
-          queryFn: () => r.students.listByClass(cls.id),
-        }),
-        queryClient.ensureQueryData({
-          queryKey: queryKeys.sessions(sc, cls.id),
-          queryFn: () => r.sessions.listByClass(cls.id),
-        }),
-      ]);
-      const records = await queryClient.ensureQueryData({
-        queryKey: queryKeys.classRecords(sc, cls.id),
-        queryFn: () => r.records.listBySessions(sessions.map((x) => x.id)),
-      });
-      sessions.forEach((session) => {
-        void syncSession({ session, records, students });
-      });
-    }
-    await queue.current;
-  }, [queryClient, syncSession]);
-
-  return { syncSession, syncAllClasses };
-}
+        {/* Quick Mock Signatures */}
+        <div className="grid grid-cols-2 gap-4 text-[10px] text-center pt-2">
+          <div>
+            <p className="font-semibold">Mengetahui,</p>
+            <p className="font-bold">Kepala Sekolah {formData.schoolName}</p>
+            <div className="h-6" />
+            <p className="font-bold underline uppercase">{formData.principalName}</p>
+            <p className="text-[9px] font-mono">NIP. {formData.principalNip}</p>
+          </div>
+          <div>
+            <p className="font-semibold">
+              {formData.documentCity},{' '}
+              {formData.customDateText ||
+                new Date().toLocaleDateString('id-ID', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                })}
+            </p>
+            <p className="font-bold">Guru Mata Pelajaran</p>
+            <div className="h-6" />
+            <p className="font-bold underline uppercase">{teacher.name}</p>
+            <p className="text-[9px] font-mono">NIP. {teacher.nip}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+);
