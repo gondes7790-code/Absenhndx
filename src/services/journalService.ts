@@ -11,7 +11,7 @@ export async function fetchJournals(userId: string): Promise<JournalEntry[]> {
 
   if (error) {
     console.error('[journalService] fetchJournals error:', error);
-    return [];
+    throw new Error(error.message || 'Gagal memuat agenda mengajar.');
   }
 
   return (data || []).map((row: any) => ({
