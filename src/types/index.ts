@@ -100,7 +100,10 @@ export interface TeacherProfile {
   jabatan?: string;
 }
 
-export interface DeepLearningPrediction {
+/**
+ * Hasil Risk Scoring siswa (heuristik client-side, bukan model machine learning).
+ */
+export interface RiskPrediction {
   studentId: string;
   studentName: string;
   nisn: string;
@@ -110,7 +113,6 @@ export interface DeepLearningPrediction {
   predictedAttendanceRate: number;
   dropoutRiskPercent: number;
   remedialRiskPercent: number;
-  confidence: number;
   featureWeights: {
     attendanceConsistency: number;
     formatifMomentum: number;
@@ -137,7 +139,7 @@ export type ActiveTab =
   | 'jurnal' 
   | 'keuangan' 
   | 'statistik' 
-  | 'deeplearning' 
+  | 'risiko' 
   | 'profil'
   | 'supabase';
 
@@ -160,3 +162,15 @@ export interface PrintConfig {
   footerNote: string;
 }
 
+
+/** Data formulir "Buat Sesi Absen Baru". */
+export interface NewSessionInput {
+  pertemuanKe?: number;
+  tanggal?: string;
+  mapel?: string;
+  materi?: string;
+  kegiatan?: string;
+  jamPelajaran?: string;
+  catatan?: string;
+  setAllHadir?: boolean;
+}
