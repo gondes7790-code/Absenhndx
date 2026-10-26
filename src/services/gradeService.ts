@@ -1,16 +1,15 @@
 import { getSupabase } from '../lib/supabase';
 import { GradeRecord } from '../types';
 
-export async function fetchGrades(userId: string): Promise<GradeRecord[]> {
+export async function fetchGrades(userId: string, classId?: string): Promise<GradeRecord[]> {
   const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from('grades')
-    .select('*')
-    .eq('user_id', userId);
+  let query = supabase.from('grades').select('*').eq('user_id', userId);
+  if (classId) query = query.eq('class_id', classId);
+  const { data, error } = await query;
 
   if (error) {
     console.error('[gradeService] fetchGrades error:', error);
-    return [];
+    throw new Error(error.message || 'Gagal memuat data nilai.');
   }
 
   return (data || []).map((row) => ({
