@@ -1,18 +1,13 @@
-import React, { useMemo, useState } from 'react';
-import {
-  ClassRoom,
-  JournalEntry,
-  PrintConfig,
-  TeacherProfile,
-} from '../types';
+import React, { useState, useMemo } from 'react';
+import { JournalEntry, ClassRoom, TeacherProfile, PrintConfig } from '../types';
+import { PrintableDocument } from './PrintableDocument';
 import { JournalHeaderCard } from './journal/JournalHeaderCard';
-import { JournalSummaryCards } from './journal/JournalSummaryCard';
+import { JournalSummaryCards } from './journal/JournalSummaryCards';
 import { JournalFilters } from './journal/JournalFilters';
 import { JournalTable } from './journal/JournalTable';
 import { NewJournalModal } from './journal/NewJournalModal';
 import { EditJournalModal } from './journal/EditJournalModal';
-import { exportJournalsCsv } from './journal/jounalExport';
-import { PrintableDocument } from './PrintableDocument';
+import { exportJournalsCsv } from './journal/journalExport';
 
 interface JournalViewProps {
   journals: JournalEntry[];
@@ -43,47 +38,37 @@ export const JournalView: React.FC<JournalViewProps> = ({
   const [filterMonth, setFilterMonth] = useState('Semua');
   const [filterSemester, setFilterSemester] = useState('Semua');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingJournal, setEditingJournal] = useState<JournalEntry | null>(null);
-  const [showPrint, setShowPrint] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
 
+  // Filtered journals
   const filteredJournals = useMemo(() => {
-    return (journals || [])
-      .filter((j) => {
-        if (filterClass !== 'Semua' && j.className !== filterClass) return false;
-        if (filterSemester !== 'Semua' && j.semester !== filterSemester) return false;
-        if (filterMonth !== 'Semua') {
-          const m = (j.tanggal || '').split('-')[1];
-          if (m !== filterMonth) return false;
-        }
-        if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase();
-          const hay = `${j.materiKegiatan || ''} ${j.mapel || ''} ${j.className || ''}`.toLowerCase();
-          if (!hay.includes(q)) return false;
-        }
-        return true;
-      })
-      .sort((a, b) => {
-        const d = (b.tanggal || '').localeCompare(a.tanggal || '');
-        if (d !== 0) return d;
-        return Number(b.pertemuanKe) - Number(a.pertemuanKe);
-      });
-  }, [journals, filterClass, filterMonth, filterSemester, searchQuery]);
+    const q = searchQuery.toLowerCase();
+    return journals.filter((j) => {
+      const matchClass = filterClass === 'Semua' || j.className === filterClass;
+      const matchSemester = filterSemester === 'Semua' || j.semester === filterSemester;
+      const matchSearch =
+        searchQuery.trim() === '' ||
+        j.materiKegiatan.toLowerCase().includes(q) ||
+        j.className.toLowerCase().includes(q) ||
+        String(j.pertemuanKe).toLowerCase().includes(q) ||
+        `ke-${j.pertemuanKe}`.toLowerCase().includes(q);
 
-  const handleExportCsv = () => {
-    exportJournalsCsv(filteredJournals, teacher?.name || teacher?.handle || 'guru');
-  };
+      return matchClass && matchSemester && matchSearch;
+    });
+  }, [journals, filterClass, filterSemester, searchQuery]);
 
   return (
-    <div className="space-y-4 sm:space-y-6 pb-8">
+    <div className="space-y-5 sm:space-y-6">
       <JournalHeaderCard
         schoolName={schoolName}
         filterClass={filterClass}
         onSaveToCloud={onSaveToCloud}
         onSyncAttendance={onSyncAttendance}
-        onCreate={() => setIsCreateOpen(true)}
-        onExportCsv={handleExportCsv}
-        onPrint={() => setShowPrint(true)}
+        onCreate={() => setIsModalOpen(true)}
+        onExportCsv={() => exportJournalsCsv(filteredJournals, teacher.handle)}
+        onPrint={() => setShowPrintModal(true)}
       >
         <JournalSummaryCards filteredJournals={filteredJournals} classes={classes} />
         <JournalFilters
@@ -99,17 +84,18 @@ export const JournalView: React.FC<JournalViewProps> = ({
         />
       </JournalHeaderCard>
 
+      {/* Main Table: Jurnal Mengajar */}
       <JournalTable
         filteredJournals={filteredJournals}
-        onEdit={(j) => setEditingJournal(j)}
+        onEdit={setEditingJournal}
         onDeleteJournal={onDeleteJournal}
       />
 
-      {isCreateOpen && (
+      {isModalOpen && (
         <NewJournalModal
           classes={classes}
           teacher={teacher}
-          onClose={() => setIsCreateOpen(false)}
+          onClose={() => setIsModalOpen(false)}
           onAddJournal={onAddJournal}
         />
       )}
@@ -124,26 +110,17 @@ export const JournalView: React.FC<JournalViewProps> = ({
         />
       )}
 
-      {showPrint && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border-2 border-slate-900 shadow-[6px_6px_0px_#1e293b] max-w-4xl w-full max-h-[90vh] overflow-auto relative">
-            <button
-              type="button"
-              onClick={() => setShowPrint(false)}
-              className="absolute top-3 right-3 z-10 px-3 py-1.5 rounded-xl bg-slate-100 border-2 border-slate-900 text-xs font-black"
-            >
-              Tutup
-            </button>
-            <PrintableDocument
-              type="jurnal"
-              journals={filteredJournals}
-              teacher={teacher}
-              printConfig={printConfig}
-              schoolName={schoolName}
-            />
-          </div>
-        </div>
-      )}
+      {/* Formal Printable Document */}
+      <PrintableDocument
+        type="journal"
+        isOpen={showPrintModal}
+        onClose={() => setShowPrintModal(false)}
+        activeClass={classes[0]}
+        teacher={teacher}
+        schoolName={schoolName}
+        printConfig={printConfig}
+        journals={filteredJournals}
+      />
     </div>
   );
 };
