@@ -394,17 +394,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           <div className="p-3 bg-[#faf7ee] border-t-2 border-slate-100 flex justify-end">
             <button
-              onClick={() => onNavigateTab('deeplearning')}
+              onClick={() => onNavigateTab('risiko')}
               className="text-xs font-black text-teal-950 hover:underline flex items-center gap-1 cursor-pointer"
             >
-              <span>Lihat Analisis Prediktif AI</span>
+              <span>Lihat Analisis Prediktif</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* AI & Deep Learning Teaser Banner */}
+      {/* Analisis Prediktif / Risk Scoring Teaser Banner */}
       <div className="bg-[#f3e8ff] border-2 border-slate-900 rounded-3xl p-4 sm:p-5 shadow-[4px_4px_0px_#1e293b] flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-start gap-3.5">
           <div className="w-11 h-11 rounded-2xl bg-white border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] flex items-center justify-center shrink-0">
@@ -413,23 +413,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-base font-black text-slate-900">
-                Sistem Prediksi Risiko Siswa & Generator Deskripsi Rapor AI
+                Analisis Prediktif Risiko Siswa & Draf Deskripsi Rapor
               </h3>
               <span className="text-[10px] font-mono font-bold bg-white border border-slate-900 text-purple-950 px-2 py-0.2 rounded-md">
-                MLP MODEL
+                RISK SCORING
               </span>
             </div>
             <p className="text-xs text-slate-600 mt-1 max-w-2xl font-medium">
-              Menggunakan pembobotan multi-fitur (presensi, momentum formatif, dan konsistensi) untuk mendeteksi risiko drop-out atau remedial lebih dini.
+              Risk scoring berbasis aturan dengan pembobotan multi-fitur (presensi, momentum formatif, dan konsistensi) untuk membantu mendeteksi risiko drop-out atau remedial lebih dini.
             </p>
           </div>
         </div>
 
         <button
-          onClick={() => onNavigateTab('deeplearning')}
+          onClick={() => onNavigateTab('risiko')}
           className="px-4 py-2.5 rounded-2xl bg-white hover:bg-[#faf7ee] active:translate-x-[1px] active:translate-y-[1px] border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b] text-xs font-black text-slate-950 flex items-center justify-center gap-2 shrink-0 transition-all cursor-pointer"
         >
-          <span>Eksplorasi Analisis AI</span>
+          <span>Buka Analisis Prediktif</span>
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
