@@ -119,9 +119,9 @@ export const Drawer: React.FC<DrawerProps> = ({
       hoverBg: 'hover:bg-[#99f6e4]',
     },
     {
-      id: 'deeplearning',
-      label: 'Analisis AI & Deep Learning',
-      sub: 'Prediksi risiko dropout & narasi rapor',
+      id: 'risiko',
+      label: 'Analisis Prediktif',
+      sub: 'Risk scoring dropout & remedial',
       icon: <BrainCircuit className="w-5 h-5 text-purple-800" />,
       pastelBg: 'bg-[#f3e8ff]',
       hoverBg: 'hover:bg-[#e9d5ff]',
