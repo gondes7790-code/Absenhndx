@@ -1,293 +1,310 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Award, Plus, Search } from 'lucide-react';
-import { Student, GradeRecord, ClassRoom, TeacherProfile, PrintConfig } from '../types';
-import { PrintableDocument } from './PrintableDocument';
-import { GradebookHeader } from './gradebook/GradebookHeader';
-import { GradeRow } from './gradebook/GradeRow';
-import { GradeSettingsModal } from './gradebook/GradeSettingsModal';
-import { computeClassStats, exportGradesCsv } from './gradebook/gradeCalculations';
+import React from 'react';
+import {
+  X,
+  CalendarCheck,
+  FileSpreadsheet,
+  Award,
+  Users,
+  BookOpen,
+  Wallet,
+  BarChart3,
+  BrainCircuit,
+  Database,
+  RefreshCw,
+  Download,
+  GraduationCap,
+  LogOut,
+  User,
+  Flame,
+} from 'lucide-react';
+import { ActiveTab, ClassRoom, TeacherProfile } from '../types';
 
-interface GradebookViewProps {
+// Logo khusus header & menu samping (versi 800px, ukuran asli s2022 terlalu besar untuk ikon header).
+const HEADER_LOGO_URL =
+  'https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEj35fOFocNE6ell6OOH82N3WfoTEN0juxQMMqmhtPCmp8QeEyII5GvVux10Z2p5L5dU5UKUcGH5_Peal5td3yRkLQAwQOP-85_oxHyXynz5Hfbe3LrMYB3ZfvLZuVybQYJlew8VncdQKaWC9t0RrHKzGCPdCpIPm9sntLR0eZycd-5LPHf7P0XKO0GdpchQ/s800/63906.png';
+
+interface DrawerProps {
+  isOpen: boolean;
+  onClose: () => void;
+  activeTab: ActiveTab;
+  onSelectTab: (tab: ActiveTab) => void;
   activeClass?: ClassRoom | null;
-  students: Student[];
-  grades: GradeRecord[];
-  onUpdateGrade: (studentId: string, updatedGrade: Partial<GradeRecord>) => void;
-  onGenerateAllDescriptions: () => void;
-  onSaveToCloud: () => void;
-  onOpenParentLink: () => void;
+  onSwitchClass: () => void;
   onOpenClassManagement?: () => void;
+  onRefreshData: () => void;
+  onDownloadBackup: () => void;
+  teacher: TeacherProfile;
   schoolName: string;
-  teacher?: TeacherProfile;
-  onUpdateClass?: (updatedClass: ClassRoom) => void;
-  printConfig?: PrintConfig;
+  onLogout?: () => void;
 }
-export const GradebookView: React.FC<GradebookViewProps> = ({
+
+export const Drawer: React.FC<DrawerProps> = ({
+  isOpen,
+  onClose,
+  activeTab,
+  onSelectTab,
   activeClass,
-  students,
-  grades,
-  onUpdateGrade,
-  onGenerateAllDescriptions,
-  onSaveToCloud,
-  onOpenParentLink,
+  onSwitchClass,
   onOpenClassManagement,
-  schoolName,
+  onRefreshData,
+  onDownloadBackup,
   teacher,
-  onUpdateClass,
-  printConfig,
+  schoolName,
+  onLogout,
 }) => {
-  const [formatifColumns, setFormatifColumns] = useState<number>(activeClass?.formatifCount || 5);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortMode, setSortMode] = useState<'no' | 'az' | 'za'>('az');
-  const [editingTpTitle, setEditingTpTitle] = useState(false);
-  const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
-  const [currentKkm, setCurrentKkm] = useState<number>(activeClass?.kkm || 75);
-  const [tpTitles, setTpTitles] = useState<Record<number, string>>(
-    () => activeClass?.tpTitles || {}
-  );
+  if (!isOpen) return null;
 
-  useEffect(() => {
-    setTpTitles(activeClass?.tpTitles || {});
-    setFormatifColumns(activeClass?.formatifCount || 5);
-    setCurrentKkm(activeClass?.kkm || 75);
-  }, [activeClass?.id, activeClass?.tpTitles, activeClass?.formatifCount, activeClass?.kkm]);
-
-  // Class-specific students (strictly filtered by activeClass.id)
-  const classStudents = useMemo(() => {
-    if (!activeClass) return [];
-    return students.filter((s) => s.classId === activeClass.id);
-  }, [students, activeClass?.id]);
-
-  // Map studentId -> GradeRecord
-  const gradesMap = useMemo(() => {
-    const map = new Map<string, GradeRecord>();
-    grades.forEach((g) => map.set(g.studentId, g));
-    return map;
-  }, [grades]);
-
-  const computedStats = useMemo(
-    () => computeClassStats(classStudents, gradesMap, formatifColumns, activeClass?.kkm || 75),
-    [classStudents, gradesMap, formatifColumns, activeClass?.kkm]
-  );
-
-  // Filter & Sort
-  const filteredStudents = useMemo(() => {
-    let list = [...classStudents];
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter((s) => s.nama.toLowerCase().includes(q) || s.nisn.includes(q));
-    }
-    if (sortMode === 'az') list.sort((a, b) => a.nama.localeCompare(b.nama));
-    else if (sortMode === 'za') list.sort((a, b) => b.nama.localeCompare(a.nama));
-    else list.sort((a, b) => a.noUrut - b.noUrut);
-    return list;
-  }, [classStudents, searchQuery, sortMode]);
-
-  const handleExportExcel = () =>
-    exportGradesCsv(
-      filteredStudents,
-      gradesMap,
-      formatifColumns,
-      activeClass?.kkm || 75,
-      activeClass?.nama
-    );
-
-  if (!activeClass) {
-    return (
-      <div className="bg-[#fffdf8] rounded-3xl p-8 border-2 border-slate-900 shadow-[4px_4px_0px_#1e293b] text-center max-w-xl mx-auto my-6">
-        <div className="w-14 h-14 rounded-2xl bg-[#6ee7b7] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] mx-auto flex items-center justify-center mb-3">
-          <Award className="w-7 h-7 text-slate-950" />
-        </div>
-        <h3 className="text-base font-black text-slate-900 mb-1">Belum Ada Rombel / Kelas Aktif</h3>
-        <p className="text-xs font-bold text-slate-600 mb-4">
-          Silakan buat rombel kelas terlebih dahulu untuk mengisi buku penilaian formatif dan sumatif.
-        </p>
-        {onOpenClassManagement && (
-          <button
-            onClick={onOpenClassManagement}
-            className="px-4 py-2.5 rounded-2xl bg-[#6ee7b7] hover:bg-[#34d399] border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] font-black text-xs text-slate-950 cursor-pointer inline-flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Buat Rombel Pertama</span>
-          </button>
-        )}
-      </div>
-    );
-  }
-
-  const handleSaveSettings = () => {
-    onUpdateClass?.({
-      ...activeClass,
-      formatifCount: formatifColumns,
-      kkm: currentKkm,
-      tpTitles,
-    });
-    setEditingTpTitle(false);
-  };
+  const menuItems: {
+    id: ActiveTab;
+    label: string;
+    sub: string;
+    icon: React.ReactNode;
+    pastelBg: string;
+    hoverBg: string;
+  }[] = [
+    {
+      id: 'presensi',
+      label: 'Presensi Murid',
+      sub: 'Input kehadiran harian & WhatsApp',
+      icon: <CalendarCheck className="w-5 h-5 text-emerald-800" />,
+      pastelBg: 'bg-[#dcfce7]',
+      hoverBg: 'hover:bg-[#bbf7d0]',
+    },
+    {
+      id: 'rekap',
+      label: 'Rekap Absensi',
+      sub: 'Rekap bulanan, cetak & Excel',
+      icon: <FileSpreadsheet className="w-5 h-5 text-sky-800" />,
+      pastelBg: 'bg-[#e0f2fe]',
+      hoverBg: 'hover:bg-[#bae6fd]',
+    },
+    {
+      id: 'penilaian',
+      label: 'Penilaian & KKM',
+      sub: 'Asesmen formatif & sumatif Merdeka',
+      icon: <Award className="w-5 h-5 text-amber-800" />,
+      pastelBg: 'bg-[#fef9c3]',
+      hoverBg: 'hover:bg-[#fde047]',
+    },
+    {
+      id: 'murid',
+      label: 'Data Murid',
+      sub: 'Kelola NISN & impor/ekspor data',
+      icon: <Users className="w-5 h-5 text-orange-800" />,
+      pastelBg: 'bg-[#ffedd5]',
+      hoverBg: 'hover:bg-[#fed7aa]',
+    },
+    {
+      id: 'jurnal',
+      label: 'Buku Jurnal Pendidik',
+      sub: 'Catatan agenda kegiatan KBM',
+      icon: <BookOpen className="w-5 h-5 text-indigo-800" />,
+      pastelBg: 'bg-[#ede9fe]',
+      hoverBg: 'hover:bg-[#ddd6fe]',
+    },
+    {
+      id: 'keuangan',
+      label: 'Tabungan & Kas',
+      sub: 'Buku kas & tabungan mandiri',
+      icon: <Wallet className="w-5 h-5 text-rose-800" />,
+      pastelBg: 'bg-[#ffe4e6]',
+      hoverBg: 'hover:bg-[#fecdd3]',
+    },
+    {
+      id: 'statistik',
+      label: 'Statistik & Analisis',
+      sub: 'Ketercapaian TP & distribusi nilai',
+      icon: <BarChart3 className="w-5 h-5 text-teal-800" />,
+      pastelBg: 'bg-[#ccfbf1]',
+      hoverBg: 'hover:bg-[#99f6e4]',
+    },
+    {
+      id: 'risiko',
+      label: 'Analisis Prediktif',
+      sub: 'Risk scoring dropout & remedial',
+      icon: <BrainCircuit className="w-5 h-5 text-purple-800" />,
+      pastelBg: 'bg-[#f3e8ff]',
+      hoverBg: 'hover:bg-[#e9d5ff]',
+    },
+  ];
 
   return (
-    <div className="space-y-5 sm:space-y-6">
-      <GradebookHeader
-        activeClass={activeClass}
-        formatifColumns={formatifColumns}
-        onFormatifColumnsChange={setFormatifColumns}
-        computedStats={computedStats}
-        settingsOpen={editingTpTitle}
-        onToggleSettings={() => setEditingTpTitle((open) => !open)}
-        onGenerateAllDescriptions={onGenerateAllDescriptions}
-        onSaveToCloud={onSaveToCloud}
-        onOpenParentLink={onOpenParentLink}
-        onPrint={() => setShowPrintModal(true)}
-        onExport={handleExportExcel}
+    <div className="fixed inset-0 z-50 flex animate-in fade-in duration-200">
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs transition-opacity"
+        onClick={onClose}
+        aria-hidden="true"
       />
 
-      {/* Grade Matrix Table - Vintage Postmodern Neobrutalist */}
-      <div className="bg-white border-2 border-slate-900 rounded-3xl shadow-[4px_4px_0px_#1e293b] overflow-hidden">
-        {/* Table Filter Top Bar */}
-        <div className="p-4 border-b-2 border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#fffdf8]">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-slate-900 animate-pulse" />
-            <span className="text-xs font-bold text-slate-700">
-              Geser tabel secara horizontal untuk mengisi kolom Formatif, STS, dan SAS
-            </span>
-          </div>
+      {/* Drawer Container */}
+      <div className="relative w-full max-w-sm sm:max-w-md bg-[#faf7ee] text-slate-900 h-full flex flex-col z-10 border-r-3 border-slate-900 shadow-[8px_0px_0px_#1e293b] overflow-hidden">
+        {/* Header Drawer */}
+        <div className="p-4 sm:p-5 bg-[#ffffff] border-b-2 border-slate-900 flex items-center justify-between">
+          <img
+            src={HEADER_LOGO_URL}
+            alt="Logo Hadir!"
+            decoding="async"
+            className="h-10 sm:h-12 w-auto max-w-[220px] object-contain"
+          />
 
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 sm:w-60">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Cari murid..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 rounded-2xl bg-[#faf7ee] border-2 border-slate-900 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:shadow-[2px_2px_0px_#0d9488]"
-              />
+          <button
+            onClick={onClose}
+            className="p-2 rounded-2xl bg-[#fee2e2] hover:bg-[#fca5a5] active:translate-x-[1px] active:translate-y-[1px] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] text-rose-900 transition-all cursor-pointer"
+            aria-label="Tutup Menu"
+          >
+            <X className="w-5 h-5 stroke-[2.5]" />
+          </button>
+        </div>
+
+        {/* Active Class Switcher Card */}
+        <div className="p-3.5 bg-[#fffdf8] border-b-2 border-slate-900">
+          <div className="p-3 rounded-2xl bg-[#e0f2fe] border-2 border-slate-900 shadow-[3px_3px_0px_#1e293b] flex items-center justify-between">
+            <div>
+              <span className="text-[10px] font-mono font-black uppercase text-sky-900 tracking-wider block">
+                ROMBEL AKTIF SAAT INI
+              </span>
+              <p className="text-sm font-black text-slate-900 mt-0.5 leading-tight">
+                {activeClass?.nama || 'Belum Ada Rombel'}
+              </p>
+              <p className="text-[11px] font-bold text-slate-600 mt-0.5">
+                {activeClass
+                  ? `${activeClass.mapel} • KKM: ${activeClass.kkm}`
+                  : 'Belum ada kelas dipilih'}
+              </p>
             </div>
 
-            <div className="flex items-center bg-white p-1 rounded-2xl border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] shrink-0 gap-1">
+            <div className="flex flex-col gap-1.5 shrink-0">
               <button
-                onClick={() => setSortMode('no')}
-                className={`px-2.5 py-1 text-xs font-black rounded-xl transition-all cursor-pointer ${
-                  sortMode === 'no' ? 'bg-[#dcfce7] text-slate-900 border border-slate-900' : 'text-slate-600 hover:text-slate-900'
-                }`}
+                onClick={activeClass ? onSwitchClass : onOpenClassManagement}
+                className="px-3 py-1 rounded-xl bg-white hover:bg-slate-50 border-2 border-slate-900 shadow-[1.5px_1.5px_0px_#1e293b] text-xs font-black text-slate-900 active:translate-x-[1px] active:translate-y-[1px] cursor-pointer transition-all"
               >
-                No Urut
+                {activeClass ? 'Ganti Kelas' : '+ Buat Kelas'}
               </button>
-              <button
-                onClick={() => setSortMode('az')}
-                className={`px-2.5 py-1 text-xs font-black rounded-xl transition-all cursor-pointer ${
-                  sortMode === 'az' ? 'bg-[#e0f2fe] text-slate-900 border border-slate-900' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                A-Z
-              </button>
-              <button
-                onClick={() => setSortMode('za')}
-                className={`px-2.5 py-1 text-xs font-black rounded-xl transition-all cursor-pointer ${
-                  sortMode === 'za' ? 'bg-[#ede9fe] text-slate-900 border border-slate-900' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Z-A
-              </button>
+              {onOpenClassManagement && (
+                <button
+                  onClick={() => {
+                    onClose();
+                    onOpenClassManagement();
+                  }}
+                  className="px-3 py-1 rounded-xl bg-[#6ee7b7] hover:bg-[#34d399] border-2 border-slate-900 shadow-[1.5px_1.5px_0px_#1e293b] text-[11px] font-black text-slate-950 active:translate-x-[1px] active:translate-y-[1px] cursor-pointer transition-all"
+                >
+                  + Kelola Rombel
+                </button>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Scrollable Matrix */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-[#faf7ee] text-slate-900 font-black text-[11px] tracking-wider uppercase border-b-2 border-slate-900">
-                <th className="py-3 px-3 w-10 text-center sticky left-0 bg-[#faf7ee] z-10 border-r-2 border-slate-900">NO</th>
-                <th className="py-3 px-4 min-w-[190px] sticky left-10 bg-[#faf7ee] z-10 border-r-2 border-slate-900">NAMA MURID</th>
-                {Array.from({ length: formatifColumns }, (_, i) => {
-                  const tpNum = i + 1;
-                  const label = tpTitles[tpNum] || `TP ${tpNum}`;
-                  return (
-                    <th key={i} className="py-2.5 px-2 w-16 text-center border-l-2 border-slate-200" title={label}>
-                      <div>F-{tpNum}</div>
-                      <div className="text-[9px] text-slate-500 font-mono truncate max-w-[60px] mx-auto">
-                        {label}
-                      </div>
-                    </th>
-                  );
-                })}
-                <th className="py-2.5 px-2 w-16 text-center border-l-2 border-slate-900 bg-[#fef9c3]">
-                  STS
-                </th>
-                <th className="py-2.5 px-2 w-16 text-center border-l-2 border-slate-900 bg-[#fef9c3]">
-                  SAS
-                </th>
-                <th className="py-2.5 px-2 w-16 text-center border-l-2 border-slate-900 bg-[#e0f2fe]">
-                  TOTAL
-                </th>
-                <th className="py-2.5 px-2 w-18 text-center border-l-2 border-slate-900 bg-[#dcfce7]">
-                  AKHIR
-                </th>
-                <th className="py-2.5 px-3 w-24 text-center border-l-2 border-slate-900 bg-[#ede9fe]">
-                  PREDIKAT
-                </th>
-                <th className="py-2.5 px-4 min-w-[280px] border-l-2 border-slate-900">
-                  CATATAN CAPAIAN KOMPETENSI MERDEKA
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y-2 divide-slate-100">
-              {filteredStudents.length === 0 ? (
-                <tr>
-                  <td colSpan={formatifColumns + 8} className="py-10 text-center text-slate-500 font-bold bg-[#faf7ee]/30">
-                    <p className="text-sm text-slate-700 font-black">
-                      {searchQuery ? 'Tidak ada siswa yang sesuai pencarian' : 'Belum Ada Murid Terdaftar di Kelas Ini'}
-                    </p>
-                    <p className="text-xs text-slate-500 font-medium mt-1">
-                      {searchQuery
-                        ? 'Coba kata kunci pencarian lain'
-                        : 'Buka tab "Data Murid" untuk mendaftarkan siswa ke kelas ini.'}
-                    </p>
-                  </td>
-                </tr>
-              ) : (
-                filteredStudents.map((student, idx) => (
-                <GradeRow
-                  key={student.id}
-                  student={student}
-                  displayNo={idx + 1}
-                  grade={gradesMap.get(student.id)}
-                  formatifColumns={formatifColumns}
-                  kkm={activeClass.kkm || 75}
-                  onUpdateGrade={onUpdateGrade}
-                />
-              )))}
-            </tbody>
-          </table>
+        {/* Menu Items List */}
+        <div className="flex-1 overflow-y-auto p-3.5 space-y-2">
+          <div className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-500 px-1 mb-1">
+            NAVIGASI MODUL UTAMA
+          </div>
+
+          {menuItems.map((item) => {
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  onSelectTab(item.id);
+                  onClose();
+                }}
+                className={`w-full text-left p-2.5 sm:p-3 rounded-2xl border-2 border-slate-900 transition-all flex items-center gap-3 cursor-pointer ${
+                  isActive
+                    ? `${item.pastelBg} font-black shadow-[3px_3px_0px_#1e293b] translate-x-1`
+                    : `bg-white ${item.hoverBg} text-slate-800 font-bold shadow-[2px_2px_0px_#1e293b]`
+                }`}
+              >
+                <div
+                  className={`w-9 h-9 rounded-xl border-2 border-slate-900 flex items-center justify-center shrink-0 ${
+                    isActive ? 'bg-white shadow-[1px_1px_0px_#1e293b]' : item.pastelBg
+                  }`}
+                >
+                  {item.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-black leading-tight text-slate-900">
+                    {item.label}
+                  </p>
+                  <p className="text-[10px] text-slate-500 truncate mt-0.5 font-medium">
+                    {item.sub}
+                  </p>
+                </div>
+                {isActive && (
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-900 shrink-0" />
+                )}
+              </button>
+            );
+          })}
+
+          {/* Cloud Actions Strip (Tanpa Bilah Skema Supabase RLS) */}
+          <div className="pt-3 border-t-2 border-slate-200 space-y-2">
+            <button
+              onClick={() => {
+                onRefreshData();
+                onClose();
+              }}
+              className="w-full py-2 px-3 rounded-2xl bg-white hover:bg-[#faf7ee] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] text-slate-900 text-xs font-black flex items-center justify-center gap-2 transition-all active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-slate-800" />
+              <span>Refresh Data Cloud</span>
+            </button>
+
+            <button
+              onClick={() => {
+                onDownloadBackup();
+                onClose();
+              }}
+              className="w-full py-2 px-3 rounded-2xl bg-white hover:bg-[#faf7ee] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] text-slate-900 text-xs font-bold flex items-center justify-center gap-2 transition-all active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-800" />
+              <span>Download Backup Data (JSON)</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Footer: Pusat Tombol Navigasi Profil Guru & Keluar Akun (Tanpa Tombol Duplikat) */}
+        <div className="p-3.5 bg-[#ffffff] border-t-2 border-slate-900">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                onSelectTab('profil');
+                onClose();
+              }}
+              className="flex-1 p-2.5 rounded-2xl bg-[#ecfccb] hover:bg-[#d9f99d] active:translate-x-[1px] active:translate-y-[1px] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] flex items-center gap-2.5 transition-all cursor-pointer min-w-0"
+              title="Pusat Navigasi Profil Guru"
+            >
+              <div className="w-9 h-9 rounded-xl bg-white border-2 border-slate-900 text-lime-950 font-black flex items-center justify-center text-xs shrink-0 shadow-[1px_1px_0px_#1e293b]">
+                <User className="w-4 h-4 text-lime-900" />
+              </div>
+              <div className="min-w-0 text-left flex-1">
+                <p className="text-xs font-black text-slate-900 truncate leading-tight">
+                  {teacher.name}
+                </p>
+                <p className="text-[10px] text-slate-600 font-medium truncate mt-0.5">
+                  Profil Pendidik • {teacher.handle}
+                </p>
+              </div>
+            </button>
+
+            {onLogout && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onLogout();
+                }}
+                className="p-3 rounded-2xl bg-[#fee2e2] hover:bg-[#fca5a5] active:translate-x-[1px] active:translate-y-[1px] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] text-rose-950 flex items-center justify-center transition-all cursor-pointer shrink-0"
+                title="Keluar dari Akun Guru"
+                aria-label="Keluar Akun"
+              >
+                <LogOut className="w-4 h-4 text-rose-900 stroke-[2.5]" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
-
-      {editingTpTitle && (
-        <GradeSettingsModal
-          activeClass={activeClass}
-          formatifColumns={formatifColumns}
-          onFormatifColumnsChange={setFormatifColumns}
-          currentKkm={currentKkm}
-          onKkmChange={setCurrentKkm}
-          tpTitles={tpTitles}
-          onTpTitlesChange={setTpTitles}
-          onClose={() => setEditingTpTitle(false)}
-          onSave={handleSaveSettings}
-        />
-      )}
-
-      {/* Formal Printable Document */}
-      <PrintableDocument
-        type="gradebook"
-        isOpen={showPrintModal}
-        onClose={() => setShowPrintModal(false)}
-        activeClass={activeClass}
-        teacher={teacher}
-        schoolName={schoolName}
-        printConfig={printConfig}
-        students={students}
-        grades={grades}
-      />
     </div>
   );
 };
