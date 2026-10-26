@@ -1,17 +1,15 @@
 import { getSupabase } from '../lib/supabase';
 import { FinanceTransaction } from '../types';
 
-export async function fetchFinances(userId: string): Promise<FinanceTransaction[]> {
+export async function fetchFinances(userId: string, classId?: string): Promise<FinanceTransaction[]> {
   const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from('finances')
-    .select('*, students(nama)')
-    .eq('user_id', userId)
-    .order('tanggal', { ascending: false });
+  let query = supabase.from('finances').select('*, students(nama)').eq('user_id', userId);
+  if (classId) query = query.eq('class_id', classId);
+  const { data, error } = await query.order('tanggal', { ascending: false });
 
   if (error) {
     console.error('[financeService] fetchFinances error:', error);
-    return [];
+    throw new Error(error.message || 'Gagal memuat data keuangan.');
   }
 
   return (data || []).map((row: any) => ({
