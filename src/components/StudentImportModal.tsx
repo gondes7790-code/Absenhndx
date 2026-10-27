@@ -8,9 +8,9 @@ import {
   AlertCircle,
   HelpCircle,
   Users,
-  Sparkles,
   ArrowRight,
   Trash2,
+  Flame,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Student, ClassRoom } from '../types';
@@ -372,7 +372,7 @@ export const StudentImportModal: React.FC<StudentImportModalProps> = ({
             onClick={handleInsertSample}
             className="text-[11px] font-bold text-indigo-900 hover:text-indigo-950 underline flex items-center gap-1 py-1 cursor-pointer"
           >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+            <Flame className="w-3.5 h-3.5 text-indigo-600" />
             <span>Masukkan Contoh Format</span>
           </button>
         </div>

@@ -128,21 +128,15 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
 
   const parsedLogo = parseLogoEmbed(cfg.logoEmbedCode);
 
+  // Logo sekolah selalu berupa URL gambar yang dirender lewat <img>; tidak ada HTML/SVG inject.
   const renderSchoolLogo = () => {
-    if (parsedLogo.type === 'svg') {
-      return (
-        <div
-          className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:max-h-20 [&>svg]:max-w-20 [&>svg]:object-contain"
-          dangerouslySetInnerHTML={{ __html: parsedLogo.content }}
-        />
-      );
-    }
     if (parsedLogo.type === 'img' && parsedLogo.content) {
       return (
         <img
           src={parsedLogo.content}
           alt="Logo Sekolah"
           className="max-w-[72px] max-h-[72px] sm:max-w-[82px] sm:max-h-[82px] object-contain mx-auto"
+          referrerPolicy="no-referrer"
         />
       );
     }
@@ -833,7 +827,7 @@ export const PrintableDocument: React.FC<PrintableDocumentProps> = ({
                     Kertas Dokumen Siap Cetak (Formal A4 Putih Bersih)
                   </h3>
                   <p className="text-xs text-slate-600 font-medium">
-                    Kop surat resmi • Logo sekolah ter-embed • Dimulai dari Halaman 1
+                    Kop surat resmi • Logo sekolah • Dimulai dari Halaman 1
                   </p>
                 </div>
               </div>

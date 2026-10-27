@@ -11,6 +11,7 @@ import {
 import { PrintConfig, TeacherProfile, ClassRoom } from '../types';
 import {
   DEFAULT_PRINT_CONFIG,
+  normalizePrintConfig,
   parseLogoEmbed,
   savePrintConfig,
   TUT_WURI_LOGO_SVG,
@@ -67,12 +68,15 @@ export const PrintConfigManualEditor: React.FC<PrintConfigManualEditorProps> = (
 
   const handleSave = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    savePrintConfig(formData);
-    onUpdatePrintConfig(formData);
+    // Logo disimpan sebagai URL murni (HTML/SVG lama dibuang).
+    const cleaned = normalizePrintConfig(formData);
+    setFormData(cleaned);
+    savePrintConfig(cleaned);
+    onUpdatePrintConfig(cleaned);
     setIsSaved(true);
     onShowToast(
       'Kop & Dokumen Siap Cetak Diperbarui',
-      'Identitas kop surat resmi, logo embed, dan nama kepala sekolah berhasil disimpan dan disinkronkan ke seluruh dokumen cetak.'
+      'Identitas kop surat resmi, URL logo, dan nama kepala sekolah berhasil disimpan dan disinkronkan ke seluruh dokumen cetak.'
     );
     setTimeout(() => setIsSaved(false), 3000);
   };
@@ -103,7 +107,7 @@ export const PrintConfigManualEditor: React.FC<PrintConfigManualEditorProps> = (
       onShowToast('Preset Logo Dimuat', 'Lambang Garuda Pancasila berhasil disematkan.');
     } else {
       handleInputChange('logoEmbedCode', '');
-      onShowToast('Logo Dikosongkan', 'Kode embed logo sekolah dibersihkan.');
+      onShowToast('Logo Dikosongkan', 'URL logo sekolah dibersihkan.');
     }
   };
 
@@ -128,7 +132,7 @@ export const PrintConfigManualEditor: React.FC<PrintConfigManualEditorProps> = (
               </span>
             </div>
             <p className="text-xs text-slate-500 font-medium">
-              Kustomisasi kop surat dinas, embed kode logo sekolah, pejabat kepala sekolah, dan integrasi cetak semua dokumen
+              Kustomisasi kop surat dinas, URL logo sekolah, pejabat kepala sekolah, dan integrasi cetak semua dokumen
             </p>
           </div>
         </div>
@@ -166,7 +170,7 @@ export const PrintConfigManualEditor: React.FC<PrintConfigManualEditorProps> = (
           }`}
         >
           <ImageIcon className="w-3.5 h-3.5" />
-          <span>2. Embed Logo Sekolah</span>
+          <span>2. URL Logo Sekolah</span>
           {parsedLogo.type !== 'none' && (
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
           )}

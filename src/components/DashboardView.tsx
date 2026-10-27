@@ -2,12 +2,10 @@ import React, { useMemo } from 'react';
 import {
   Users,
   CalendarCheck,
-  Award,
   Wallet,
   CheckCircle2,
   AlertTriangle,
   ArrowRight,
-  BrainCircuit,
   TrendingUp,
   FileSpreadsheet,
   BookOpen,
@@ -202,7 +200,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="bg-[#fef9c3] border-2 border-slate-900 rounded-2xl p-3.5 shadow-[3px_3px_0px_#1e293b]">
             <div className="flex items-center justify-between text-amber-950">
               <span className="text-[10px] font-mono font-black uppercase tracking-wider">Rata-rata Nilai</span>
-              <Award className="w-4 h-4 text-amber-900" />
+              <Flame className="w-4 h-4 text-amber-900" />
             </div>
             <p className="text-2xl sm:text-3xl font-black text-slate-950 font-mono mt-1">
               {stats.avgGrade}
@@ -408,7 +406,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="bg-[#f3e8ff] border-2 border-slate-900 rounded-3xl p-4 sm:p-5 shadow-[4px_4px_0px_#1e293b] flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-start gap-3.5">
           <div className="w-11 h-11 rounded-2xl bg-white border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] flex items-center justify-center shrink-0">
-            <BrainCircuit className="w-6 h-6 text-purple-900" />
+            <Flame className="w-6 h-6 text-purple-900" />
           </div>
           <div>
             <div className="flex items-center gap-2">

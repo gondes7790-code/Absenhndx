@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, Printer } from 'lucide-react';
+import { Eye, Printer, Flame } from 'lucide-react';
 import { ClassRoom } from '../../types';
 import { PrintableDocumentType } from '../PrintableDocument';
 
@@ -108,7 +108,7 @@ export const PrintCenterTab: React.FC<PrintCenterTabProps> = ({
             }`}
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-lg">🏆</span>
+              <Flame className="w-5 h-5 text-orange-600" />
               <span className="text-[10px] font-mono font-bold bg-white border border-slate-900 px-1.5 py-0.5 rounded-md">
                 NILAI
               </span>

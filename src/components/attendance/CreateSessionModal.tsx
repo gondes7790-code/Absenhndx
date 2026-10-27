@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, X, Calendar, Clock, BookOpen, Layers } from 'lucide-react';
+import { X, Calendar, Clock, BookOpen, Layers, Flame } from 'lucide-react';
 import { ClassRoom, NewSessionInput } from '../../types';
 import { JamPelajaranField } from '../common/JamPelajaranField';
 import { formatJamPreset, getJamPresets } from '../../utils/jamPresets';
@@ -48,7 +48,7 @@ export const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
         <div className="flex items-center justify-between pb-3 border-b-2 border-slate-100 mb-4">
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-xl bg-[#ede9fe] border border-slate-900 text-indigo-950">
-              <Sparkles className="w-4 h-4" />
+              <Flame className="w-4 h-4" />
             </div>
             <div>
               <h3 className="text-base font-black text-slate-900">
@@ -248,7 +248,7 @@ export const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
               type="submit"
               className="px-5 py-2 rounded-xl bg-[#a7f3d0] hover:bg-[#6ee7b7] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] font-black text-slate-950 cursor-pointer flex items-center gap-1.5"
             >
-              <Sparkles className="w-4 h-4 text-emerald-950" />
+              <Flame className="w-4 h-4 text-emerald-950" />
               <span>Buat & Sinkronkan ke Agenda</span>
             </button>
           </div>

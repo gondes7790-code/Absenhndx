@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Edit2, Calendar, Clock, BookOpen, Layers, Sparkles, Save, RotateCcw, Trash2, CheckCircle2 } from 'lucide-react';
+import { X, Edit2, Calendar, Clock, BookOpen, Layers, Save, RotateCcw, Trash2, CheckCircle2 } from 'lucide-react';
 import { AttendanceSession } from '../../types';
 import { JamPelajaranField } from '../common/JamPelajaranField';
 

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Award, Plus, Search } from 'lucide-react';
+import { Plus, Search, Flame } from 'lucide-react';
 import { Student, GradeRecord, ClassRoom, TeacherProfile, PrintConfig } from '../types';
 import { PrintableDocument } from './PrintableDocument';
 import { GradebookHeader } from './gradebook/GradebookHeader';
@@ -95,7 +95,7 @@ export const GradebookView: React.FC<GradebookViewProps> = ({
     return (
       <div className="bg-[#fffdf8] rounded-3xl p-8 border-2 border-slate-900 shadow-[4px_4px_0px_#1e293b] text-center max-w-xl mx-auto my-6">
         <div className="w-14 h-14 rounded-2xl bg-[#6ee7b7] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] mx-auto flex items-center justify-center mb-3">
-          <Award className="w-7 h-7 text-slate-950" />
+          <Flame className="w-7 h-7 text-slate-950" />
         </div>
         <h3 className="text-base font-black text-slate-900 mb-1">Belum Ada Rombel / Kelas Aktif</h3>
         <p className="text-xs font-bold text-slate-600 mb-4">

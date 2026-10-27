@@ -1,6 +1,7 @@
 import React from 'react';
-import { Award, BookOpen, Database, GraduationCap, Users } from 'lucide-react';
+import { BookOpen, Database, GraduationCap, Users, Flame } from 'lucide-react';
 import { ClassRoom, TeacherProfile } from '../../types';
+import { summarizeFase } from '../../utils/fase';
 
 interface ProfileSummaryColumnProps {
   teacher: TeacherProfile;
@@ -103,9 +104,9 @@ export const ProfileSummaryColumn: React.FC<ProfileSummaryColumnProps> = ({
         {/* Metric 3: Kurikulum */}
         <div className="bg-[#ede9fe] border-2 border-slate-900 rounded-2xl p-3.5 shadow-[3px_3px_0px_#1e293b]">
           <div className="flex items-center justify-between mb-1.5">
-            <Award className="w-4 h-4 text-indigo-800" />
+            <Flame className="w-4 h-4 text-indigo-800" />
             <span className="text-[10px] font-mono font-bold bg-white border border-slate-900 px-1.5 py-0.2 rounded-md">
-              FASE E/F
+              {summarizeFase(classes.map((c) => c.tingkat))}
             </span>
           </div>
           <div className="text-xl font-black text-slate-900">Merdeka</div>
@@ -129,7 +130,7 @@ export const ProfileSummaryColumn: React.FC<ProfileSummaryColumnProps> = ({
       <div className="bg-[#faf7ee] border-2 border-slate-900 rounded-2xl p-4 shadow-[3px_3px_0px_#1e293b]">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-mono font-black text-sm shrink-0">
-            ★
+            <Flame className="w-5 h-5 text-orange-400" />
           </div>
           <div>
             <p className="text-xs font-bold text-slate-900">

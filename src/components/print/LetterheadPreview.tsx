@@ -1,6 +1,6 @@
 import React from 'react';
 import { PrintConfig, TeacherProfile } from '../../types';
-import { svgToDataUrl, parseLogoEmbed, TUT_WURI_LOGO_SVG } from '../../utils/printConfig';
+import { parseLogoEmbed, TUT_WURI_LOGO_SVG } from '../../utils/printConfig';
 
 interface LetterheadPreviewProps {
   formData: PrintConfig;
@@ -35,17 +35,12 @@ export const LetterheadPreview: React.FC<LetterheadPreviewProps> = ({ formData, 
             {/* Left Logo Slot */}
             <div className="w-14 h-14 shrink-0 flex items-center justify-center">
               {formData.logoPosition === 'left' ? (
-                parsedLogo.type === 'svg' ? (
-                  <img
-                    src={svgToDataUrl(parsedLogo.content)}
-                    alt="Logo Sekolah"
-                    className="w-12 h-12 object-contain"
-                  />
-                ) : parsedLogo.type === 'img' && parsedLogo.content ? (
+                parsedLogo.type === 'img' && parsedLogo.content ? (
                   <img
                     src={parsedLogo.content}
                     alt="Logo Sekolah"
                     className="max-w-[48px] max-h-[48px] object-contain"
+                    referrerPolicy="no-referrer"
                   />
                 ) : (
                   <img
@@ -94,17 +89,12 @@ export const LetterheadPreview: React.FC<LetterheadPreviewProps> = ({ formData, 
             {/* Right Logo Slot */}
             <div className="w-14 h-14 shrink-0 flex items-center justify-center">
               {formData.logoPosition === 'right' || formData.logoPosition === 'both' ? (
-                parsedLogo.type === 'svg' ? (
-                  <img
-                    src={svgToDataUrl(parsedLogo.content)}
-                    alt="Logo Sekolah"
-                    className="w-12 h-12 object-contain"
-                  />
-                ) : parsedLogo.type === 'img' && parsedLogo.content ? (
+                parsedLogo.type === 'img' && parsedLogo.content ? (
                   <img
                     src={parsedLogo.content}
                     alt="Logo Sekolah"
                     className="max-w-[48px] max-h-[48px] object-contain"
+                    referrerPolicy="no-referrer"
                   />
                 ) : (
                   <img

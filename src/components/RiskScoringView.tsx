@@ -1,12 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import {
-  BrainCircuit,
   Flame,
   AlertTriangle,
   ShieldCheck,
   TrendingDown,
   TrendingUp,
-  Cpu,
   Search,
   Filter,
   CheckCircle2,
@@ -130,7 +128,7 @@ export const RiskScoringView: React.FC<RiskScoringViewProps> = ({
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pt-2 sm:pt-0">
           <div className="flex items-start gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-[#ede9fe] border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] flex items-center justify-center shrink-0">
-              <BrainCircuit className="w-6 h-6 text-purple-950" />
+              <Flame className="w-6 h-6 text-purple-950" />
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">
@@ -155,7 +153,7 @@ export const RiskScoringView: React.FC<RiskScoringViewProps> = ({
               disabled={isProcessing}
               className="px-3.5 py-2 rounded-2xl bg-[#ede9fe] hover:bg-[#ddd6fe] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none text-purple-950 border-2 border-slate-900 shadow-[2.5px_2.5px_0px_#1e293b] text-xs sm:text-sm font-black flex items-center gap-1.5 transition-all cursor-pointer"
             >
-              <Cpu className={`w-4 h-4 ${isProcessing ? 'animate-spin' : ''}`} />
+              <Flame className={`w-4 h-4 ${isProcessing ? 'animate-spin' : ''}`} />
               <span>{isProcessing ? 'Mengkalkulasi...' : 'Hitung Ulang Skor'}</span>
             </button>
             <button
@@ -343,7 +341,7 @@ export const RiskScoringView: React.FC<RiskScoringViewProps> = ({
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-[6px_6px_0px_#1e293b] border-3 border-slate-900 space-y-4 animate-in zoom-in-95">
             <div className="flex items-center justify-between pb-3 border-b-2 border-slate-100">
               <div className="flex items-center gap-2">
-                <BrainCircuit className="w-5 h-5 text-purple-900" />
+                <Flame className="w-5 h-5 text-purple-900" />
                 <h3 className="font-black text-base text-slate-900">
                   Formula Risk Scoring
                 </h3>

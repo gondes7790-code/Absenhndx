@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Calendar,
   Wallet,
-  Award,
   FileSpreadsheet,
   Copy,
   Check,
@@ -12,7 +11,6 @@ import {
   Lock,
   User,
   GraduationCap,
-  Sparkles,
   Info,
   Clock,
   BookOpen,
@@ -290,7 +288,7 @@ export const PublicPortalView: React.FC<PublicPortalViewProps> = ({
                   : 'bg-transparent border-transparent hover:bg-[#faf7ee] text-slate-600'
               }`}
             >
-              <Award className="w-3.5 h-3.5 text-amber-800" />
+              <Flame className="w-3.5 h-3.5 text-amber-800" />
               <span>Data Nilai</span>
             </button>
 

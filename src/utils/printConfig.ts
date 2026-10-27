@@ -19,10 +19,6 @@ export const SMK_BISA_LOGO_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www
 
 export const GARUDA_LOGO_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><circle cx="50" cy="50" r="48" fill="%23ffffff" stroke="%23b45309" stroke-width="3"/><path d="M50 15 L65 35 L85 45 L65 60 L70 85 L50 72 L30 85 L35 60 L15 45 L35 35 Z" fill="%23d97706"/><rect x="42" y="42" width="16" height="16" fill="%23dc2626" stroke="%23000000" stroke-width="1.5"/></svg>`;
 
-/** Render SVG as an image resource, never as HTML, to prevent markup execution. */
-export const svgToDataUrl = (svg: string): string =>
-  `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-
 export const DEFAULT_PRINT_CONFIG: PrintConfig = {
   dinasHeader: 'PEMERINTAH DAERAH PROVINSI • DINAS PENDIDIKAN',
   dinasSubHeader: 'CABANG DINAS PENDIDIKAN WILAYAH SATUAN PENDIDIKAN',
@@ -49,11 +45,12 @@ export const getSavedPrintConfig = (defaultSchoolName?: string): PrintConfig => 
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      return {
+      // Nilai logo lama (HTML/SVG embed) dinormalkan menjadi URL murni saat dimuat.
+      return normalizePrintConfig({
         ...DEFAULT_PRINT_CONFIG,
         ...parsed,
         schoolName: parsed.schoolName || defaultSchoolName || DEFAULT_PRINT_CONFIG.schoolName,
-      };
+      });
     }
   } catch (err) {
     console.warn('Failed to parse saved print config:', err);
@@ -66,7 +63,7 @@ export const getSavedPrintConfig = (defaultSchoolName?: string): PrintConfig => 
 
 export const savePrintConfig = (config: PrintConfig): void => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizePrintConfig(config)));
   } catch (err) {
     console.warn('Failed to save print config to localStorage:', err);
   }
@@ -95,71 +92,84 @@ export const cleanImageUrl = (url: string): string => {
 };
 
 /**
- * Parses user input for logo:
- * - HTML <img> embed code (extracts src attribute)
- * - Raw SVG code (<svg...>...</svg>) even with XML headers or wrapper tags
- * - SVG data URIs (data:image/svg+xml;...)
- * - Markdown image syntax ![alt](url)
- * - <iframe> / <embed> src tags
- * - Direct image URL (https://..., http://..., data:image/...)
+ * Logo sekolah = URL GAMBAR SAJA.
+ *
+ * Input pengguna tidak pernah dirender sebagai HTML/SVG. Hasil parse hanya berupa
+ * string URL yang selalu ditampilkan lewat <img src={content} />.
+ *
+ * Diterima  : https://..., http://..., path relatif berawalan "/" (bukan "//"),
+ *             dan data:image/* HANYA bila identik dengan preset bawaan aplikasi.
+ * Ditolak   : <svg>...</svg>, <iframe>, <embed>, markup lain, javascript:, data:
+ *             buatan pengguna.
+ * Kompatibel: HTML lama berisi <img src="https://..."> diambil URL-nya saja.
  */
+
+/** Satu-satunya data URI yang diterima: preset yang dikontrol kode, bukan input bebas. */
+const TRUSTED_DATA_URIS: ReadonlySet<string> = new Set([SMK_BISA_LOGO_SVG, GARUDA_LOGO_SVG]);
+
+const NO_LOGO = { type: 'none' as const, content: '' };
+
+const HTTP_URL_PATTERN = /^https?:\/\/[^\s"'<>]+$/i;
+const RELATIVE_PATH_PATTERN = /^\/(?!\/)[^\s"'<>\\]*$/;
+const IMG_TAG_SRC_PATTERN = /<img\b[^>]*?\ssrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>"']+))/i;
+const ANY_HTTP_URL_PATTERN = /https?:\/\/[^\s"'<>()\]]+/i;
+
+const isSafeHttpUrl = (url: string): boolean => {
+  if (!HTTP_URL_PATTERN.test(url)) return false;
+  try {
+    const { protocol } = new URL(url);
+    return protocol === 'http:' || protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+const toImageResult = (content: string): { type: 'img'; content: string } => ({
+  type: 'img',
+  content,
+});
+
 export const parseLogoEmbed = (
   embedCode: string
-): { type: 'img' | 'svg' | 'none'; content: string } => {
-  if (!embedCode || !embedCode.trim()) {
-    return { type: 'none', content: '' };
+): { type: 'img' | 'none'; content: string } => {
+  const input = (embedCode ?? '').trim();
+  if (!input) return NO_LOGO;
+
+  // 1. Preset bawaan (data URI tepercaya) — hanya bila sama persis.
+  if (TRUSTED_DATA_URIS.has(input)) return toImageResult(input);
+
+  // 2. Ada markup: ambil URL dari <img src="..."> saja; selain itu ditolak.
+  if (input.includes('<') || input.includes('>')) {
+    const match = IMG_TAG_SRC_PATTERN.exec(input);
+    const src = (match?.[1] ?? match?.[2] ?? match?.[3] ?? '').trim().replace(/&amp;/gi, '&');
+    const cleaned = cleanImageUrl(src);
+    return isSafeHttpUrl(cleaned) ? toImageResult(cleaned) : NO_LOGO;
   }
 
-  const trimmed = embedCode.trim();
-
-  // 1. Check for SVG markup anywhere in string (handles <?xml ...>, comments, wrappers)
-  const svgMatch = trimmed.match(/<svg[\s\S]*?<\/svg>/i);
-  if (svgMatch && svgMatch[0]) {
-    return { type: 'svg', content: svgMatch[0] };
+  // 3. URL polos: http(s) atau path relatif berawalan "/".
+  const cleaned = cleanImageUrl(input);
+  if (isSafeHttpUrl(cleaned) || RELATIVE_PATH_PATTERN.test(cleaned)) {
+    return toImageResult(cleaned);
   }
 
-  // 2. Check for data:image/svg+xml;utf8,<svg...
-  if (trimmed.startsWith('data:image/svg+xml;utf8,<svg') || trimmed.startsWith('data:image/svg+xml,<svg')) {
-    const rawSvg = decodeURIComponent(
-      trimmed.replace(/^data:image\/svg\+xml(?:;utf8)?,/, '')
-    );
-    return { type: 'svg', content: rawSvg };
+  // 4. Teks lain yang memuat URL (mis. markdown ![alt](https://...)): ambil URL pertama.
+  const anyUrl = ANY_HTTP_URL_PATTERN.exec(input);
+  if (anyUrl) {
+    const url = cleanImageUrl(anyUrl[0]);
+    if (isSafeHttpUrl(url)) return toImageResult(url);
   }
 
-  // 3. Check for HTML <img> tag with src
-  const imgMatch = trimmed.match(/<img[^>]+src=["']?([^"'>\s]+)["']?/i);
-  if (imgMatch && imgMatch[1]) {
-    return { type: 'img', content: cleanImageUrl(imgMatch[1]) };
-  }
-
-  // 4. Check for any tag with src (iframe, embed, object)
-  const srcMatch = trimmed.match(/src=["']?([^"'>\s]+)["']?/i);
-  if (srcMatch && srcMatch[1]) {
-    return { type: 'img', content: cleanImageUrl(srcMatch[1]) };
-  }
-
-  // 5. Check for Markdown image syntax ![alt](url)
-  const mdMatch = trimmed.match(/!\[.*?\]\((https?:\/\/[^\s)]+)\)/i);
-  if (mdMatch && mdMatch[1]) {
-    return { type: 'img', content: cleanImageUrl(mdMatch[1]) };
-  }
-
-  // 6. Direct URLs or Data URIs
-  if (
-    trimmed.startsWith('http://') ||
-    trimmed.startsWith('https://') ||
-    trimmed.startsWith('data:image/') ||
-    trimmed.startsWith('/') ||
-    trimmed.startsWith('./')
-  ) {
-    return { type: 'img', content: cleanImageUrl(trimmed) };
-  }
-
-  // 7. General URL regex fallback (e.g. if user pasted arbitrary text containing a URL)
-  const anyUrlMatch = trimmed.match(/(https?:\/\/[^\s"'<>]+)/i);
-  if (anyUrlMatch && anyUrlMatch[1]) {
-    return { type: 'img', content: cleanImageUrl(anyUrlMatch[1]) };
-  }
-
-  return { type: 'none', content: '' };
+  return NO_LOGO;
 };
+
+/** Nilai logo yang aman disimpan: URL murni, atau string kosong bila tidak valid. */
+export const toLogoUrl = (input: string): string => {
+  const parsed = parseLogoEmbed(input);
+  return parsed.type === 'img' ? parsed.content : '';
+};
+
+/** Pastikan config selalu menyimpan logo sebagai URL (data lama berupa HTML/SVG dibersihkan). */
+export const normalizePrintConfig = (config: PrintConfig): PrintConfig => ({
+  ...config,
+  logoEmbedCode: toLogoUrl(config.logoEmbedCode),
+});

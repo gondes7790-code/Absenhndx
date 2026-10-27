@@ -151,7 +151,7 @@ export interface PrintConfig {
   address: string;
   phone: string;
   emailWeb: string;
-  logoEmbedCode: string; // URL, <img src="..." />, or SVG
+  logoEmbedCode: string; // URL gambar saja (https://... atau data:image preset internal); nama field dipertahankan demi data lama
   logoPosition: 'left' | 'right' | 'both';
   showTutWuriLogo: boolean;
   principalName: string;

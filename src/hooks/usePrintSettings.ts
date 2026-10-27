@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { PrintConfig } from '../types';
-import { getSavedPrintConfig, savePrintConfig } from '../utils/printConfig';
+import { getSavedPrintConfig, normalizePrintConfig, savePrintConfig } from '../utils/printConfig';
 
 const DEFAULT_SCHOOL = 'Sekolah Merdeka Indonesia';
 
@@ -17,9 +17,10 @@ export function usePrintSettings(remoteSchool: string | null) {
   }, [remoteSchool]);
 
   const updatePrintConfig = useCallback((cfg: PrintConfig) => {
-    setPrintConfig(cfg);
-    setSchoolName(cfg.schoolName);
-    savePrintConfig(cfg);
+    const clean = normalizePrintConfig(cfg); // logo selalu tersimpan sebagai URL murni
+    setPrintConfig(clean);
+    setSchoolName(clean.schoolName);
+    savePrintConfig(clean);
   }, []);
 
   return { printConfig, schoolName, setSchoolName, updatePrintConfig };

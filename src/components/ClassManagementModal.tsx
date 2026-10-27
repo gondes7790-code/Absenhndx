@@ -10,9 +10,9 @@ import {
   BookOpen,
   Calendar,
   Layers,
-  Award,
 } from 'lucide-react';
 import { ClassRoom } from '../types';
+import { TINGKAT_GROUPS, isKnownTingkat, isSekolahDasar } from '../utils/fase';
 
 interface ClassManagementModalProps {
   isOpen: boolean;
@@ -96,7 +96,7 @@ export const ClassManagementModal: React.FC<ClassManagementModalProps> = ({
       onAddClass({
         nama: formNama.trim(),
         tingkat: formTingkat.trim(),
-        jurusan: formJurusan.trim(),
+        jurusan: isSekolahDasar(formTingkat) ? 'Umum' : formJurusan.trim(),
         mapel: formMapel.trim(),
         tahunAjaran: formTahunAjaran.trim(),
         semester: formSemester,
@@ -110,7 +110,7 @@ export const ClassManagementModal: React.FC<ClassManagementModalProps> = ({
         ...editingClass,
         nama: formNama.trim(),
         tingkat: formTingkat.trim(),
-        jurusan: formJurusan.trim(),
+        jurusan: isSekolahDasar(formTingkat) ? 'Umum' : formJurusan.trim(),
         mapel: formMapel.trim(),
         tahunAjaran: formTahunAjaran.trim(),
         semester: formSemester,
@@ -316,7 +316,7 @@ export const ClassManagementModal: React.FC<ClassManagementModalProps> = ({
                     required
                     value={formNama}
                     onChange={(e) => setFormNama(e.target.value)}
-                    placeholder="Contoh: X DKV 1, XI RPL 2"
+                    placeholder="Contoh: X DKV 1, XI RPL 2, atau 4A"
                     className="w-full px-3 py-2 rounded-xl bg-white border-2 border-slate-900 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
                   />
                 </div>
@@ -330,12 +330,18 @@ export const ClassManagementModal: React.FC<ClassManagementModalProps> = ({
                     onChange={(e) => setFormTingkat(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-white border-2 border-slate-900 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
                   >
-                    <option value="10">Kelas 10 (Fase E)</option>
-                    <option value="11">Kelas 11 (Fase F)</option>
-                    <option value="12">Kelas 12 (Fase F Lanjutan)</option>
-                    <option value="7">Kelas 7 (Fase D)</option>
-                    <option value="8">Kelas 8 (Fase D)</option>
-                    <option value="9">Kelas 9 (Fase D)</option>
+                    {!isKnownTingkat(formTingkat) && (
+                      <option value={formTingkat}>{formTingkat} (nilai lama)</option>
+                    )}
+                    {TINGKAT_GROUPS.map((group) => (
+                      <optgroup key={group.label} label={group.label}>
+                        {group.options.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
                   </select>
                 </div>
 

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Share2,
   Calendar,
-  Award,
   Wallet,
   FileSpreadsheet,
   X,
@@ -14,6 +13,7 @@ import {
   User,
   Trash2,
   Send,
+  Flame,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import {
@@ -298,7 +298,7 @@ export const ParentPortalModal: React.FC<ParentPortalModalProps> = ({
                   : 'bg-white hover:bg-[#faf7ee] text-slate-700'
               }`}
             >
-              <Award className="w-3.5 h-3.5 inline mr-1 text-amber-800" />
+              <Flame className="w-3.5 h-3.5 inline mr-1 text-amber-800" />
               Data Nilai Rapor
             </button>
             <button
