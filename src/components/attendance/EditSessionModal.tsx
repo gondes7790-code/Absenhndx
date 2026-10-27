@@ -1,43 +1,44 @@
 import React, { useState } from 'react';
-import { Sparkles, X, Calendar, Clock, BookOpen, Layers } from 'lucide-react';
-import { ClassRoom, NewSessionInput } from '../../types';
+import { X, Edit2, Calendar, Clock, BookOpen, Layers, Sparkles, Save, RotateCcw, Trash2, CheckCircle2 } from 'lucide-react';
+import { AttendanceSession } from '../../types';
 import { JamPelajaranField } from '../common/JamPelajaranField';
-import { formatJamPreset, getJamPresets } from '../../utils/jamPresets';
 
-interface CreateSessionModalProps {
-  activeClass: ClassRoom;
-  nextSessionNumber: number;
+interface EditSessionModalProps {
+  session: AttendanceSession;
   onClose: () => void;
-  onSubmit: (data: NewSessionInput) => void;
+  onSubmit: (updated: AttendanceSession) => void;
+  onDeleteSession?: (sessionId: string) => void;
 }
 
-/** Formulir "Buat Sesi Absen Baru"; state formulir lokal, di-reset tiap modal dibuka (dipasang ulang). */
-export const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
-  activeClass,
-  nextSessionNumber,
+/** Edit manual sesi absen yang sudah diinput; state formulir diisi dari sesi saat modal dipasang. */
+export const EditSessionModal: React.FC<EditSessionModalProps> = ({
+  session: activeSession,
   onClose,
   onSubmit,
+  onDeleteSession,
 }) => {
-  const [createPertemuan, setCreatePertemuan] = useState<number>(nextSessionNumber);
-  const [createTanggal, setCreateTanggal] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [createMapel, setCreateMapel] = useState<string>(activeClass.mapel || '');
-  const [createJam, setCreateJam] = useState<string>(
-    () => (getJamPresets()[0] && formatJamPreset(getJamPresets()[0])) || '07.15 - 09.15 WIB'
-  );
-  const [createMateri, setCreateMateri] = useState<string>('');
-  const [createKegiatan, setCreateKegiatan] = useState<string>('');
-  const [createStartMode, setCreateStartMode] = useState<'empty' | 'all_hadir'>('empty');
+  const [editPertemuan, setEditPertemuan] = useState<number>(activeSession.pertemuanKe);
+  const [editTanggal, setEditTanggal] = useState<string>(activeSession.tanggal);
+  const [editMapel, setEditMapel] = useState<string>(activeSession.mapel);
+  const [editJam, setEditJam] = useState<string>(activeSession.jamPelajaran || '07.15 - 09.15 WIB');
+  const [editMateri, setEditMateri] = useState<string>(activeSession.materi || '');
+  const [editKegiatan, setEditKegiatan] = useState<string>(activeSession.kegiatan || '');
+  const [editCatatan, setEditCatatan] = useState<string>(activeSession.catatan || '');
 
-  const handleSubmitCreate = (e: React.FormEvent) => {
+  const handleSubmitEditSession = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
-      pertemuanKe: createPertemuan,
-      tanggal: createTanggal,
-      mapel: createMapel,
-      materi: createMateri.trim(),
-      kegiatan: createKegiatan.trim(),
-      jamPelajaran: createJam.trim(),
-      setAllHadir: createStartMode === 'all_hadir',
+      ...activeSession,
+      pertemuanKe: editPertemuan,
+      tanggal: editTanggal,
+      mapel: editMapel,
+      jamPelajaran: editJam,
+      materi: editMateri.trim(),
+      kegiatan: editKegiatan.trim(),
+      catatan:
+        editMateri.trim() && editKegiatan.trim()
+          ? `${editMateri.trim()} — ${editKegiatan.trim()}`
+          : editMateri.trim() || editCatatan,
     });
     onClose();
   };
@@ -47,15 +48,15 @@ export const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
       <div className="w-full max-w-lg bg-white border-3 border-slate-900 rounded-3xl p-6 shadow-[6px_6px_0px_#1e293b] relative animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between pb-3 border-b-2 border-slate-100 mb-4">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-xl bg-[#ede9fe] border border-slate-900 text-indigo-950">
-              <Sparkles className="w-4 h-4" />
+            <div className="p-1.5 rounded-xl bg-[#e0f2fe] border border-slate-900 text-sky-950">
+              <Edit2 className="w-4 h-4" />
             </div>
             <div>
               <h3 className="text-base font-black text-slate-900">
-                Buat Sesi Absen Baru & Agenda Mengajar
+                Edit Manual Sesi Absen & Agenda Mengajar
               </h3>
               <p className="text-[11px] text-slate-500 font-medium">
-                Otomatis sinkron ke Agenda Mengajar termasuk materi, kegiatan, dan kehadiran
+                Edit data pertemuan yang sudah diinput & perbarui otomatis ke Agenda Mengajar
               </p>
             </div>
           </div>
@@ -67,7 +68,7 @@ export const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmitCreate} className="space-y-3.5 text-xs">
+        <form onSubmit={handleSubmitEditSession} className="space-y-3.5 text-xs">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block font-bold text-slate-800 mb-1">
@@ -77,8 +78,8 @@ export const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
                 type="number"
                 min={1}
                 required
-                value={createPertemuan}
-                onChange={(e) => setCreatePertemuan(parseInt(e.target.value) || 1)}
+                value={editPertemuan}
+                onChange={(e) => setEditPertemuan(parseInt(e.target.value) || 1)}
                 className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-mono font-bold focus:bg-white focus:outline-none"
               />
             </div>
@@ -90,8 +91,8 @@ export const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
               <input
                 type="date"
                 required
-                value={createTanggal}
-                onChange={(e) => setCreateTanggal(e.target.value)}
+                value={editTanggal}
+                onChange={(e) => setEditTanggal(e.target.value)}
                 className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-mono font-bold focus:bg-white focus:outline-none"
               />
             </div>
@@ -105,152 +106,83 @@ export const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
               <input
                 type="text"
                 required
-                value={createMapel}
-                onChange={(e) => setCreateMapel(e.target.value)}
+                value={editMapel}
+                onChange={(e) => setEditMapel(e.target.value)}
                 className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none"
               />
             </div>
 
             <JamPelajaranField
               label="Jam Tatap Muka"
-              required
-              value={createJam}
-              onChange={setCreateJam}
+              value={editJam}
+              onChange={setEditJam}
             />
           </div>
 
-          {/* Materi yang Diajarkan */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block font-bold text-slate-800">
-                Materi yang Diajarkan (Kurikulum Merdeka) *
-              </label>
-              <span className="text-[10px] font-bold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-                Masuk Agenda Mengajar
-              </span>
-            </div>
+            <label className="block font-bold text-slate-800 mb-1">
+              Materi yang Diajarkan *
+            </label>
             <input
               type="text"
               required
-              value={createMateri}
-              onChange={(e) => setCreateMateri(e.target.value)}
-              className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none placeholder:text-slate-400"
-              placeholder="Contoh: Teks Prosedur Manual & Kosakata Teknik Otomotif"
+              value={editMateri}
+              onChange={(e) => setEditMateri(e.target.value)}
+              className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none"
+              placeholder="Uraikan materi pembelajaran..."
             />
-            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-              <span className="text-[10px] text-slate-500 font-bold">Saran Cepat:</span>
-              <button
-                type="button"
-                onClick={() => setCreateMateri('Teks Prosedur Manual & Kosakata Teknik Otomotif')}
-                className="text-[10px] bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-lg border border-slate-300 font-medium"
-              >
-                Teks Prosedur Manual
-              </button>
-              <button
-                type="button"
-                onClick={() => setCreateMateri('Perbaikan & Pemeriksaan Sistem Kelistrikan')}
-                className="text-[10px] bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-lg border border-slate-300 font-medium"
-              >
-                Sistem Kelistrikan
-              </button>
-              <button
-                type="button"
-                onClick={() => setCreateMateri('K3LH & Budaya Kerja Industri 5R')}
-                className="text-[10px] bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-lg border border-slate-300 font-medium"
-              >
-                K3LH & Budaya Kerja
-              </button>
-            </div>
           </div>
 
-          {/* Kegiatan Pembelajaran */}
           <div>
             <label className="block font-bold text-slate-800 mb-1">
-              Kegiatan Pembelajaran & Praktikum *
+              Kegiatan Pembelajaran & Praktikum
             </label>
             <textarea
               rows={2}
-              required
-              value={createKegiatan}
-              onChange={(e) => setCreateKegiatan(e.target.value)}
-              className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] focus:bg-white focus:outline-none resize-none font-medium placeholder:text-slate-400"
-              placeholder="Contoh: Demonstrasi instruktur, bedah SOP, dan praktik kelompok di bengkel kerja..."
+              value={editKegiatan}
+              onChange={(e) => setEditKegiatan(e.target.value)}
+              className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] focus:bg-white focus:outline-none resize-none font-medium"
+              placeholder="Uraikan metode, diskusi, atau praktikum..."
             />
-            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-              <span className="text-[10px] text-slate-500 font-bold">Contoh Cepat:</span>
-              <button
-                type="button"
-                onClick={() =>
-                  setCreateKegiatan(
-                    'Demonstrasi instruktur, bedah manual book, dan simulasi praktik kelompok'
-                  )
-                }
-                className="text-[10px] bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-lg border border-slate-300 font-medium"
-              >
-                Demonstrasi & Praktik
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  setCreateKegiatan(
-                    'Diskusi kelompok pemecahan studi kasus, presentasi, dan asesmen formatif'
-                  )
-                }
-                className="text-[10px] bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-lg border border-slate-300 font-medium"
-              >
-                Diskusi & Presentasi
-              </button>
-            </div>
           </div>
 
-          {/* Status Kehadiran Awal */}
-          <div className="bg-[#faf7ee] p-3 rounded-2xl border-2 border-slate-900">
-            <label className="block font-bold text-slate-800 mb-1.5">
-              Pengaturan Awal Status Presensi:
-            </label>
-            <div className="space-y-1.5">
-              <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800">
-                <input
-                  type="radio"
-                  name="startMode"
-                  value="empty"
-                  checked={createStartMode === 'empty'}
-                  onChange={() => setCreateStartMode('empty')}
-                  className="accent-emerald-700"
-                />
-                <span>
-                  Absen Kosong (Belum Diisi — Sesuai permintaan, tombol "Semua Hadir" ditekan nanti jika perlu)
-                </span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800">
-                <input
-                  type="radio"
-                  name="startMode"
-                  value="all_hadir"
-                  checked={createStartMode === 'all_hadir'}
-                  onChange={() => setCreateStartMode('all_hadir')}
-                  className="accent-emerald-700"
-                />
-                <span>Semua Hadir Langsung (Otomatis 100% Hadir)</span>
-              </label>
-            </div>
-          </div>
+          <div className="mt-5 pt-3 border-t-2 border-slate-100 flex items-center justify-between">
+            {onDeleteSession && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `Hapus sesi pertemuan Ke-${activeSession.pertemuanKe} (${activeSession.tanggal}) beserta riwayat absensinya?`
+                    )
+                  ) {
+                    onDeleteSession(activeSession.id);
+                    onClose();
+                  }
+                }}
+                className="px-3 py-2 rounded-xl bg-[#fee2e2] hover:bg-[#fca5a5] text-rose-950 border-2 border-slate-900 font-bold flex items-center gap-1 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Hapus Sesi</span>
+              </button>
+            )}
 
-          <div className="mt-5 pt-3 border-t-2 border-slate-100 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => onClose()}
-              className="px-4 py-2 rounded-xl bg-[#f1f5f9] border-2 border-slate-900 font-bold text-slate-700 cursor-pointer"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 rounded-xl bg-[#a7f3d0] hover:bg-[#6ee7b7] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] font-black text-slate-950 cursor-pointer flex items-center gap-1.5"
-            >
-              <Sparkles className="w-4 h-4 text-emerald-950" />
-              <span>Buat & Sinkronkan ke Agenda</span>
-            </button>
+            <div className="flex gap-2 ml-auto">
+              <button
+                type="button"
+                onClick={() => onClose()}
+                className="px-4 py-2 rounded-xl bg-[#f1f5f9] border-2 border-slate-900 font-bold text-slate-700 cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2 rounded-xl bg-[#a7f3d0] hover:bg-[#6ee7b7] border-2 border-slate-900 shadow-[2px_2px_0px_#1e293b] font-black text-slate-950 cursor-pointer flex items-center gap-1.5"
+              >
+                <CheckCircle2 className="w-4 h-4 text-emerald-950" />
+                <span>Simpan & Sinkronkan</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>
