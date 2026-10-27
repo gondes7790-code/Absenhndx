@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Sparkles, X, Calendar, Clock, BookOpen, Layers } from 'lucide-react';
 import { ClassRoom, NewSessionInput } from '../../types';
+import { JamPelajaranField } from '../common/JamPelajaranField';
+import { formatJamPreset, getJamPresets } from '../../utils/jamPresets';
 
 interface CreateSessionModalProps {
   activeClass: ClassRoom;
@@ -19,7 +21,9 @@ export const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
   const [createPertemuan, setCreatePertemuan] = useState<number>(nextSessionNumber);
   const [createTanggal, setCreateTanggal] = useState<string>(new Date().toISOString().split('T')[0]);
   const [createMapel, setCreateMapel] = useState<string>(activeClass.mapel || '');
-  const [createJam, setCreateJam] = useState<string>('07.15 - 09.15 WIB');
+  const [createJam, setCreateJam] = useState<string>(
+    () => (getJamPresets()[0] && formatJamPreset(getJamPresets()[0])) || '07.15 - 09.15 WIB'
+  );
   const [createMateri, setCreateMateri] = useState<string>('');
   const [createKegiatan, setCreateKegiatan] = useState<string>('');
   const [createStartMode, setCreateStartMode] = useState<'empty' | 'all_hadir'>('empty');
@@ -107,19 +111,12 @@ export const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
               />
             </div>
 
-            <div>
-              <label className="block font-bold text-slate-800 mb-1">
-                Jam Tatap Muka
-              </label>
-              <input
-                type="text"
-                required
-                value={createJam}
-                onChange={(e) => setCreateJam(e.target.value)}
-                className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none"
-                placeholder="Contoh: 07.15 - 09.15 WIB"
-              />
-            </div>
+            <JamPelajaranField
+              label="Jam Tatap Muka"
+              required
+              value={createJam}
+              onChange={setCreateJam}
+            />
           </div>
 
           {/* Materi yang Diajarkan */}
