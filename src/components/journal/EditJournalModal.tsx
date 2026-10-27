@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CheckCircle2, Edit2, Trash2, X } from 'lucide-react';
 import { ClassRoom, JournalEntry } from '../../types';
+import { JamPelajaranField } from '../common/JamPelajaranField';
 
 function splitMateriKegiatan(j: JournalEntry): { materi: string; kegiatan: string } {
   if (j.materi && j.kegiatan) return { materi: j.materi, kegiatan: j.kegiatan };
@@ -145,19 +146,12 @@ export const EditJournalModal: React.FC<EditJournalModalProps> = ({
               />
             </div>
 
-            <div>
-              <label className="block font-bold text-slate-800 mb-1">
-                Jam Tatap Muka *
-              </label>
-              <input
-                type="text"
-                required
-                value={editJam}
-                onChange={(e) => setEditJam(e.target.value)}
-                className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none"
-                placeholder="Contoh: 07:15 - 09:15 WIB"
-              />
-            </div>
+            <JamPelajaranField
+              label="Jam Tatap Muka *"
+              required
+              value={editJam}
+              onChange={setEditJam}
+            />
           </div>
 
           <div>
