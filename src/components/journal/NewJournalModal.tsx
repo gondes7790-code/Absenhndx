@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { BookOpen, Plus, X } from 'lucide-react';
 import { ClassRoom, JournalEntry, TeacherProfile } from '../../types';
+import { JamPelajaranField } from '../common/JamPelajaranField';
+import { formatJamPreset, getJamPresets } from '../../utils/jamPresets';
 
 interface NewJournalModalProps {
   classes: ClassRoom[];
@@ -15,7 +17,9 @@ export const NewJournalModal: React.FC<NewJournalModalProps> = ({ classes, teach
   const [newClassId, setNewClassId] = useState(classes[0]?.id || 'class-1');
   const [newMapel, setNewMapel] = useState(classes[0]?.mapel || 'Bahasa Inggris & Kejuruan');
   const [newPertemuan, setNewPertemuan] = useState<number>(1);
-  const [newJam, setNewJam] = useState('07:15 - 09:15 WIB');
+  const [newJam, setNewJam] = useState(
+    () => (getJamPresets()[0] && formatJamPreset(getJamPresets()[0])) || '07:15 - 09:15 WIB'
+  );
   const [newMateri, setNewMateri] = useState('');
   const [newKegiatan, setNewKegiatan] = useState('');
   const [newCatatanAbsen, setNewCatatanAbsen] = useState('');
@@ -124,19 +128,12 @@ export const NewJournalModal: React.FC<NewJournalModalProps> = ({ classes, teach
               />
             </div>
 
-            <div>
-              <label className="block font-bold text-slate-800 mb-1">
-                Jam Tatap Muka *
-              </label>
-              <input
-                type="text"
-                required
-                value={newJam}
-                onChange={(e) => setNewJam(e.target.value)}
-                className="w-full px-3 py-2 rounded-2xl border-2 border-slate-900 bg-[#faf7ee] font-bold focus:bg-white focus:outline-none"
-                placeholder="Contoh: 07:15 - 09:15 WIB"
-              />
-            </div>
+            <JamPelajaranField
+              label="Jam Tatap Muka *"
+              required
+              value={newJam}
+              onChange={setNewJam}
+            />
           </div>
 
           <div>
